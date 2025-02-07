@@ -1,0 +1,17 @@
+{
+  "dfx": "0.24.0",
+  "canisters": {
+    "basic": {
+      "main": "basic/main.mo",
+      "type": "motoko"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": "mops sources"
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

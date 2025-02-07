@@ -1,0 +1,7 @@
+[package]
+name = "http-router"
+version = "0.1.0"
+description = "A HTTP router to make http requests easy to use"
+repository = "https://github.com/edjcase/motoko_http"
+keywords = ["http", "router"]
+license = "MIT"
