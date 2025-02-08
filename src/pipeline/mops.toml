@@ -1,0 +1,11 @@
+[package]
+name = "http-pipeline"
+version = "0.0.1"
+description = "An HTTP middleware pipeline library to make http requests easy to use"
+repository = "https://github.com/edjcase/motoko_http"
+keywords = ["http", "pipeline", "middleware"]
+license = "MIT"
+
+[dependencies]
+xtended-text = "1.0.0"
+itertools = "0.2.2"

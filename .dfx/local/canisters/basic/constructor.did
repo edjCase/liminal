@@ -1,0 +1,52 @@
+type StreamingToken = blob;
+type StreamingStrategy = variant {Callback: CallbackStreamingStrategy;};
+type StreamingCallbackResponse = 
+ record {
+   body: blob;
+   token: opt StreamingToken;
+ };
+type StreamingCallback = func (blob) -> (opt StreamingCallbackResponse) query;
+type RawUpdateHttpResponse = 
+ record {
+   body: blob;
+   headers: vec Header;
+   status_code: nat16;
+   streaming_strategy: opt StreamingStrategy;
+ };
+type RawUpdateHttpRequest = 
+ record {
+   body: blob;
+   headers: vec Header;
+   method: text;
+   url: text;
+ };
+type RawQueryHttpResponse = 
+ record {
+   body: blob;
+   headers: vec Header;
+   status_code: nat16;
+   streaming_strategy: opt StreamingStrategy;
+   upgrade: opt bool;
+ };
+type RawQueryHttpRequest = 
+ record {
+   body: blob;
+   certificate_version: opt nat16;
+   headers: vec Header;
+   method: text;
+   url: text;
+ };
+type Header = 
+ record {
+   text;
+   text;
+ };
+type CallbackStreamingStrategy = 
+ record {
+   callback: StreamingCallback;
+   token: StreamingToken;
+ };
+service : {
+  http_request: (RawQueryHttpRequest) -> (RawQueryHttpResponse);
+  http_request_update: (RawUpdateHttpRequest) -> (RawUpdateHttpResponse);
+}

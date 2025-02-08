@@ -1,43 +1,23 @@
 module {
     public type Header = (Text, Text);
 
-    public type UpdateRequest = {
+    public type HttpMethod = {
+        #get;
+        #post;
+    };
+
+    public type HttpRequest = {
+        method : HttpMethod;
         url : Text;
-        method : Text;
         headers : [Header];
         body : Blob;
     };
 
-    public type QueryRequest = UpdateRequest and {
-        certificate_version : ?Nat16;
-    };
+    public type HttpStatusCode = Nat;
 
-    public type UpdateResponse = {
-        status_code : Nat16;
+    public type HttpResponse = {
+        statusCode : HttpStatusCode;
         headers : [Header];
-        body : Blob;
-        streaming_strategy : ?StreamingStrategy;
-    };
-
-    public type QueryResponse = UpdateResponse and {
-        upgrade : ?Bool;
-    };
-
-    public type StreamingToken = Blob;
-
-    public type CallbackStreamingStrategy = {
-        callback : StreamingCallback;
-        token : StreamingToken;
-    };
-
-    public type StreamingStrategy = {
-        #Callback : CallbackStreamingStrategy;
-    };
-
-    public type StreamingCallback = shared query (Blob) -> async ?StreamingCallbackResponse;
-
-    public type StreamingCallbackResponse = {
-        body : Blob;
-        token : ?StreamingToken;
+        body : ?Blob;
     };
 };

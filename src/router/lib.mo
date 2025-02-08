@@ -1,45 +1,34 @@
 import Types "../types";
-import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
-import Blob "mo:base/Blob";
-import Nat16 "mo:base/Nat16";
-import Option "mo:base/Option";
-import Result "mo:base/Result";
+import Array "mo:base/Array";
+import Pipeline "../pipeline";
+import Parser "../parser";
+import TextX "mo:xtended-text/TextX";
 
 module Module {
 
-    public type HttpMethod = {
-        #get;
-        #post;
+    public class RouteContext(route_ : Route, params_ : [(Text, RouteParameterValue)]) = self {
+        public let route : Route = route_;
+        public let params : [(Text, RouteParameterValue)] = params_;
+
+        public func getParam(key : Text) : ?RouteParameterValue {
+            let ?kv = Array.find(
+                params,
+                func(kv : (Text, RouteParameterValue)) : Bool = TextX.equalIgnoreCase(kv.0, key),
+            ) else return null;
+            ?kv.1;
+        };
+
+        public func run(httpContext : Parser.HttpContext) : Types.HttpResponse {
+            route.handler(httpContext, self);
+        };
     };
 
-    public type HttpRequest = {
-        method : HttpMethod;
-        url : Text;
-        headers : [Types.Header];
-        body : Blob;
-    };
+    public type RouteHandler = (Parser.HttpContext, RouteContext) -> Types.HttpResponse;
 
-    public type HttpStatusCode = Nat;
-
-    public type HttpResponse = {
-        statusCode : HttpStatusCode;
-        headers : [Types.Header];
-        body : ?Blob;
-    };
-
-    public type HttpContext = {
-        path : Text;
-        routeParams : [(Text, Text)];
-        queryParams : [(Text, Text)];
-    };
-
-    public type GetHandler = (HttpContext) -> HttpResponse;
-    public type PostHandler = (Blob, HttpContext) -> HttpResponse;
-
-    public type RouteHandler = {
-        #get : GetHandler;
-        #post : PostHandler;
+    public type RouteParameterValue = {
+        #text : Text;
+        #int : Int;
     };
 
     public type RouteParameterType = {
@@ -50,23 +39,29 @@ module Module {
     public type Route = {
         path : Text;
         params : [(Text, RouteParameterType)];
-        get : ?GetHandler;
-        post : ?PostHandler;
-    };
-
-    public type Middleware = {
-
+        // TODO methods
+        handler : RouteHandler;
     };
 
     public type RouterData = {
         routes : [Route];
-        middleware : [Middleware];
     };
 
     public func empty() : RouterData {
         {
             routes = [];
-            middleware = [];
+        };
+    };
+
+    public func route(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+        let route = {
+            path = path;
+            params = [];
+            handler = handler;
+        };
+
+        {
+            routes = Array.append(data.routes, [route]);
         };
     };
 
@@ -74,67 +69,39 @@ module Module {
         Router(data);
     };
 
-    public func addRoute(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
-        let newRoutes =...;
-        { data with routes = newRoutes } : RouterData;
+    public func use(pipeline : Pipeline.PipelineData, router : Router) : Pipeline.PipelineData {
+        let middleware = {
+            handle = func(httpContext : Parser.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
+                let ?response = router.route(httpContext) else return next();
+                response;
+            };
+        };
+
+        {
+            middleware = Array.append(pipeline.middleware, [middleware]);
+        };
     };
 
     public class Router(routerData : RouterData) = self {
         let routes = routerData.routes;
 
-        public func http_request(req : Types.QueryRequest) : Types.QueryResponse {
-            // TODO cache
-            {
-                status_code = 200;
-                headers = [];
-                body = Blob.fromArray([]);
-                streaming_strategy = null;
-                upgrade = ?true;
-            };
+        public func route(httpContext : Parser.HttpContext) : ?Types.HttpResponse {
+            let ?routeContext = findRoute(httpContext) else return null;
+
+            ?routeContext.run(httpContext);
         };
 
-        public func http_request_update(req : Types.UpdateRequest) : async* Types.UpdateResponse {
-            let path = req.url; // TODO: Parse path
-            for (middleware in routerData.middleware) {
-                // TODO run middleware
-            };
-            let ?route = routes.get(req.url) else return errorResponse(404);
-            let routeParams = []; // TODO: Parse route params
-            let queryParams = []; // TODO: Parse query params
-            let httpContext = {
-                path = path;
-                routeParams = routeParams;
-                queryParams = queryParams;
-            };
-            // TODO case insensitive method
-            let response : HttpResponse = switch (req.method) {
-                case ("GET") {
-                    let ?handler = route.get else return errorResponse(404);
-                    handler(httpContext);
-                };
-                case ("POST") {
-                    let ?handler = route.post else return errorResponse(404);
-                    handler(req.body, httpContext);
-                };
-                case (_) return errorResponse(405); // TODO?
-            };
-            {
-                status_code = Nat16.fromNat(response.statusCode);
-                headers = response.headers;
-                body = Option.get(response.body, Blob.fromArray([]));
-                streaming_strategy = null;
-                upgrade = null;
-            };
-        };
+        private func findRoute(httpContext : Parser.HttpContext) : ?RouteContext {
+            // TODO this is placeholder
 
-        private func errorResponse(statusCode : Nat16) : Types.QueryResponse {
-            {
-                status_code = statusCode;
-                headers = [];
-                body = Blob.fromArray([]);
-                streaming_strategy = null;
-                upgrade = null;
-            };
+            let path = httpContext.getPath();
+            let ?route = routes
+            |> Array.find(
+                _,
+                func(route : Route) : Bool = TextX.equalIgnoreCase(route.path, path),
+            ) else return null;
+
+            ?RouteContext(route, []);
         };
 
     };

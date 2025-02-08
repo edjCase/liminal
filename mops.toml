@@ -2,6 +2,7 @@
 base = "0.14.0"
 itertools = "0.2.2"
 json = "https://github.com/Demali-876/json#master"
+xtended-text = "1.0.0"
 
 
 xtended-numbers = "0.3.1"
