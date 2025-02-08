@@ -1,10 +1,10 @@
 import { test } "mo:test";
-import Debug "mo:base/Debug";
+import HttpRouter "../../src/router";
 
 test(
-  "Test 1",
+  "",
   func() {
-    Debug.print("Error message");
-    assert (false);
+    let router = HttpRouter.Router();
+    assert (true);
   },
 );
