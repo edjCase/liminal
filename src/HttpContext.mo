@@ -1,12 +1,11 @@
 import HttpTypes "./HttpTypes";
-import Types "./Types";
 import Text "mo:base/Text";
 import TextX "mo:xtended-text/TextX";
-import Debug "mo:base/Debug";
-import Iter "mo:base/Iter";
 import Array "mo:base/Array";
+import Debug "mo:base/Debug";
 import IterTools "mo:itertools/Iter";
 import Parser "./Parser";
+import HttpMethod "./HttpMethod";
 
 module {
 
@@ -15,7 +14,7 @@ module {
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 
-        public let method : Types.HttpMethod = Parser.parseHttpMethod(request.method);
+        public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Debug.trap("Unsupported HTTP method: " # request.method);
 
         public func getPath() : Text {
             getPathQueryInternal().0;

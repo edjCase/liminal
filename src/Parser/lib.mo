@@ -1,19 +1,8 @@
-import Types "../Types";
 import Text "mo:base/Text";
-import TextX "mo:xtended-text/TextX";
-import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import IterTools "mo:itertools/Iter";
 
 module Module {
-
-    public func parseHttpMethod(method : Text) : Types.HttpMethod {
-        switch (TextX.toLower(method)) {
-            case ("get") #get;
-            case ("post") #post;
-            case (_) Debug.trap("Unsupported HTTP method: " # method);
-        };
-    };
 
     public func parseUrl(url : Text) : (Text, [(Text, Text)]) {
         let urlParts = Text.split(url, #char('?'));

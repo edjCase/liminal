@@ -1,5 +1,4 @@
 import Pipeline "../Pipeline";
-import Option "mo:base/Option";
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
@@ -7,18 +6,20 @@ import Nat "mo:base/Nat";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "../HttpContext";
 import Types "../Types";
+import HttpMethod "../HttpMethod";
 
 module {
 
     public type Options = {
         allowOrigins : [Text]; // Empty means all origins allowed
-        allowMethods : [Types.HttpMethod]; // Empty means all methods allowed
+        allowMethods : [HttpMethod.HttpMethod]; // Empty means all methods allowed
         allowHeaders : [Text]; // Empty means all headers allowed
         maxAge : Nat;
         allowCredentials : Bool;
         exposeHeaders : [Text]; // Empty means none
     };
-    private let defaultOptions : Options = {
+
+    public let defaultOptions : Options = {
         allowOrigins = [];
         allowMethods = [#get, #post, #put, #delete, #options];
         allowHeaders = ["Content-Type", "Authorization"];
@@ -27,8 +28,7 @@ module {
         exposeHeaders = [];
     };
 
-    public func useCors(data : Pipeline.PipelineData, options_ : Options) : Pipeline.PipelineData {
-        let options = mergeOptions(options_);
+    public func useCors(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
         let newMiddleware = createMiddleware(options);
         {
             middleware = Array.append(data.middleware, [newMiddleware]);
@@ -53,7 +53,7 @@ module {
                         stringListOrStar(options.allowOrigins),
                     ));
                     // Methods
-                    let allowMethods = Array.map(options.allowMethods, func(m : Types.HttpMethod) : Text = Types.HttpMethod.toText(m));
+                    let allowMethods = Array.map(options.allowMethods, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m));
                     responseHeaders.add(("Access-Control-Allow-Methods", stringListOrStar(allowMethods)));
 
                     // Headers
@@ -73,7 +73,8 @@ module {
                     body = ?Text.encodeUtf8("Origin header missing");
                 };
                 if (isOriginAllowed(origin, options.allowOrigins)) {
-                    responseHeaders.add(("Access-Control-Allow-Origin", origin));
+                    let allowOrigin = if (options.allowOrigins.size() == 0) "*" else origin;
+                    responseHeaders.add(("Access-Control-Allow-Origin", allowOrigin));
                 };
 
                 // Handle actual request
@@ -94,20 +95,6 @@ module {
                     headers = Buffer.toArray(responseHeaders);
                 };
             };
-        };
-    };
-
-    // Default options
-
-    // Helper to merge options with defaults
-    private func mergeOptions(options : Options) : Options {
-        {
-            allowOrigins = Option.get(options.allowOrigins, defaultOptions.allowOrigins);
-            allowMethods = Option.get(options.allowMethods, defaultOptions.allowMethods);
-            allowHeaders = Option.get(options.allowHeaders, defaultOptions.allowHeaders);
-            maxAge = Option.get(options.maxAge, defaultOptions.maxAge);
-            allowCredentials = Option.get(options.allowCredentials, defaultOptions.allowCredentials);
-            exposeHeaders = Option.get(options.exposeHeaders, defaultOptions.exposeHeaders);
         };
     };
 
