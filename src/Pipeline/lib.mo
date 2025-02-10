@@ -1,15 +1,15 @@
-import Types "../types";
+import Types "../Types";
 import Blob "mo:base/Blob";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
-import Parser "../parser";
-import HttpTypes "../http-types";
+import HttpContext "../HttpContext";
+import HttpTypes "../HttpTypes";
 
 module Module {
 
     public type Next = () -> Types.HttpResponse;
 
-    public type MiddlewareFunc = (Parser.HttpContext, Next) -> Types.HttpResponse;
+    public type MiddlewareFunc = (HttpContext.HttpContext, Next) -> Types.HttpResponse;
 
     public type Middleware = {
         handle : MiddlewareFunc;
@@ -45,7 +45,7 @@ module Module {
 
         public func http_request_update(req : HttpTypes.UpdateRequest) : HttpTypes.UpdateResponse {
 
-            let httpContext = Parser.HttpContext(req);
+            let httpContext = HttpContext.HttpContext(req);
 
             let response = runMiddleware(httpContext);
 
@@ -58,7 +58,7 @@ module Module {
 
         };
 
-        private func runMiddleware(httpContext : Parser.HttpContext) : Types.HttpResponse {
+        private func runMiddleware(httpContext : HttpContext.HttpContext) : Types.HttpResponse {
             // Helper function to create the middleware chain
             func createNext(index : Nat) : Next {
                 func() : Types.HttpResponse {

@@ -1,7 +1,0 @@
-[package]
-name = "http"
-version = "0.1.0"
-description = "A collection of HTTP libraries to make http requests easy to use"
-repository = "https://github.com/edjcase/motoko_http"
-keywords = ["http", "router", "parser", "middleware", "web"]
-license = "MIT"

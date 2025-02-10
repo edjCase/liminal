@@ -1,8 +1,8 @@
-import HttpRouter "./router";
-import Types "./types";
-import HttpPipeline "./pipeline";
-import HttpTypes "./http-types";
-import HttpParser "./parser";
+import HttpRouter "./Router";
+import Types "./Types";
+import HttpPipeline "./Pipeline";
+import HttpTypes "./HttpTypes";
+import HttpContext "./HttpContext";
 
 module {
     public type Router = HttpRouter.Router;
@@ -11,7 +11,7 @@ module {
     public type Pipeline = HttpPipeline.Pipeline;
     public func Pipeline(data : HttpPipeline.PipelineData) : Pipeline = HttpPipeline.Pipeline(data);
 
-    public type HttpContext = HttpParser.HttpContext;
+    public type HttpContext = HttpContext.HttpContext;
 
     public type HttpRequest = Types.HttpRequest;
     public type HttpResponse = Types.HttpResponse;

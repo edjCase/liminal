@@ -1,9 +1,10 @@
-import Types "../types";
+import Types "../Types";
 import Text "mo:base/Text";
 import Array "mo:base/Array";
-import Pipeline "../pipeline";
-import Parser "../parser";
+import Pipeline "../Pipeline";
+import Parser "../Parser";
 import TextX "mo:xtended-text/TextX";
+import HttpContext "../HttpContext";
 
 module Module {
 
@@ -19,12 +20,12 @@ module Module {
             ?kv.1;
         };
 
-        public func run(httpContext : Parser.HttpContext) : Types.HttpResponse {
+        public func run(httpContext : HttpContext.HttpContext) : Types.HttpResponse {
             route.handler(httpContext, self);
         };
     };
 
-    public type RouteHandler = (Parser.HttpContext, RouteContext) -> Types.HttpResponse;
+    public type RouteHandler = (HttpContext.HttpContext, RouteContext) -> Types.HttpResponse;
 
     public type RouteParameterValue = {
         #text : Text;
@@ -71,7 +72,7 @@ module Module {
 
     public func use(pipeline : Pipeline.PipelineData, router : Router) : Pipeline.PipelineData {
         let middleware = {
-            handle = func(httpContext : Parser.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
+            handle = func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
                 let ?response = router.route(httpContext) else return next();
                 response;
             };
@@ -85,13 +86,13 @@ module Module {
     public class Router(routerData : RouterData) = self {
         let routes = routerData.routes;
 
-        public func route(httpContext : Parser.HttpContext) : ?Types.HttpResponse {
+        public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
 
             ?routeContext.run(httpContext);
         };
 
-        private func findRoute(httpContext : Parser.HttpContext) : ?RouteContext {
+        private func findRoute(httpContext : HttpContext.HttpContext) : ?RouteContext {
             // TODO this is placeholder
 
             let path = httpContext.getPath();

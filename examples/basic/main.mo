@@ -2,8 +2,8 @@ import Http "../../src";
 import Json "mo:json";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
-import HttpPipeline "../../src/pipeline";
-import HttpRouter "../../src/router";
+import HttpPipeline "../../src/Pipeline";
+import HttpRouter "../../src/Router";
 
 actor {
 
@@ -71,7 +71,7 @@ actor {
     };
 
     let router = HttpRouter.empty()
-    |> HttpRouter.route(_, "/users/:id", getUserById)
+    |> HttpRouter.route(_, "/users/{id}", getUserById)
     |> HttpRouter.route(_, "/users", createUser)
     |> HttpRouter.build(_);
 

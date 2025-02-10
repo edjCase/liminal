@@ -4,6 +4,21 @@ module {
     public type HttpMethod = {
         #get;
         #post;
+        #put;
+        #delete;
+        #options;
+    };
+
+    module HttpMethod {
+        public func toText(method : HttpMethod) : Text {
+            switch (method) {
+                case (#get) "GET";
+                case (#post) "POST";
+                case (#put) "PUT";
+                case (#delete) "DELETE";
+                case (#options) "OPTIONS";
+            };
+        };
     };
 
     public type HttpRequest = {
