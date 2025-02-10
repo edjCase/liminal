@@ -3,6 +3,7 @@ import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
 import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "../HttpContext";
 import Types "../Types";
@@ -14,7 +15,7 @@ module {
         allowOrigins : [Text]; // Empty means all origins allowed
         allowMethods : [HttpMethod.HttpMethod]; // Empty means all methods allowed
         allowHeaders : [Text]; // Empty means all headers allowed
-        maxAge : Nat;
+        maxAge : ?Nat; // Optional
         allowCredentials : Bool;
         exposeHeaders : [Text]; // Empty means none
     };
@@ -23,7 +24,7 @@ module {
         allowOrigins = [];
         allowMethods = [#get, #post, #put, #delete, #options];
         allowHeaders = ["Content-Type", "Authorization"];
-        maxAge = 86400; // 24 hours
+        maxAge = ?86400; // 24 hours
         allowCredentials = false;
         exposeHeaders = [];
     };
@@ -39,56 +40,44 @@ module {
         {
             handle = func(context : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
 
-                let responseHeaders = Buffer.Buffer<(Text, Text)>(8);
+                let corsHeaders = Buffer.Buffer<(Text, Text)>(8);
 
+                switch (context.getHeader("Origin")) {
+                    case (?origin) {
+                        if (not options.allowCredentials and options.allowOrigins.size() == 0) {
+                            // If credentials aren't required and all origins are allowed, then we can use '*' for the origin
+                            corsHeaders.add(("Access-Control-Allow-Origin", "*"));
+                        } else if (isOriginAllowed(origin, options.allowOrigins)) {
+                            // Otherwise specificy the origin if its allowed
+                            corsHeaders.add(("Access-Control-Allow-Origin", origin));
+                            corsHeaders.add(("Vary", "Origin"));
+                        };
+                    };
+                    case (null) ();
+                };
+
+                // Credentials
                 if (options.allowCredentials) {
-                    responseHeaders.add(("Access-Control-Allow-Credentials", "true"));
+                    corsHeaders.add(("Access-Control-Allow-Credentials", "true"));
                 };
 
                 // Handle preflight requests
-                if (Text.equal(context.request.method, "OPTIONS")) {
-
-                    responseHeaders.add((
-                        "Access-Control-Allow-Origin",
-                        stringListOrStar(options.allowOrigins),
-                    ));
-                    // Methods
-                    let allowMethods = Array.map(options.allowMethods, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m));
-                    responseHeaders.add(("Access-Control-Allow-Methods", stringListOrStar(allowMethods)));
-
-                    // Headers
-                    responseHeaders.add(("Access-Control-Allow-Headers", stringListOrStar(options.allowHeaders)));
-
-                    responseHeaders.add(("Access-Control-Max-Age", Nat.toText(options.maxAge)));
-
-                    return {
-                        statusCode = 204;
-                        headers = Buffer.toArray(responseHeaders);
-                        body = null;
-                    };
-                };
-                let ?origin = context.getHeader("Origin") else return {
-                    statusCode = 400;
-                    headers = [];
-                    body = ?Text.encodeUtf8("Origin header missing");
-                };
-                if (isOriginAllowed(origin, options.allowOrigins)) {
-                    let allowOrigin = if (options.allowOrigins.size() == 0) "*" else origin;
-                    responseHeaders.add(("Access-Control-Allow-Origin", allowOrigin));
+                if (context.method == #options) {
+                    return handlePreflightRequest(context, corsHeaders, options);
                 };
 
                 // Handle actual request
                 let response = next();
 
-                // Copy existing headers
-                for ((key, value) in response.headers.vals()) {
-                    responseHeaders.add((key, value));
-                };
-
                 if (options.exposeHeaders.size() > 0) {
                     let exposedHeaders = Text.join(", ", options.exposeHeaders.vals());
-                    responseHeaders.add(("Access-Control-Expose-Headers", exposedHeaders));
+                    corsHeaders.add(("Access-Control-Expose-Headers", exposedHeaders));
                 };
+
+                // Combine headers
+                let responseHeaders = Buffer.Buffer<(Text, Text)>(response.headers.size() + corsHeaders.size());
+                responseHeaders.append(Buffer.fromArray(response.headers));
+                responseHeaders.append(corsHeaders); // Append CORS headers last
 
                 {
                     response with
@@ -98,17 +87,60 @@ module {
         };
     };
 
-    // Validate origin against allowed origins or regex
+    private func handlePreflightRequest(
+        context : HttpContext.HttpContext,
+        responseHeaders : Buffer.Buffer<(Text, Text)>,
+        options : Options,
+    ) : Types.HttpResponse {
+
+        // Methods
+        switch (context.getHeader("Access-Control-Request-Method")) {
+            case (?_) {
+                // Only include when header is present
+                if (options.allowMethods.size() == 0) {
+                    // If no methods are specified, then allow all
+                    responseHeaders.add(("Access-Control-Allow-Methods", "*"));
+                } else {
+                    // Otherwise specify the allowed methods
+                    let allowMethodsText = options.allowMethods.vals()
+                    |> Iter.map(_, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m))
+                    |> Text.join(", ", _);
+                    responseHeaders.add(("Access-Control-Allow-Methods", allowMethodsText));
+                };
+            };
+            case (null) {};
+        };
+
+        // Headers
+        switch (context.getHeader("Access-Control-Request-Headers")) {
+            case (?_) {
+                // Only include when header is present
+                let allowHeadersText = Text.join(", ", options.allowHeaders.vals());
+                responseHeaders.add(("Access-Control-Allow-Headers", allowHeadersText));
+            };
+            case (null) ();
+        };
+
+        // Max age
+        switch (options.maxAge) {
+            case (?maxAge) {
+                responseHeaders.add(("Access-Control-Max-Age", Nat.toText(maxAge)));
+            };
+            case (null) {};
+        };
+
+        return {
+            statusCode = 204;
+            headers = Buffer.toArray(responseHeaders);
+            body = null;
+        };
+    };
+
     private func isOriginAllowed(origin : Text, allowedOrigins : [Text]) : Bool {
         if (allowedOrigins.size() == 0) return true; // All origins allowed
         for (allowed in allowedOrigins.vals()) {
             if (TextX.equalIgnoreCase(origin, allowed)) return true;
         };
         false;
-    };
-
-    private func stringListOrStar(list : [Text]) : Text {
-        if (list.size() == 0) return "*";
-        Text.join(", ", list.vals());
     };
 };
