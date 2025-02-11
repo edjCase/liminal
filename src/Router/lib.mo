@@ -1,51 +1,20 @@
 import Types "../Types";
 import Text "mo:base/Text";
 import Array "mo:base/Array";
+import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
+import Buffer "mo:base/Buffer";
 import Pipeline "../Pipeline";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
+import Route "../Route";
+import IterTools "mo:itertools/Iter";
 
 module Module {
 
-    public class RouteContext(route_ : Route, params_ : [(Text, RouteParameterValue)]) = self {
-        public let route : Route = route_;
-        public let params : [(Text, RouteParameterValue)] = params_;
-
-        public func getParam(key : Text) : ?RouteParameterValue {
-            let ?kv = Array.find(
-                params,
-                func(kv : (Text, RouteParameterValue)) : Bool = TextX.equalIgnoreCase(kv.0, key),
-            ) else return null;
-            ?kv.1;
-        };
-
-        public func run(httpContext : HttpContext.HttpContext) : Types.HttpResponse {
-            route.handler(httpContext, self);
-        };
-    };
-
-    public type RouteHandler = (HttpContext.HttpContext, RouteContext) -> Types.HttpResponse;
-
-    public type RouteParameterValue = {
-        #text : Text;
-        #int : Int;
-    };
-
-    public type RouteParameterType = {
-        #text;
-        #int;
-    };
-
-    public type Route = {
-        path : Text;
-        params : [(Text, RouteParameterType)];
-        methods : [HttpMethod.HttpMethod];
-        handler : RouteHandler;
-    };
-
     public type RouterData = {
-        routes : [Route];
+        routes : [Route.Route];
     };
 
     public func empty() : RouterData {
@@ -54,19 +23,19 @@ module Module {
         };
     };
 
-    public func get(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+    public func get(data : RouterData, path : Text, handler : Route.RouteHandler) : RouterData {
         route(data, path, [#get], handler);
     };
 
-    public func post(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+    public func post(data : RouterData, path : Text, handler : Route.RouteHandler) : RouterData {
         route(data, path, [#post], handler);
     };
 
-    public func put(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+    public func put(data : RouterData, path : Text, handler : Route.RouteHandler) : RouterData {
         route(data, path, [#put], handler);
     };
 
-    public func delete(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+    public func delete(data : RouterData, path : Text, handler : Route.RouteHandler) : RouterData {
         route(data, path, [#delete], handler);
     };
 
@@ -74,10 +43,14 @@ module Module {
         data : RouterData,
         path : Text,
         methods : [HttpMethod.HttpMethod],
-        handler : RouteHandler,
+        handler : Route.RouteHandler,
     ) : RouterData {
-        let route = {
-            path = path;
+        let pathSegments = switch (Route.parsePathSegments(path)) {
+            case (#ok(segments)) segments;
+            case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
+        };
+        let route : Route.Route = {
+            pathSegments = pathSegments;
             params = [];
             methods = methods;
             handler = handler;
@@ -114,17 +87,43 @@ module Module {
             ?routeContext.run(httpContext);
         };
 
-        private func findRoute(httpContext : HttpContext.HttpContext) : ?RouteContext {
-            // TODO this is placeholder
-
+        private func findRoute(httpContext : HttpContext.HttpContext) : ?Route.RouteContext {
             let path = httpContext.getPath();
-            let ?route = routes
-            |> Array.find(
-                _,
-                func(route : Route) : Bool = TextX.equalIgnoreCase(route.path, path) and Array.find(route.methods, func(m : HttpMethod.HttpMethod) : Bool = m == httpContext.method) != null,
-            ) else return null;
+            label f for (route in routes.vals()) {
+                let methodMatch = Array.find(route.methods, func(m : HttpMethod.HttpMethod) : Bool = m == httpContext.method) != null;
+                if (not methodMatch) {
+                    continue f;
+                };
+                let ?{ params } = matchPath(route.pathSegments, path) else continue f;
+                return ?Route.RouteContext(route, params);
+            };
+            null;
+        };
 
-            ?RouteContext(route, []);
+        private func matchPath(segments : [Route.PathSegment], requestPath : Text) : ?{
+            params : [(Text, Text)];
+        } {
+            let requestPathSegments = Text.split(requestPath, #char('/')) |> Iter.toArray(_);
+            if (segments.size() != requestPathSegments.size()) {
+                return null;
+            };
+
+            let params = Buffer.Buffer<(Text, Text)>(2);
+            for ((i, segment) in IterTools.enumerate(segments.vals())) {
+                let segment = segments[i];
+                let requestSegment = requestPathSegments[i];
+                switch (segment) {
+                    case (#text(s)) {
+                        if (not TextX.equalIgnoreCase(s, requestSegment)) {
+                            return null;
+                        };
+                    };
+                    case (#param(p)) {
+                        params.add((p, requestSegment));
+                    };
+                };
+            };
+            ?{ params = Buffer.toArray(params) };
         };
 
     };
