@@ -55,7 +55,7 @@ module {
             ?kv.1;
         };
 
-        public func parseRawJson() : Result.Result<Json.Json, Text> {
+        public func parseRawJsonBody() : Result.Result<Json.Json, Text> {
             let ?jsonText = Text.decodeUtf8(request.body) else return #err("Body is not valid UTF-8");
             switch (Json.parse(jsonText)) {
                 case (#ok(json)) #ok(json);
@@ -63,8 +63,8 @@ module {
             };
         };
 
-        public func parseJson<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> {
-            switch (parseRawJson()) {
+        public func parseJsonBody<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> {
+            switch (parseRawJsonBody()) {
                 case (#ok(json)) f(json);
                 case (#err(e)) #err(e);
             };

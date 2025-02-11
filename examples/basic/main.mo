@@ -10,60 +10,28 @@ import Route "../../src/Route";
 
 actor {
 
-    var users : [User] = [];
+    stable var users : [User] = [];
 
     private func serializeUser(user : User) : Json.Json {
         #object_([("id", #number(#int(user.id))), ("name", #string(user.name))]);
     };
 
-    private func getUsers(_ : Http.HttpContext, _ : Route.RouteContext) : Http.HttpResponse {
+    private func getUsers(_ : Route.RouteContext) : Route.RouteResult {
         let usersJson : Json.Json = #array(users |> Array.map<User, Json.Json>(_, serializeUser));
-        jsonResponse(200, usersJson);
+        #ok(#json(usersJson));
     };
 
-    private func getUserById(_ : Http.HttpContext, routeContext : Route.RouteContext) : Http.HttpResponse {
-        let ?idText = routeContext.getParam("id") else return {
-            statusCode = 400;
-            headers = [];
-            body = ?Text.encodeUtf8("Missing ID");
-        };
-        let ?id = Nat.fromText(idText) else return {
-            statusCode = 400;
-            headers = [];
-            body = ?Text.encodeUtf8("Invalid id, must be an Nat");
-        };
+    private func getUserById(routeContext : Route.RouteContext) : Route.RouteResult {
+        let idText = routeContext.getRouteParam("id");
+        let ?id = Nat.fromText(idText) else return #badRequest("Invalid id '" #idText # "', must be a positive integer");
 
-        let ?user = users |> Array.find(_, func(user : User) : Bool = user.id == id) else return {
-            statusCode = 404;
-            headers = [];
-            body = ?Text.encodeUtf8("User not found");
-        };
+        let ?user = users
+        |> Array.find(
+            _,
+            func(user : User) : Bool = user.id == id,
+        ) else return #notFound(null);
 
-        jsonResponse(
-            200,
-            serializeUser(user),
-        );
-    };
-
-    private func getUsernameById(_ : Http.HttpContext, routeContext : Route.RouteContext) : Http.HttpResponse {
-        let ?idText = routeContext.getParam("id") else return {
-            statusCode = 400;
-            headers = [];
-            body = ?Text.encodeUtf8("Missing ID");
-        };
-        let ?id = Nat.fromText(idText) else return {
-            statusCode = 400;
-            headers = [];
-            body = ?Text.encodeUtf8("Invalid id, must be an Nat");
-        };
-
-        let ?user = users |> Array.find(_, func(user : User) : Bool = user.id == id) else return {
-            statusCode = 404;
-            headers = [];
-            body = ?Text.encodeUtf8("User not found");
-        };
-
-        jsonResponse(200, #object_([("name", #string(user.name))]));
+        #ok(#json(serializeUser(user)));
     };
 
     public type User = {
@@ -75,13 +43,9 @@ actor {
         name : Text;
     };
 
-    private func createUser(context : Http.HttpContext, _ : Route.RouteContext) : Http.HttpResponse {
-        let createUserRequest : CreateUserRequest = switch (context.parseJson<CreateUserRequest>(deserializeCreateUserRequest)) {
-            case (#err(e)) return {
-                statusCode = 400;
-                headers = [];
-                body = ?Text.encodeUtf8("Failed to parse JSON: " # e);
-            };
+    private func createUser(context : Route.RouteContext) : Route.RouteResult {
+        let createUserRequest : CreateUserRequest = switch (context.parseJsonBody<CreateUserRequest>(deserializeCreateUserRequest)) {
+            case (#err(e)) return #badRequest("Failed to parse Json. Error: " # e);
             case (#ok(req)) req;
         };
 
@@ -92,15 +56,7 @@ actor {
 
         users := Array.append(users, [newUser]);
 
-        jsonResponse(201, #object_([("id", #number(#int(newUser.id)))]));
-    };
-
-    private func jsonResponse(statusCode : Nat, json : Json.Json) : Http.HttpResponse {
-        {
-            statusCode = statusCode;
-            headers = [("Content-Type", "application/json")];
-            body = ?Text.encodeUtf8(Json.stringify(json, null));
-        };
+        #created(#json(serializeUser(newUser)));
     };
 
     private func deserializeCreateUserRequest(json : Json.Json) : Result.Result<CreateUserRequest, Text> {
@@ -113,13 +69,12 @@ actor {
         });
     };
 
-    private func helloWorld(_ : Http.HttpContext, _ : Route.RouteContext) : Http.HttpResponse {
-        jsonResponse(200, #object_([("message", #string("Hello, World!"))]));
+    private func helloWorld(_ : Route.RouteContext) : Route.RouteResult {
+        #ok(#json(#object_([("message", #string("Hello, World!"))])));
     };
 
-    let router = HttpRouter.empty()
+    let router = HttpRouter.defaultJsonRouter()
     |> HttpRouter.get(_, "/users/{id}", getUserById)
-    |> HttpRouter.get(_, "/users/{id}/name", getUsernameById)
     |> HttpRouter.get(_, "/users", getUsers)
     |> HttpRouter.post(_, "/users", createUser)
     |> HttpRouter.get(_, "/", helloWorld)

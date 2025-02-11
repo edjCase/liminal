@@ -1,13 +1,13 @@
-import Pipeline "../Pipeline";
+import Pipeline "./Pipeline";
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
 import Nat "mo:base/Nat";
 import Iter "mo:base/Iter";
 import TextX "mo:xtended-text/TextX";
-import HttpContext "../HttpContext";
-import Types "../Types";
-import HttpMethod "../HttpMethod";
+import HttpContext "./HttpContext";
+import Types "./Types";
+import HttpMethod "./HttpMethod";
 
 module {
 

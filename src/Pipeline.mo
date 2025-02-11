@@ -1,9 +1,9 @@
-import Types "../Types";
+import Types "./Types";
 import Blob "mo:base/Blob";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
-import HttpContext "../HttpContext";
-import HttpTypes "../HttpTypes";
+import HttpContext "./HttpContext";
+import HttpTypes "./HttpTypes";
 
 module Module {
 
