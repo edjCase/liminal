@@ -2,9 +2,9 @@ import Types "../Types";
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 import Pipeline "../Pipeline";
-import Parser "../Parser";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "../HttpContext";
+import HttpMethod "../HttpMethod";
 
 module Module {
 
@@ -40,7 +40,7 @@ module Module {
     public type Route = {
         path : Text;
         params : [(Text, RouteParameterType)];
-        // TODO methods
+        methods : [HttpMethod.HttpMethod];
         handler : RouteHandler;
     };
 
@@ -54,10 +54,32 @@ module Module {
         };
     };
 
-    public func route(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+    public func get(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+        route(data, path, [#get], handler);
+    };
+
+    public func post(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+        route(data, path, [#post], handler);
+    };
+
+    public func put(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+        route(data, path, [#put], handler);
+    };
+
+    public func delete(data : RouterData, path : Text, handler : RouteHandler) : RouterData {
+        route(data, path, [#delete], handler);
+    };
+
+    public func route(
+        data : RouterData,
+        path : Text,
+        methods : [HttpMethod.HttpMethod],
+        handler : RouteHandler,
+    ) : RouterData {
         let route = {
             path = path;
             params = [];
+            methods = methods;
             handler = handler;
         };
 
@@ -99,7 +121,7 @@ module Module {
             let ?route = routes
             |> Array.find(
                 _,
-                func(route : Route) : Bool = TextX.equalIgnoreCase(route.path, path),
+                func(route : Route) : Bool = TextX.equalIgnoreCase(route.path, path) and Array.find(route.methods, func(m : HttpMethod.HttpMethod) : Bool = m == httpContext.method) != null,
             ) else return null;
 
             ?RouteContext(route, []);

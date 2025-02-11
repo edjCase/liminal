@@ -3,9 +3,11 @@ import Text "mo:base/Text";
 import TextX "mo:xtended-text/TextX";
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
+import Result "mo:base/Result";
 import IterTools "mo:itertools/Iter";
 import Parser "./Parser";
 import HttpMethod "./HttpMethod";
+import Json "mo:json";
 
 module {
 
@@ -51,6 +53,21 @@ module {
                 func(kv : (Text, Text)) : Bool = TextX.equalIgnoreCase(kv.0, key),
             ) else return null;
             ?kv.1;
+        };
+
+        public func parseRawJson() : Result.Result<Json.Json, Text> {
+            let ?jsonText = Text.decodeUtf8(request.body) else return #err("Body is not valid UTF-8");
+            switch (Json.parse(jsonText)) {
+                case (#ok(json)) #ok(json);
+                case (#err(e)) #err("Failed to parse JSON: " # debug_show (e));
+            };
+        };
+
+        public func parseJson<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> {
+            switch (parseRawJson()) {
+                case (#ok(json)) f(json);
+                case (#err(e)) #err(e);
+            };
         };
     };
 
