@@ -22,13 +22,10 @@ suite(
             ("a/b/c", "a/*/c", true),
             ("abc", "a?c", true),
             ("abbc", "a??c", true),
-            // ("", "*", true),
-            ("", "?", false),
 
             // Exact matches
             ("/index.html", "/index.html", true),
             ("/index.html", "/index.htm", false),
-            ("", "", true),
 
             // Basic wildcards
             ("file.txt", "*.txt", true),

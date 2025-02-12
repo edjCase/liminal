@@ -5,7 +5,6 @@ import Path "Path";
 
 module {
     public func match(path : Text, pattern : Text) : Bool {
-        // Split path and pattern into segments
         let pathSegments = Path.parse(path);
         let patternSegments = Path.parse(pattern);
 
@@ -29,6 +28,11 @@ module {
         let currentPattern = patternSegments[patternIndex];
         let currentPath = pathSegments[pathIndex];
 
+        // Handle "**" pattern specially
+        if (currentPattern == "**") {
+            return matchSegments(pathSegments, patternSegments, pathIndex, patternIndex + 1) or matchSegments(pathSegments, patternSegments, pathIndex + 1, patternIndex);
+        };
+
         if (matchSegment(currentPath, currentPattern)) {
             return matchSegments(pathSegments, patternSegments, pathIndex + 1, patternIndex + 1);
         };
@@ -42,7 +46,28 @@ module {
         matchSegmentRecursive(segmentChars, patternChars, 0, 0);
     };
 
-    // Recursive pattern matching for a single segment
+    // Parse a character range like [1-3] and return the start and end characters
+    private func parseCharRange(pattern : [Char], index : Nat) : ?(Char, Char, Nat) {
+        if (index + 3 >= pattern.size()) {
+            return null;
+        };
+
+        // Check for [c-c] pattern
+        if (pattern[index] == '[' and pattern[index + 2] == '-' and pattern[index + 4] == ']') {
+            return ?(pattern[index + 1], pattern[index + 3], 5);
+        };
+
+        null;
+    };
+
+    // Check if a character is within a range
+    private func charInRange(c : Char, start : Char, end : Char) : Bool {
+        let codePoint = Char.toNat32(c);
+        let startPoint = Char.toNat32(start);
+        let endPoint = Char.toNat32(end);
+        return codePoint >= startPoint and codePoint <= endPoint;
+    };
+
     private func matchSegmentRecursive(
         segment : [Char],
         pattern : [Char],
@@ -54,32 +79,39 @@ module {
         };
 
         if (segmentIndex > segment.size() or patternIndex >= pattern.size()) {
-            // Handle trailing stars
             if (patternIndex < pattern.size()) {
                 return pattern[patternIndex] == '*' and matchSegmentRecursive(segment, pattern, segmentIndex, patternIndex + 1);
             };
             return false;
         };
 
-        switch (pattern[patternIndex]) {
-            case ('*') {
-                // Star matches zero or more characters within the segment
-                matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex) or matchSegmentRecursive(segment, pattern, segmentIndex, patternIndex + 1);
-            };
-            case ('?') {
-                // Question mark matches exactly one character
-                if (segmentIndex < segment.size()) {
-                    matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + 1);
-                } else {
-                    false;
+        // Check for character range
+        switch (parseCharRange(pattern, patternIndex)) {
+            case (?(start, end, rangeLen)) {
+                if (segmentIndex < segment.size() and charInRange(segment[segmentIndex], start, end)) {
+                    return matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + rangeLen);
                 };
+                return false;
             };
-            case (patternChar) {
-                // Regular character must match exactly
-                if (segmentIndex < segment.size() and segment[segmentIndex] == patternChar) {
-                    matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + 1);
-                } else {
-                    false;
+            case null {
+                switch (pattern[patternIndex]) {
+                    case ('*') {
+                        matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex) or matchSegmentRecursive(segment, pattern, segmentIndex, patternIndex + 1);
+                    };
+                    case ('?') {
+                        if (segmentIndex < segment.size()) {
+                            matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + 1);
+                        } else {
+                            false;
+                        };
+                    };
+                    case (patternChar) {
+                        if (segmentIndex < segment.size() and segment[segmentIndex] == patternChar) {
+                            matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + 1);
+                        } else {
+                            false;
+                        };
+                    };
                 };
             };
         };
