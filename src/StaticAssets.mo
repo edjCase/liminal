@@ -8,12 +8,30 @@ import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 import Blob "mo:base/Blob";
 import DateTime "mo:datetime/DateTime";
+import Text "mo:base/Text";
 
 module {
     public type Seconds = Nat;
 
     public type Options = {
-        maxAge : Seconds;
+        cache : CacheControl;
+    };
+
+    public type CacheControl = {
+        #noStore; // Never cache
+        #noCache; // Must revalidate every time
+        #public_ : {
+            maxAge : Seconds;
+            immutable : Bool;
+        };
+        #private_ : {
+            maxAge : Seconds;
+            mustRevalidate : Bool;
+        };
+        #revalidate : {
+            maxAge : Seconds;
+            staleWhileRevalidate : Seconds;
+        };
     };
 
     public type StaticAsset = {
@@ -29,28 +47,114 @@ module {
         assets : [StaticAsset];
     };
 
+    // Helper to check if a resource has been modified
+    private func isResourceModified(httpContext : HttpContext.HttpContext, asset : StaticAsset) : Bool {
+        // Check If-None-Match header
+        switch (httpContext.getHeader("If-None-Match")) {
+            case (?clientEtag) {
+                if (clientEtag == asset.etag) {
+                    return false; // Not modified
+                };
+            };
+            case null {};
+        };
+
+        // Check If-Modified-Since header
+        switch (httpContext.getHeader("If-Modified-Since")) {
+            case (?ifModifiedSince) {
+                let clientTime = DateTime.fromText(ifModifiedSince, "ddd, DD MMM YYYY HH:mm:ss [GMT]");
+                switch (clientTime) {
+                    case (?dateTime) {
+                        if (dateTime.toTime() >= asset.lastModified) {
+                            return false; // Not modified
+                        };
+                    };
+                    case null {};
+                };
+            };
+            case null {};
+        };
+
+        true // Modified or no conditional headers
+    };
+    private func formatCacheControl(cc : CacheControl) : Text {
+        switch (cc) {
+            case (#noStore) "no-store";
+            case (#noCache) "no-cache";
+            case (#public_({ maxAge; immutable })) {
+                let base = "public, max-age=" # Nat.toText(maxAge);
+                if (immutable) {
+                    base # ", immutable";
+                } else {
+                    base;
+                };
+            };
+            case (#private_({ maxAge; mustRevalidate })) {
+                let base = "private, max-age=" # Nat.toText(maxAge);
+                if (mustRevalidate) {
+                    base # ", must-revalidate";
+                } else {
+                    base;
+                };
+            };
+            case (#revalidate({ maxAge; staleWhileRevalidate })) {
+                "max-age=" # Nat.toText(maxAge) #
+                ", stale-while-revalidate=" # Nat.toText(staleWhileRevalidate);
+            };
+        };
+    };
+
     public func use(pipeline : Pipeline.PipelineData, path : Text, assets : [StaticAsset], options : Options) : Pipeline.PipelineData {
-        let staticAssetHander = StaticAssetHandler({
+        let staticAssetHandler = StaticAssetHandler({
             assets = assets;
         });
         let rootPath = Path.parse(path);
+
         let middleware = {
             handle = func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
                 let requestPath = httpContext.getPath();
+
                 let ?remainingPath = Path.match(rootPath, requestPath) else return next();
-                let ?asset = staticAssetHander.get(remainingPath) else return {
+                let ?asset = staticAssetHandler.get(remainingPath) else return {
                     statusCode = 404;
                     headers = [];
                     body = null;
                 };
+
+                // Check if resource has been modified
+                if (not isResourceModified(httpContext, asset)) {
+                    return {
+                        statusCode = 304; // Not Modified
+                        headers = [
+                            ("ETag", asset.etag),
+                            ("Cache-Control", formatCacheControl(options.cache)),
+                        ];
+                        body = null;
+                    };
+                };
+
+                // Handle Range header if present
+                switch (httpContext.getHeader("Range")) {
+                    // TODO: Implement range requests
+                    case (?_) return {
+                        statusCode = 501;
+                        headers = [
+                            ("Accept-Ranges", "none"),
+                        ];
+                        body = ?Text.encodeUtf8("Range requests are not yet implemented");
+                    };
+                    case null {};
+                };
+
                 {
                     statusCode = 200;
                     headers = [
                         ("Content-Type", asset.contentType),
                         ("Content-Length", Nat.toText(asset.size)),
                         ("Last-Modified", DateTime.DateTime(asset.lastModified).toText()),
-                        ("Cache-Control", "public, max-age=" # Nat.toText(options.maxAge)),
+                        ("Cache-Control", formatCacheControl(options.cache)),
                         ("ETag", asset.etag),
+                        ("Accept-Ranges", "bytes"), // Indicate we support range requests
                     ];
                     body = ?Blob.fromArray(asset.bytes);
                 };

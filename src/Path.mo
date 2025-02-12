@@ -8,7 +8,10 @@ module {
     public type Segment = Text;
 
     public func parse(path : Text) : Path {
-        Text.split(path, #char('/')) |> Iter.toArray(_);
+        path
+        |> Text.split(_, #char('/'))
+        |> Iter.filter(_, func(x : Text) : Bool { x != "" })
+        |> Iter.toArray(_);
     };
 
     public func match(prefix : Path, path : Path) : ?Path {
