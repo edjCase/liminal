@@ -8,6 +8,7 @@ import IterTools "mo:itertools/Iter";
 import Parser "./Parser";
 import HttpMethod "./HttpMethod";
 import Json "mo:json";
+import Path "Path";
 
 module {
 
@@ -18,8 +19,8 @@ module {
 
         public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Debug.trap("Unsupported HTTP method: " # request.method);
 
-        public func getPath() : Text {
-            getPathQueryInternal().0;
+        public func getPath() : Path.Path {
+            Path.parse(getPathQueryInternal().0); // TODO cache or not?
         };
 
         public func getQueryParams() : [(Text, Text)] {

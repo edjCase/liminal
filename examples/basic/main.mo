@@ -7,6 +7,8 @@ import Nat "mo:base/Nat";
 import HttpPipeline "../../src/Pipeline";
 import HttpRouter "../../src/Router";
 import Route "../../src/Route";
+import HttpStaticAssets "../../src/StaticAssets";
+import Assets "./Assets";
 
 actor {
 
@@ -80,8 +82,13 @@ actor {
     |> HttpRouter.get(_, "/", helloWorld)
     |> HttpRouter.build(_);
 
+    let options : HttpStaticAssets.Options = {
+        maxAge = 3600;
+    };
+
     let pipeline = HttpPipeline.empty()
     |> HttpRouter.use(_, router)
+    |> HttpStaticAssets.use(_, "/static", Assets.assets, options)
     |> HttpPipeline.build(_);
 
     public query func http_request(request : Http.RawQueryHttpRequest) : async Http.RawQueryHttpResponse {

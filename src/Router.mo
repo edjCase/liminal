@@ -13,6 +13,7 @@ import HttpMethod "./HttpMethod";
 import Route "./Route";
 import IterTools "mo:itertools/Iter";
 import Json "mo:json";
+import Path "Path";
 
 module Module {
 
@@ -246,18 +247,17 @@ module Module {
             null;
         };
 
-        private func matchPath(segments : [Route.PathSegment], requestPath : Text) : ?{
+        private func matchPath(segments : [Route.PathSegment], requestPath : [Path.Segment]) : ?{
             params : [(Text, Text)];
         } {
-            let requestPathSegments = Text.split(requestPath, #char('/')) |> Iter.toArray(_);
-            if (segments.size() != requestPathSegments.size()) {
+            if (segments.size() != requestPath.size()) {
                 return null;
             };
 
             let params = Buffer.Buffer<(Text, Text)>(2);
             for ((i, segment) in IterTools.enumerate(segments.vals())) {
                 let segment = segments[i];
-                let requestSegment = requestPathSegments[i];
+                let requestSegment = requestPath[i];
                 switch (segment) {
                     case (#text(s)) {
                         if (not TextX.equalIgnoreCase(s, requestSegment)) {
