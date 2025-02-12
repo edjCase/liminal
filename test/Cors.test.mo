@@ -2,9 +2,8 @@ import { test; suite } "mo:test";
 import Types "../src/Types";
 import Pipeline "../src/Pipeline";
 import Blob "mo:base/Blob";
-import Debug "mo:base/Debug";
 import HttpMethod "../src/HttpMethod";
-import Cors "../src/Middleware/Cors";
+import Cors "../src/Cors";
 import HttpContext "../src/HttpContext";
 
 // Helper function to find header value
@@ -146,7 +145,6 @@ suite(
                     ],
                 );
                 let response = middleware.handle(request);
-                Debug.print("Response: " # debug_show (response));
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST");
             },
         );

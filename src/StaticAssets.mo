@@ -9,11 +9,22 @@ import Nat8 "mo:base/Nat8";
 import Blob "mo:base/Blob";
 import DateTime "mo:datetime/DateTime";
 import Text "mo:base/Text";
+import Glob "Glob";
 
 module {
     public type Seconds = Nat;
 
     public type Options = {
+        cache : CacheOptions;
+    };
+
+    public type CacheOptions = {
+        default : CacheControl;
+        rules : [CacheRule];
+    };
+
+    type CacheRule = {
+        pattern : Text;
         cache : CacheControl;
     };
 
@@ -115,10 +126,23 @@ module {
                 let requestPath = httpContext.getPath();
 
                 let ?remainingPath = Path.match(rootPath, requestPath) else return next();
+
                 let ?asset = staticAssetHandler.get(remainingPath) else return {
                     statusCode = 404;
                     headers = [];
                     body = null;
+                };
+
+                let remainingPathText = Path.toText(remainingPath);
+                // Get cache control for this asset
+                let cacheRule = Array.find(
+                    options.cache.rules,
+                    // TODO optimize/cache
+                    func(rule : CacheRule) : Bool = Glob.match(remainingPathText, rule.pattern),
+                );
+                let cacheControl = switch (cacheRule) {
+                    case (?rule) rule.cache;
+                    case (null) options.cache.default;
                 };
 
                 // Check if resource has been modified
@@ -127,7 +151,7 @@ module {
                         statusCode = 304; // Not Modified
                         headers = [
                             ("ETag", asset.etag),
-                            ("Cache-Control", formatCacheControl(options.cache)),
+                            ("Cache-Control", formatCacheControl(cacheControl)),
                         ];
                         body = null;
                     };
@@ -152,9 +176,8 @@ module {
                         ("Content-Type", asset.contentType),
                         ("Content-Length", Nat.toText(asset.size)),
                         ("Last-Modified", DateTime.DateTime(asset.lastModified).toText()),
-                        ("Cache-Control", formatCacheControl(options.cache)),
+                        ("Cache-Control", formatCacheControl(cacheControl)),
                         ("ETag", asset.etag),
-                        ("Accept-Ranges", "bytes"), // Indicate we support range requests
                     ];
                     body = ?Blob.fromArray(asset.bytes);
                 };

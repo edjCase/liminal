@@ -14,6 +14,10 @@ module {
         |> Iter.toArray(_);
     };
 
+    public func toText(path : Path) : Text {
+        "/" # Text.join("/", path.vals());
+    };
+
     public func match(prefix : Path, path : Path) : ?Path {
         let prefixSize = prefix.size();
         let pathSize = path.size();

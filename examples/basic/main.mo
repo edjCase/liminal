@@ -83,10 +83,21 @@ actor {
     |> HttpRouter.build(_);
 
     let options : HttpStaticAssets.Options = {
-        cache = #public_({
-            immutable = true;
-            maxAge = 3600;
-        });
+        cache = {
+            default = #public_({
+                immutable = false;
+                maxAge = 3600;
+            });
+            rules = [
+                {
+                    pattern = "/index.html";
+                    cache = #public_({
+                        immutable = true;
+                        maxAge = 3600;
+                    });
+                },
+            ];
+        };
     };
 
     let pipeline = HttpPipeline.empty()
