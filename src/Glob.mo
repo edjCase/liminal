@@ -46,26 +46,62 @@ module {
         matchSegmentRecursive(segmentChars, patternChars, 0, 0);
     };
 
-    // Parse a character range like [1-3] and return the start and end characters
-    private func parseCharRange(pattern : [Char], index : Nat) : ?(Char, Char, Nat) {
+    // Represents a character range pattern
+    private type CharRange = {
+        start : Char;
+        end : Char;
+        negated : Bool;
+        length : Nat;
+    };
+
+    // Parse a character range like [1-3] or [!1-3] and return the details
+    private func parseCharRange(pattern : [Char], index : Nat) : ?CharRange {
         if (index + 3 >= pattern.size()) {
             return null;
         };
 
-        // Check for [c-c] pattern
-        if (pattern[index] == '[' and pattern[index + 2] == '-' and pattern[index + 4] == ']') {
-            return ?(pattern[index + 1], pattern[index + 3], 5);
+        if (pattern[index] != '[') {
+            return null;
         };
 
-        null;
+        var pos = index + 1;
+        var negated = false;
+
+        // Check for negation
+        if (pos < pattern.size() and pattern[pos] == '!') {
+            negated := true;
+            pos += 1;
+        };
+
+        // Need at least 3 more characters for start-end]
+        if (pos + 3 >= pattern.size()) {
+            return null;
+        };
+
+        let start = pattern[pos];
+        if (pattern[pos + 1] != '-') {
+            return null;
+        };
+        let end = pattern[pos + 2];
+        if (pattern[pos + 3] != ']') {
+            return null;
+        };
+
+        ?{
+            start = start;
+            end = end;
+            negated = negated;
+            length = pos + 4 - index;
+        };
     };
 
     // Check if a character is within a range
-    private func charInRange(c : Char, start : Char, end : Char) : Bool {
+    private func charInRange(c : Char, range : CharRange) : Bool {
         let codePoint = Char.toNat32(c);
-        let startPoint = Char.toNat32(start);
-        let endPoint = Char.toNat32(end);
-        return codePoint >= startPoint and codePoint <= endPoint;
+        let startPoint = Char.toNat32(range.start);
+        let endPoint = Char.toNat32(range.end);
+        let inRange = codePoint >= startPoint and codePoint <= endPoint;
+        return if (range.negated) { not inRange } else { inRange };
     };
 
     private func matchSegmentRecursive(
@@ -87,9 +123,9 @@ module {
 
         // Check for character range
         switch (parseCharRange(pattern, patternIndex)) {
-            case (?(start, end, rangeLen)) {
-                if (segmentIndex < segment.size() and charInRange(segment[segmentIndex], start, end)) {
-                    return matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + rangeLen);
+            case (?range) {
+                if (segmentIndex < segment.size() and charInRange(segment[segmentIndex], range)) {
+                    return matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + range.length);
                 };
                 return false;
             };
