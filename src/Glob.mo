@@ -46,7 +46,6 @@ module {
         matchSegmentRecursive(segmentChars, patternChars, 0, 0);
     };
 
-    // Represents a character range pattern
     private type CharRange = {
         start : Char;
         end : Char;
@@ -54,7 +53,6 @@ module {
         length : Nat;
     };
 
-    // Parse a character range like [1-3] or [!1-3] and return the details
     private func parseCharRange(pattern : [Char], index : Nat) : ?CharRange {
         if (index + 3 >= pattern.size()) {
             return null;
@@ -67,13 +65,11 @@ module {
         var pos = index + 1;
         var negated = false;
 
-        // Check for negation
         if (pos < pattern.size() and pattern[pos] == '!') {
             negated := true;
             pos += 1;
         };
 
-        // Need at least 3 more characters for start-end]
         if (pos + 3 >= pattern.size()) {
             return null;
         };
@@ -95,7 +91,6 @@ module {
         };
     };
 
-    // Check if a character is within a range
     private func charInRange(c : Char, range : CharRange) : Bool {
         let codePoint = Char.toNat32(c);
         let startPoint = Char.toNat32(range.start);
@@ -117,6 +112,14 @@ module {
         if (segmentIndex > segment.size() or patternIndex >= pattern.size()) {
             if (patternIndex < pattern.size()) {
                 return pattern[patternIndex] == '*' and matchSegmentRecursive(segment, pattern, segmentIndex, patternIndex + 1);
+            };
+            return false;
+        };
+
+        // Handle escaped characters
+        if (patternIndex + 1 < pattern.size() and pattern[patternIndex] == '\\') {
+            if (segmentIndex < segment.size() and segment[segmentIndex] == pattern[patternIndex + 1]) {
+                return matchSegmentRecursive(segment, pattern, segmentIndex + 1, patternIndex + 2);
             };
             return false;
         };
