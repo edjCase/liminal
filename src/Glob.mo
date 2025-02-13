@@ -6,6 +6,17 @@ import Path "Path";
 
 module {
     public func match(path : Text, pattern : Text) : Bool {
+        // Handle negation patterns
+        if (Text.startsWith(pattern, #text "!")) {
+            let positivePattern = Text.trimStart(pattern, #char '!');
+            // Return true if the path does NOT match the positive pattern
+            return not matchPositive(path, positivePattern);
+        };
+
+        matchPositive(path, pattern);
+    };
+
+    private func matchPositive(path : Text, pattern : Text) : Bool {
         let expandedPatterns = expandBracePattern(pattern);
 
         // Try matching against each expanded pattern
@@ -16,6 +27,7 @@ module {
         };
         false;
     };
+
     private func matchSingle(path : Text, pattern : Text) : Bool {
         // Special case: if pattern is "*" and path is empty, return true
         if (pattern == "*" and path == "") {
