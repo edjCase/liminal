@@ -7,8 +7,8 @@ import Path "Path";
 module {
     public func match(path : Text, pattern : Text) : Bool {
         // Handle negation patterns
-        if (Text.startsWith(pattern, #text "!")) {
-            let positivePattern = Text.trimStart(pattern, #char '!');
+        if (Text.startsWith(pattern, #text("!"))) {
+            let positivePattern = Text.trimStart(pattern, #char('!'));
             // Return true if the path does NOT match the positive pattern
             return not matchPositive(path, positivePattern);
         };
@@ -202,6 +202,12 @@ module {
         // Special case: if both path and pattern are empty, return true
         if (pathLength == 0 and patternLength == 0) {
             return true;
+        };
+
+        // Handle trailing slash in pattern
+        if (pathIndex == pathLength and patternIndex == (patternLength - 1 : Nat)) {
+            // If pattern ends with slash (empty segment), path must be a directory
+            return Text.endsWith(Path.toText(pathSegments), #text("/"));
         };
 
         if (pathIndex == pathLength and patternIndex == patternLength) {

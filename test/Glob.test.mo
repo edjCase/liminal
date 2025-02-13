@@ -251,7 +251,7 @@ suite(
             ("/static/public/file.js", "!/static/private/**", true),
 
             // Hidden files (dotfiles)
-            ("/static/.gitignore", "/static/*", false), // hidden files ignored by default
+            ("/static/.gitignore", "/static/*", true), // hidden files not ignored by default
             ("/static/file.js", "/static/*", true),
             ("/static/.env", "/static/.*", true), // explicitly matching hidden files
             ("/static/.config/file.js", "/static/.*/**", true),
