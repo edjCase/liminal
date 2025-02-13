@@ -53,8 +53,19 @@ module {
         var braceContent = "";
         var inBrace = false;
         var depth = 0;
+        var i = 0;
 
-        for (c in chars.vals()) {
+        label w while (i < chars.size()) {
+            let c = chars[i];
+
+            // Handle escaped characters
+            if (c == '\\' and i + 1 < chars.size()) {
+                let nextChar = chars[i + 1];
+                current #= Char.toText(c) # Char.toText(nextChar);
+                i += 2;
+                continue w;
+            };
+
             switch (c) {
                 case ('{') {
                     if (depth == 0) {
@@ -93,6 +104,11 @@ module {
                     };
                 };
             };
+            i += 1;
+        };
+
+        if (current != "") {
+            result := Array.append(result, [current]);
         };
 
         if (result.size() == 0) {
@@ -103,7 +119,16 @@ module {
 
     private func hasBraces(chars : [Char]) : Bool {
         var depth = 0;
-        for (c in chars.vals()) {
+        var i = 0;
+        label w while (i < chars.size()) {
+            let c = chars[i];
+
+            // Skip escaped characters
+            if (c == '\\' and i + 1 < chars.size()) {
+                i += 2;
+                continue w;
+            };
+
             switch (c) {
                 case ('{') { depth += 1 };
                 case ('}') {
@@ -112,6 +137,7 @@ module {
                 };
                 case (_) {};
             };
+            i += 1;
         };
         false;
     };
