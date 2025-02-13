@@ -204,24 +204,25 @@ module {
             return true;
         };
 
-        // Handle trailing slash in pattern
-        if (pathIndex == pathLength and patternIndex == (patternLength - 1 : Nat)) {
-            // If pattern ends with slash (empty segment), path must be a directory
-            return Text.endsWith(Path.toText(pathSegments), #text("/"));
-        };
-
-        if (pathIndex == pathLength and patternIndex == patternLength) {
-            return true;
-        };
-
-        // Special case: if last pattern is "**", it can match end of path
-        if (pathIndex == pathLength and patternIndex < patternLength) {
-            if (patternIndex == (patternLength - 1 : Nat)) {
-                return patternSegments[patternIndex] == "**";
+        // If we've matched all path segments
+        if (pathIndex == pathLength) {
+            // If we've also matched all pattern segments, it's a match
+            if (patternIndex == patternLength) {
+                return true;
             };
+            // If there's exactly one pattern segment left and it's **, it's a match
+            if (patternIndex == (patternLength - 1 : Nat) and patternSegments[patternIndex] == "**") {
+                return true;
+            };
+            // If pattern ends with slash (empty segment), path must be a directory
+            if (patternIndex == (patternLength - 1 : Nat)) {
+                return Text.endsWith(Path.toText(pathSegments), #text "/");
+            };
+            return false;
         };
 
-        if (pathIndex >= pathLength or patternIndex >= patternLength) {
+        // If we've matched all pattern segments but still have path segments, no match
+        if (patternIndex >= patternLength) {
             return false;
         };
 
@@ -231,6 +232,7 @@ module {
         // Handle "**" pattern specially
         if (currentPattern == "**") {
             // Match zero or more path segments
+            // Either skip the ** pattern or skip the current path segment
             return matchSegments(pathSegments, patternSegments, pathIndex, patternIndex + 1) or matchSegments(pathSegments, patternSegments, pathIndex + 1, patternIndex);
         };
 
