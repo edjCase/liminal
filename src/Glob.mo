@@ -4,7 +4,15 @@ import Iter "mo:base/Iter";
 import Array "mo:base/Array";
 import Path "Path";
 
-module {
+module Module {
+
+    public class CompiledGlob(pattern : Text) {
+        let compiledPattern : CompiledPattern = compilePattern(pattern);
+        public func match(path : Text) : Bool {
+            matchCompiled(path, compiledPattern);
+        };
+    };
+
     public func match(path : Text, pattern : Text) : Bool {
         // Handle negation patterns
         if (Text.startsWith(pattern, #text("!"))) {
@@ -14,6 +22,46 @@ module {
         };
 
         matchPositive(path, pattern);
+    };
+
+    private type CompiledPattern = {
+        pattern : Text;
+        isNegated : Bool;
+        expandedPatterns : [Text];
+    };
+
+    private func compilePattern(pattern : Text) : CompiledPattern {
+        // Handle negation patterns
+        let isNegated = Text.startsWith(pattern, #text("!"));
+        let cleanPattern = if (isNegated) {
+            Text.trimStart(pattern, #char('!'));
+        } else {
+            pattern;
+        };
+
+        // Pre-expand brace patterns for better performance
+        let expandedPatterns = expandBracePattern(cleanPattern);
+
+        {
+            pattern = cleanPattern;
+            isNegated = isNegated;
+            expandedPatterns = expandedPatterns;
+        };
+    };
+
+    private func matchCompiled(path : Text, compiled : CompiledPattern) : Bool {
+        // If pattern is negated, invert the match result
+        if (compiled.isNegated) {
+            return not matchPositive(path, compiled.pattern);
+        };
+
+        // Try matching against each expanded pattern
+        for (expandedPattern in compiled.expandedPatterns.vals()) {
+            if (matchSingle(path, expandedPattern)) {
+                return true;
+            };
+        };
+        false;
     };
 
     private func matchPositive(path : Text, pattern : Text) : Bool {

@@ -308,6 +308,13 @@ suite(
                     expect.bool(Glob.match(path, globPattern)).equal(expected);
                 },
             );
+            test(
+                "compiled match",
+                func() {
+                    let compiledGlob = Glob.CompiledGlob(globPattern);
+                    expect.bool(compiledGlob.match(path)).equal(expected);
+                },
+            );
         };
     },
 );
