@@ -2,6 +2,7 @@ import Text "mo:base/Text";
 import Char "mo:base/Char";
 import Iter "mo:base/Iter";
 import Array "mo:base/Array";
+import Array "mo:base/Array";
 import Path "Path";
 
 module {
