@@ -4,11 +4,13 @@ import Text "mo:base/Text";
 import Result "mo:base/Result";
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
+import Blob "mo:base/Blob";
+import Nat32 "mo:base/Nat32";
 import HttpPipeline "../../src/Pipeline";
 import HttpRouter "../../src/Router";
 import Route "../../src/Route";
 import HttpStaticAssets "../../src/StaticAssets";
-import Assets "./Assets";
+import Path "../../src/Path";
 
 actor {
 
@@ -98,11 +100,28 @@ actor {
                 },
             ];
         };
+        assetHandler = func(path : Path.Path) : ?HttpStaticAssets.StaticAsset {
+            let pathText = Path.toText(path);
+            if (pathText == "/index.html") {
+                let bytes = Text.encodeUtf8("<html><body><h1>Hello, World!</h1></body></html>");
+                let etag = bytes
+                |> Blob.hash(_)
+                |> Nat32.toText(_);
+                return ?{
+                    path = pathText;
+                    bytes = bytes;
+                    contentType = "text/html";
+                    size = bytes.size();
+                    etag = etag;
+                };
+            };
+            return null;
+        };
     };
 
     let pipeline = HttpPipeline.empty()
     |> HttpRouter.use(_, router)
-    |> HttpStaticAssets.use(_, "/static", Assets.assets, options)
+    |> HttpStaticAssets.use(_, "/static", options)
     |> HttpPipeline.build(_);
 
     public query func http_request(request : Http.RawQueryHttpRequest) : async Http.RawQueryHttpResponse {

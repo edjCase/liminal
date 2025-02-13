@@ -3,19 +3,17 @@ import HttpContext "HttpContext";
 import Types "Types";
 import Path "Path";
 import Array "mo:base/Array";
-import Time "mo:base/Time";
 import Nat "mo:base/Nat";
-import Nat8 "mo:base/Nat8";
 import Blob "mo:base/Blob";
-import DateTime "mo:datetime/DateTime";
 import Text "mo:base/Text";
-import Glob "Glob";
+import Glob "mo:glob";
 
 module {
     public type Seconds = Nat;
 
     public type Options = {
         cache : CacheOptions;
+        assetHandler : (Path.Path) -> ?StaticAsset;
     };
 
     public type CacheOptions = {
@@ -47,15 +45,10 @@ module {
 
     public type StaticAsset = {
         path : Text;
-        bytes : [Nat8];
+        bytes : Blob;
         contentType : Text; // MIME type
         size : Nat; // File size in bytes
-        lastModified : Time.Time;
         etag : Text; // Hash of content for caching
-    };
-
-    public type StableData = {
-        assets : [StaticAsset];
     };
 
     // Helper to check if a resource has been modified
@@ -70,21 +63,7 @@ module {
             case null {};
         };
 
-        // Check If-Modified-Since header
-        switch (httpContext.getHeader("If-Modified-Since")) {
-            case (?ifModifiedSince) {
-                let clientTime = DateTime.fromText(ifModifiedSince, "ddd, DD MMM YYYY HH:mm:ss [GMT]");
-                switch (clientTime) {
-                    case (?dateTime) {
-                        if (dateTime.toTime() >= asset.lastModified) {
-                            return false; // Not modified
-                        };
-                    };
-                    case null {};
-                };
-            };
-            case null {};
-        };
+        // TODO ? If-Modified-Since header, seems outdated and replaced by ETag
 
         true // Modified or no conditional headers
     };
@@ -115,10 +94,7 @@ module {
         };
     };
 
-    public func use(pipeline : Pipeline.PipelineData, path : Text, assets : [StaticAsset], options : Options) : Pipeline.PipelineData {
-        let staticAssetHandler = StaticAssetHandler({
-            assets = assets;
-        });
+    public func use(pipeline : Pipeline.PipelineData, path : Text, options : Options) : Pipeline.PipelineData {
         let rootPath = Path.parse(path);
 
         let middleware = {
@@ -127,7 +103,7 @@ module {
 
                 let ?remainingPath = Path.match(rootPath, requestPath) else return next();
 
-                let ?asset = staticAssetHandler.get(remainingPath) else return {
+                let ?asset = options.assetHandler(remainingPath) else return {
                     statusCode = 404;
                     headers = [];
                     body = null;
@@ -175,26 +151,16 @@ module {
                     headers = [
                         ("Content-Type", asset.contentType),
                         ("Content-Length", Nat.toText(asset.size)),
-                        ("Last-Modified", DateTime.DateTime(asset.lastModified).toText()),
                         ("Cache-Control", formatCacheControl(cacheControl)),
                         ("ETag", asset.etag),
                     ];
-                    body = ?Blob.fromArray(asset.bytes);
+                    body = ?asset.bytes;
                 };
             };
         };
 
         {
             middleware = Array.append(pipeline.middleware, [middleware]);
-        };
-    };
-
-    public class StaticAssetHandler(data : StableData) = self {
-        public func get(path : Path.Path) : ?StaticAsset {
-            Array.find(
-                data.assets,
-                func(asset : StaticAsset) : Bool = Path.match(Path.parse(asset.path), path) != null,
-            );
         };
     };
 };
