@@ -17,8 +17,6 @@ module {
         false;
     };
     private func matchSingle(path : Text, pattern : Text) : Bool {
-        // Your existing match function implementation here
-        // (Copy the entire original match function here, but rename it to matchSingle)
         // Special case: if pattern is "*" and path is empty, return true
         if (pattern == "*" and path == "") {
             return true;
