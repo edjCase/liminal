@@ -34,8 +34,22 @@ module {
             return true;
         };
 
+        // Special case: if path is empty and pattern contains '?', return false
+        if (path == "" and Text.contains(pattern, #char('?'))) {
+            return false;
+        };
+
         let pathSegments = Path.parse(path);
         let patternSegments = Path.parse(pattern);
+
+        // Check if pattern ends with slash (indicating directory)
+        let patternEndsWithSlash = Text.endsWith(pattern, #text "/");
+        if (patternEndsWithSlash) {
+            // If pattern ends with slash but path doesn't represent a directory, return false
+            if (not Text.endsWith(path, #text "/") and path != "") {
+                return false;
+            };
+        };
 
         // Only enforce absolute path matching if pattern doesn't start with **
         let pathIsAbsolute = Text.startsWith(path, #text "/");
@@ -214,10 +228,6 @@ module {
             if (patternIndex == (patternLength - 1 : Nat) and patternSegments[patternIndex] == "**") {
                 return true;
             };
-            // If pattern ends with slash (empty segment), path must be a directory
-            if (patternIndex == (patternLength - 1 : Nat)) {
-                return Text.endsWith(Path.toText(pathSegments), #text "/");
-            };
             return false;
         };
 
@@ -232,8 +242,7 @@ module {
         // Handle "**" pattern specially
         if (currentPattern == "**") {
             // Match zero or more path segments
-            // Either skip the ** pattern or skip the current path segment
-            return matchSegments(pathSegments, patternSegments, pathIndex, patternIndex + 1) or matchSegments(pathSegments, patternSegments, pathIndex + 1, patternIndex);
+            return matchSegments(pathSegments, patternSegments, pathIndex + 1, patternIndex) or matchSegments(pathSegments, patternSegments, pathIndex, patternIndex + 1);
         };
 
         if (matchSegment(currentPath, currentPattern)) {
@@ -346,6 +355,11 @@ module {
     ) : Bool {
         if (segmentIndex == segment.size() and patternIndex == pattern.size()) {
             return true;
+        };
+
+        // Early return if we have a ? pattern but no more characters in segment
+        if (patternIndex < pattern.size() and pattern[patternIndex] == '?' and segmentIndex >= segment.size()) {
+            return false;
         };
 
         if (segmentIndex > segment.size() or patternIndex >= pattern.size()) {
