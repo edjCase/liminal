@@ -27,149 +27,189 @@ module Module {
         responseHeaders : [(Text, Text)];
     };
 
-    public func defaultJsonRouter() : RouterData {
+    public class RouterBuilder() = self {
+        let routes = Buffer.Buffer<Route.Route>(2);
+        let responseHeaders = Buffer.Buffer<(Text, Text)>(2);
+        var errorSerializer : ?((Error) -> Blob) = null;
 
-        {
-            routes = [];
-            errorSerializer = func(error : Error) : Blob {
-                let errorType = switch (error.statusCode) {
-                    // 4xx Client Errors
-                    case (400) "Bad Request";
-                    case (401) "Unauthorized";
-                    case (402) "Payment Required";
-                    case (403) "Forbidden";
-                    case (404) "Not Found";
-                    case (405) "Method Not Allowed";
-                    case (406) "Not Acceptable";
-                    case (407) "Proxy Authentication Required";
-                    case (408) "Request Timeout";
-                    case (409) "Conflict";
-                    case (410) "Gone";
-                    case (411) "Length Required";
-                    case (412) "Precondition Failed";
-                    case (413) "Payload Too Large";
-                    case (414) "URI Too Long";
-                    case (415) "Unsupported Media Type";
-                    case (416) "Range Not Satisfiable";
-                    case (417) "Expectation Failed";
-                    case (418) "I'm a teapot";
-                    case (421) "Misdirected Request";
-                    case (422) "Unprocessable Entity";
-                    case (423) "Locked";
-                    case (424) "Failed Dependency";
-                    case (425) "Too Early";
-                    case (426) "Upgrade Required";
-                    case (428) "Precondition Required";
-                    case (429) "Too Many Requests";
-                    case (431) "Request Header Fields Too Large";
-                    case (451) "Unavailable For Legal Reasons";
+        public func withErrorSerializer(handler : (Error) -> Blob) : RouterBuilder {
+            errorSerializer := ?handler;
+            self;
+        };
 
-                    // 5xx Server Errors
-                    case (500) "Internal Server Error";
-                    case (501) "Not Implemented";
-                    case (502) "Bad Gateway";
-                    case (503) "Service Unavailable";
-                    case (504) "Gateway Timeout";
-                    case (505) "HTTP Version Not Supported";
-                    case (506) "Variant Also Negotiates";
-                    case (507) "Insufficient Storage";
-                    case (508) "Loop Detected";
-                    case (510) "Not Extended";
-                    case (511) "Network Authentication Required";
+        public func addResponseHeader(header : (Text, Text)) : RouterBuilder {
+            responseHeaders.add(header);
+            self;
+        };
 
-                    case (_) "Unknown Error"; // Default case for unknown status codes
-                };
-
-                #object_([
-                    ("error", #string(errorType)),
-                    ("message", #string(Option.get(error.message, ""))),
-                    ("status", #number(#int(error.statusCode))),
-                ])
-                |> Json.stringify(_, null)
-                |> Text.encodeUtf8(_);
+        private func syncQueryOrUpdate(
+            handler : Route.RouteContext -> Route.RouteResult,
+            allowQuery : Bool,
+        ) : Route.RouteHandler {
+            if (allowQuery) {
+                return #syncQuery(handler);
             };
-            responseHeaders = [("Content-Type", "application/json")];
-        };
-    };
-
-    public func withResponseHeaders(data : RouterData, headers : [(Text, Text)]) : RouterData {
-        {
-            data with
-            responseHeaders = headers;
-        };
-    };
-
-    public func withErrorSerializer(data : RouterData, serializer : (Error) -> Blob) : RouterData {
-        {
-            data with
-            errorSerializer = serializer;
-        };
-    };
-
-    public func get(
-        data : RouterData,
-        path : Text,
-        handler : Route.RouteHandler,
-    ) : RouterData {
-        route(data, path, [#get], handler);
-    };
-
-    public func post(
-        data : RouterData,
-        path : Text,
-        handler : Route.RouteHandler,
-    ) : RouterData {
-        route(data, path, [#post], handler);
-    };
-
-    public func put(
-        data : RouterData,
-        path : Text,
-        handler : Route.RouteHandler,
-    ) : RouterData {
-        route(data, path, [#put], handler);
-    };
-
-    public func delete(
-        data : RouterData,
-        path : Text,
-        handler : Route.RouteHandler,
-    ) : RouterData {
-        route(data, path, [#delete], handler);
-    };
-
-    public func route(
-        data : RouterData,
-        path : Text,
-        methods : [HttpMethod.HttpMethod],
-        handler : Route.RouteHandler,
-    ) : RouterData {
-        let pathSegments = switch (Route.parsePathSegments(path)) {
-            case (#ok(segments)) segments;
-            case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
-        };
-        let route : Route.Route = {
-            pathSegments = pathSegments;
-            params = [];
-            methods = methods;
-            handler = handler;
+            return #syncUpdate(handler);
         };
 
-        {
-            data with
-            routes = Array.append(data.routes, [route]);
+        public func get(
+            path : Text,
+            handler : Route.RouteContext -> Route.RouteResult,
+            allowQuery : Bool,
+        ) : RouterBuilder {
+            route(path, [#get], syncQueryOrUpdate(handler, allowQuery));
         };
+
+        public func getAsync(
+            path : Text,
+            handler : Route.RouteContext -> async* Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#get], #async_(handler));
+        };
+
+        public func post(
+            path : Text,
+            handler : Route.RouteContext -> Route.RouteResult,
+            allowQuery : Bool,
+        ) : RouterBuilder {
+            route(path, [#post], syncQueryOrUpdate(handler, allowQuery));
+        };
+
+        public func postAsync(
+            path : Text,
+            handler : Route.RouteContext -> async* Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#post], #async_(handler));
+        };
+
+        public func put(
+            path : Text,
+            handler : Route.RouteContext -> Route.RouteResult,
+            allowQuery : Bool,
+        ) : RouterBuilder {
+            route(path, [#put], syncQueryOrUpdate(handler, allowQuery));
+        };
+
+        public func putAsync(
+            path : Text,
+            handler : Route.RouteContext -> async* Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#put], #async_(handler));
+        };
+
+        public func delete(
+            path : Text,
+            handler : Route.RouteContext -> Route.RouteResult,
+            allowQuery : Bool,
+        ) : RouterBuilder {
+            route(path, [#delete], syncQueryOrUpdate(handler, allowQuery));
+        };
+
+        public func deleteAsync(
+            path : Text,
+            handler : Route.RouteContext -> async* Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#delete], #async_(handler));
+        };
+
+        public func route(
+            path : Text,
+            methods : [HttpMethod.HttpMethod],
+            handler : Route.RouteHandler,
+        ) : RouterBuilder {
+            let pathSegments = switch (Route.parsePathSegments(path)) {
+                case (#ok(segments)) segments;
+                case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
+            };
+            let route : Route.Route = {
+                pathSegments = pathSegments;
+                params = [];
+                methods = methods;
+                handler = handler;
+            };
+            routes.add(route);
+            self;
+        };
+
+        public func build() : Router {
+            Router({
+                routes = Buffer.toArray(routes);
+                errorSerializer = Option.get(errorSerializer, defaultErrorSerializer);
+                responseHeaders = Buffer.toArray(responseHeaders);
+            });
+        };
+
     };
 
-    public func build(data : RouterData) : Router {
-        Router(data);
+    private func defaultErrorSerializer(error : Error) : Blob {
+        let errorType = switch (error.statusCode) {
+            // 4xx Client Errors
+            case (400) "Bad Request";
+            case (401) "Unauthorized";
+            case (402) "Payment Required";
+            case (403) "Forbidden";
+            case (404) "Not Found";
+            case (405) "Method Not Allowed";
+            case (406) "Not Acceptable";
+            case (407) "Proxy Authentication Required";
+            case (408) "Request Timeout";
+            case (409) "Conflict";
+            case (410) "Gone";
+            case (411) "Length Required";
+            case (412) "Precondition Failed";
+            case (413) "Payload Too Large";
+            case (414) "URI Too Long";
+            case (415) "Unsupported Media Type";
+            case (416) "Range Not Satisfiable";
+            case (417) "Expectation Failed";
+            case (418) "I'm a teapot";
+            case (421) "Misdirected Request";
+            case (422) "Unprocessable Entity";
+            case (423) "Locked";
+            case (424) "Failed Dependency";
+            case (425) "Too Early";
+            case (426) "Upgrade Required";
+            case (428) "Precondition Required";
+            case (429) "Too Many Requests";
+            case (431) "Request Header Fields Too Large";
+            case (451) "Unavailable For Legal Reasons";
+
+            // 5xx Server Errors
+            case (500) "Internal Server Error";
+            case (501) "Not Implemented";
+            case (502) "Bad Gateway";
+            case (503) "Service Unavailable";
+            case (504) "Gateway Timeout";
+            case (505) "HTTP Version Not Supported";
+            case (506) "Variant Also Negotiates";
+            case (507) "Insufficient Storage";
+            case (508) "Loop Detected";
+            case (510) "Not Extended";
+            case (511) "Network Authentication Required";
+
+            case (_) "Unknown Error"; // Default case for unknown status codes
+        };
+
+        #object_([
+            ("error", #string(errorType)),
+            ("message", #string(Option.get(error.message, ""))),
+            ("status", #number(#int(error.statusCode))),
+        ])
+        |> Json.stringify(_, null)
+        |> Text.encodeUtf8(_);
     };
 
     public func use(pipeline : Pipeline.PipelineData, router : Router) : Pipeline.PipelineData {
-        let middleware = {
-            handle = func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
-                let ?response = router.route(httpContext) else return next();
-                response;
+        let middleware : Pipeline.Middleware = {
+            handleQuery = ?(
+                func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
+                    let ?response = router.route(httpContext) else return next();
+                    ?response;
+                }
+            );
+            handleUpdate = func(httpContext : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
+                let ?response = await* router.routeAsync(httpContext) else return await* next();
+                ?response;
             };
         };
 
@@ -184,6 +224,29 @@ module Module {
         public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
 
+            let result = switch (routeContext.route.handler) {
+                case (#syncQuery(handler)) handler(routeContext);
+                case (#syncUpdate(_)) return null; // Skip sync handlers that restrict to only updates, only handle in routeAsync
+                case (#async_(_)) return null; // Skip async handlers, only handle in routeAsync
+            };
+            handleResult(result);
+        };
+
+        public func routeAsync(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
+            let ?routeContext = findRoute(httpContext) else return null;
+
+            let result = switch (routeContext.route.handler) {
+                case (#syncQuery(handler)) handler(routeContext);
+                case (#syncUpdate(handler)) handler(routeContext);
+                case (#async_(handler)) await* handler(routeContext);
+            };
+            handleResult(result);
+        };
+
+        private func handleResult(
+            result : Route.RouteResult
+        ) : ?Types.HttpResponse {
+
             func serializeError(statusCode : Nat, msg : ?Text) : (Nat, ?Blob) {
                 let error = routerData.errorSerializer({
                     message = msg;
@@ -191,7 +254,7 @@ module Module {
                 });
                 (statusCode, ?error);
             };
-            let (statusCode, body) : (Nat, ?Blob) = switch (routeContext.route.handler(routeContext)) {
+            let (statusCode, body) : (Nat, ?Blob) = switch (result) {
                 case (#raw(raw)) {
                     return ?{
                         raw with

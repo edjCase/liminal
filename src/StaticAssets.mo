@@ -97,13 +97,18 @@ module {
     public func use(pipeline : Pipeline.PipelineData, path : Text, options : Options) : Pipeline.PipelineData {
         let rootPath = Path.parse(path);
 
-        let middleware = {
-            handle = func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
+        let middleware : Pipeline.Middleware = {
+            handleQuery = ?(
+                func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
+                    next(); // TODO
+                }
+            );
+            handleUpdate = func(httpContext : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
                 let requestPath = httpContext.getPath();
 
-                let ?remainingPath = Path.match(rootPath, requestPath) else return next();
+                let ?remainingPath = Path.match(rootPath, requestPath) else return await* next();
 
-                let ?asset = options.assetHandler(remainingPath) else return {
+                let ?asset = options.assetHandler(remainingPath) else return ?{
                     statusCode = 404;
                     headers = [];
                     body = null;
@@ -123,7 +128,7 @@ module {
 
                 // Check if resource has been modified
                 if (not isResourceModified(httpContext, asset)) {
-                    return {
+                    return ?{
                         statusCode = 304; // Not Modified
                         headers = [
                             ("ETag", asset.etag),
@@ -136,7 +141,7 @@ module {
                 // Handle Range header if present
                 switch (httpContext.getHeader("Range")) {
                     // TODO: Implement range requests
-                    case (?_) return {
+                    case (?_) return ?{
                         statusCode = 501;
                         headers = [
                             ("Accept-Ranges", "none"),
@@ -146,7 +151,7 @@ module {
                     case null {};
                 };
 
-                {
+                ?{
                     statusCode = 200;
                     headers = [
                         ("Content-Type", asset.contentType),

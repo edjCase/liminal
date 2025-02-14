@@ -6,6 +6,7 @@ import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 import Blob "mo:base/Blob";
 import Nat32 "mo:base/Nat32";
+import Debug "mo:base/Debug";
 import HttpPipeline "../../src/Pipeline";
 import HttpRouter "../../src/Router";
 import Route "../../src/Route";
@@ -77,12 +78,13 @@ actor {
         #ok(#json(#object_([("message", #string("Hello, World!"))])));
     };
 
-    let router = HttpRouter.defaultJsonRouter()
-    |> HttpRouter.get(_, "/users/{id}", getUserById)
-    |> HttpRouter.get(_, "/users", getUsers)
-    |> HttpRouter.post(_, "/users", createUser)
-    |> HttpRouter.get(_, "/", helloWorld)
-    |> HttpRouter.build(_);
+    let router = HttpRouter.RouterBuilder()
+    |> _.get("/users/{id}", getUserById, true)
+    |> _.get("/users", getUsers, true)
+    |> _.post("/users", createUser, false)
+    |> _.get("/", helloWorld, true)
+    |> _.addResponseHeader(("content-type", "application/json"))
+    |> _.build();
 
     let options : HttpStaticAssets.Options = {
         cache = {
@@ -129,7 +131,7 @@ actor {
     };
 
     public func http_request_update(req : Http.RawUpdateHttpRequest) : async Http.RawUpdateHttpResponse {
-        pipeline.http_request_update(req);
+        await* pipeline.http_request_update(req);
     };
 
 };

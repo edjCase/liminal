@@ -79,7 +79,11 @@ module {
         #serviceUnavailable : Text;
     };
 
-    public type RouteHandler = (RouteContext) -> RouteResult;
+    public type RouteHandler = {
+        #syncQuery : RouteContext -> RouteResult;
+        #syncUpdate : RouteContext -> RouteResult;
+        #async_ : RouteContext -> async* RouteResult;
+    };
 
     public type PathSegment = {
         #text : Text;
@@ -95,6 +99,7 @@ module {
     public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {
         let pathSegments = path
         |> Text.split(_, #char('/'))
+        |> Iter.filter(_, func(segment : Text) : Bool = segment.size() > 0)
         |> Iter.map(
             _,
             func(segment : Text) : PathSegment {
