@@ -42,74 +42,88 @@ module Module {
             self;
         };
 
-        private func syncQueryOrUpdate(
-            handler : Route.RouteContext -> Route.RouteResult,
-            allowQuery : Bool,
-        ) : Route.RouteHandler {
-            if (allowQuery) {
-                return #syncQuery(handler);
-            };
-            return #syncUpdate(handler);
-        };
-
-        public func get(
+        public func getQuery(
             path : Text,
-            handler : Route.RouteContext -> Route.RouteResult,
-            allowQuery : Bool,
+            handler : (Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#get], syncQueryOrUpdate(handler, allowQuery));
+            route(path, [#get], #syncQuery(handler));
         };
 
-        public func getAsync(
+        public func getUpdate(
+            path : Text,
+            handler : <system>(Route.RouteContext) -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#get], #syncUpdate(handler));
+        };
+
+        public func getUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#get], #async_(handler));
+            route(path, [#get], #asyncUpdate(handler));
         };
 
-        public func post(
+        public func postQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-            allowQuery : Bool,
         ) : RouterBuilder {
-            route(path, [#post], syncQueryOrUpdate(handler, allowQuery));
+            route(path, [#post], #syncQuery(handler));
         };
 
-        public func postAsync(
+        public func postUpdate(
+            path : Text,
+            handler : <system>(Route.RouteContext) -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#post], #syncUpdate(handler));
+        };
+
+        public func postUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#post], #async_(handler));
+            route(path, [#post], #asyncUpdate(handler));
         };
 
-        public func put(
+        public func putQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-            allowQuery : Bool,
         ) : RouterBuilder {
-            route(path, [#put], syncQueryOrUpdate(handler, allowQuery));
+            route(path, [#put], #syncQuery(handler));
         };
 
-        public func putAsync(
+        public func putUpdate(
+            path : Text,
+            handler : <system>(Route.RouteContext) -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#put], #syncUpdate(handler));
+        };
+
+        public func putUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#put], #async_(handler));
+            route(path, [#put], #asyncUpdate(handler));
         };
 
-        public func delete(
+        public func deleteQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-            allowQuery : Bool,
         ) : RouterBuilder {
-            route(path, [#delete], syncQueryOrUpdate(handler, allowQuery));
+            route(path, [#delete], #syncQuery(handler));
         };
 
-        public func deleteAsync(
+        public func deleteUpdate(
+            path : Text,
+            handler : <system>(Route.RouteContext) -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, [#delete], #syncUpdate(handler));
+        };
+
+        public func deleteUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#delete], #async_(handler));
+            route(path, [#delete], #asyncUpdate(handler));
         };
 
         public func route(
@@ -227,18 +241,18 @@ module Module {
             let result = switch (routeContext.route.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
                 case (#syncUpdate(_)) return null; // Skip sync handlers that restrict to only updates, only handle in routeAsync
-                case (#async_(_)) return null; // Skip async handlers, only handle in routeAsync
+                case (#asyncUpdate(_)) return null; // Skip async handlers, only handle in routeAsync
             };
             handleResult(result);
         };
 
-        public func routeAsync(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
+        public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
 
             let result = switch (routeContext.route.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
-                case (#syncUpdate(handler)) handler(routeContext);
-                case (#async_(handler)) await* handler(routeContext);
+                case (#syncUpdate(handler)) handler<system>(routeContext);
+                case (#asyncUpdate(handler)) await* handler(routeContext);
             };
             handleResult(result);
         };

@@ -1,129 +1,121 @@
 import Http "../../src";
-import Json "mo:json";
-import Text "mo:base/Text";
-import Result "mo:base/Result";
-import Array "mo:base/Array";
-import Nat "mo:base/Nat";
-import Blob "mo:base/Blob";
-import Nat32 "mo:base/Nat32";
-import Debug "mo:base/Debug";
 import HttpPipeline "../../src/Pipeline";
 import HttpRouter "../../src/Router";
 import Route "../../src/Route";
 import HttpStaticAssets "../../src/StaticAssets";
-import Path "../../src/Path";
+import UserHandler "UserHandler";
+import UserRouter "UserRouter";
+import StaticAssetHandler "StaticAssetHandler";
+import Principal "mo:base/Principal";
+import Blob "mo:base/Blob";
 
-actor {
+actor Actor {
 
-    stable var users : [User] = [];
-
-    private func serializeUser(user : User) : Json.Json {
-        #object_([("id", #number(#int(user.id))), ("name", #string(user.name))]);
+    stable var userStableData : UserHandler.StableData = {
+        users = [];
     };
 
-    private func getUsers(_ : Route.RouteContext) : Route.RouteResult {
-        let usersJson : Json.Json = #array(users |> Array.map<User, Json.Json>(_, serializeUser));
-        #ok(#json(usersJson));
+    stable var staticAssetStableData : StaticAssetHandler.StableData = {
+        assets = [];
     };
 
-    private func getUserById(routeContext : Route.RouteContext) : Route.RouteResult {
-        let idText = routeContext.getRouteParam("id");
-        let ?id = Nat.fromText(idText) else return #badRequest("Invalid id '" #idText # "', must be a positive integer");
+    let staticAssetHandler = StaticAssetHandler.Handler(staticAssetStableData);
 
-        let ?user = users
-        |> Array.find(
-            _,
-            func(user : User) : Bool = user.id == id,
-        ) else return #notFound(null);
+    let userHandler = UserHandler.Handler(userStableData);
 
-        #ok(#json(serializeUser(user)));
-    };
-
-    public type User = {
-        id : Nat;
-        name : Text;
-    };
-
-    public type CreateUserRequest = {
-        name : Text;
-    };
-
-    private func createUser(context : Route.RouteContext) : Route.RouteResult {
-        let createUserRequest : CreateUserRequest = switch (context.parseJsonBody<CreateUserRequest>(deserializeCreateUserRequest)) {
-            case (#err(e)) return #badRequest("Failed to parse Json. Error: " # e);
-            case (#ok(req)) req;
-        };
-
-        let newUser : User = {
-            id = users.size() + 1;
-            name = createUserRequest.name;
-        };
-
-        users := Array.append(users, [newUser]);
-
-        #created(#json(serializeUser(newUser)));
-    };
-
-    private func deserializeCreateUserRequest(json : Json.Json) : Result.Result<CreateUserRequest, Text> {
-        let name = switch (Json.getAsText(json, "name")) {
-            case (#ok(name)) name;
-            case (#err(e)) return #err("Error with field 'name': " # debug_show (e));
-        };
-        #ok({
-            name = name;
-        });
-    };
+    let userRouter = UserRouter.Router(userHandler);
 
     private func helloWorld(_ : Route.RouteContext) : Route.RouteResult {
         #ok(#json(#object_([("message", #string("Hello, World!"))])));
     };
 
-    let router = HttpRouter.RouterBuilder()
-    |> _.get("/users/{id}", getUserById, true)
-    |> _.get("/users", getUsers, true)
-    |> _.post("/users", createUser, false)
-    |> _.get("/", helloWorld, true)
-    |> _.addResponseHeader(("content-type", "application/json"))
-    |> _.build();
+    type CanisterInfoArgs = {
+        canister_id : Principal;
+        num_requested_changes : ?Nat64;
+    };
+    type CanisterInfoResult = {
+        controllers : [Principal];
+        module_hash : ?Blob;
+        recent_changes : [Change];
+        total_num_changes : Nat64;
+    };
+    type Change = {
+        timestamp_nanos : Nat64;
+        canister_version : Nat64;
+        origin : ChangeOrigin;
+        details : ChangeDetails;
+    };
+    type ChangeDetails = {
+        #creation : { controllers : [Principal] };
+        #code_deployment : {
+            mode : { #reinstall; #upgrade; #install };
+            module_hash : Blob;
+        };
+        #load_snapshot : {
+            canister_version : Nat64;
+            taken_at_timestamp : Nat64;
+            snapshot_id : Blob;
+        };
+        #controllers_change : { controllers : [Principal] };
+        #code_uninstall;
+    };
+    type ChangeOrigin = {
+        #from_user : { user_id : Principal };
+        #from_canister : { canister_version : ?Nat64; canister_id : Principal };
+    };
+    type IC = actor {
+        canister_info : shared CanisterInfoArgs -> async CanisterInfoResult;
+    };
 
-    let options : HttpStaticAssets.Options = {
-        cache = {
-            default = #public_({
-                immutable = false;
-                maxAge = 3600;
-            });
-            rules = [
-                {
-                    pattern = "/index.html";
-                    cache = #public_({
-                        immutable = true;
-                        maxAge = 3600;
-                    });
-                },
-            ];
+    private func getCanisterHashAsync(_ : Route.RouteContext) : async* Route.RouteResult {
+        let ic = actor ("aaaaa-aa") : IC;
+        let result = await ic.canister_info({
+            canister_id = Principal.fromActor(Actor);
+            num_requested_changes = ?0;
+        });
+        let hashJson = switch (result.module_hash) {
+            case (null) #null_;
+            case (?hash) #string(debug_show (Blob.toArray(hash)));
         };
-        assetHandler = func(path : Path.Path) : ?HttpStaticAssets.StaticAsset {
-            let pathText = Path.toText(path);
-            if (pathText == "/index.html") {
-                let bytes = Text.encodeUtf8("<html><body><h1>Hello, World!</h1></body></html>");
-                let etag = bytes
-                |> Blob.hash(_)
-                |> Nat32.toText(_);
-                return ?{
-                    path = pathText;
-                    bytes = bytes;
-                    contentType = "text/html";
-                    size = bytes.size();
-                    etag = etag;
-                };
-            };
-            return null;
-        };
+        #ok(#json(#object_([("hash", hashJson)])));
     };
 
     let pipeline = HttpPipeline.empty()
-    |> HttpRouter.use(_, router)
-    |> HttpStaticAssets.use(_, "/static", options)
+    // Router
+    |> HttpRouter.use(
+        _,
+        HttpRouter.RouterBuilder()
+        |> _.getQuery("/users/{id}", userRouter.getById)
+        |> _.getQuery("/users", userRouter.get)
+        |> _.postUpdate("/users", userRouter.create)
+        |> _.getQuery("/", helloWorld)
+        |> _.getUpdateAsync("/hash", getCanisterHashAsync)
+        |> _.addResponseHeader(("content-type", "application/json"))
+        |> _.build(),
+    )
+    // Static assets
+    |> HttpStaticAssets.use(
+        _,
+        "/static",
+        {
+            cache = {
+                default = #public_({
+                    immutable = false;
+                    maxAge = 3600;
+                });
+                rules = [
+                    {
+                        pattern = "/index.html";
+                        cache = #public_({
+                            immutable = true;
+                            maxAge = 3600;
+                        });
+                    },
+                ];
+            };
+            assetHandler = staticAssetHandler.get;
+        },
+    )
     |> HttpPipeline.build(_);
 
     public query func http_request(request : Http.RawQueryHttpRequest) : async Http.RawQueryHttpResponse {

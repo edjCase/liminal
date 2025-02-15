@@ -81,8 +81,8 @@ module {
 
     public type RouteHandler = {
         #syncQuery : RouteContext -> RouteResult;
-        #syncUpdate : RouteContext -> RouteResult;
-        #async_ : RouteContext -> async* RouteResult;
+        #syncUpdate : <system>(RouteContext) -> RouteResult;
+        #asyncUpdate : RouteContext -> async* RouteResult;
     };
 
     public type PathSegment = {
