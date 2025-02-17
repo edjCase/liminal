@@ -1,7 +1,8 @@
-import { test; suite } "mo:test";
+import { test = testAsync; suite = suiteAsync } "mo:test/async";
 import Types "../src/Types";
 import Pipeline "../src/Pipeline";
 import Blob "mo:base/Blob";
+import Debug "mo:base/Debug";
 import HttpMethod "../src/HttpMethod";
 import Cors "../src/Cors";
 import HttpContext "../src/HttpContext";
@@ -15,7 +16,7 @@ func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
 };
 
 // Helper to create mock request
-func createMockRequest(method : HttpMethod.HttpMethod, headers : [(Text, Text)]) : (HttpContext.HttpContext, Pipeline.Next) {
+func createMockRequest(method : HttpMethod.HttpMethod, headers : [(Text, Text)]) : (HttpContext.HttpContext, Pipeline.NextAsync) {
     let httpContext = HttpContext.HttpContext({
         method = HttpMethod.toText(method);
         url = "/test";
@@ -24,42 +25,44 @@ func createMockRequest(method : HttpMethod.HttpMethod, headers : [(Text, Text)])
     });
     (
         httpContext,
-        func() : Types.HttpResponse = {
-            statusCode = 201;
-            headers = [];
-            body = null;
+        func() : async* ?Types.HttpResponse {
+            ?{
+                statusCode = 201;
+                headers = [];
+                body = null;
+            };
         },
     );
 };
 
-suite(
+await suiteAsync(
     "CORS Middleware Tests",
-    func() {
+    func() : async () {
 
-        test(
+        await testAsync(
             "custom origin handling",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with allowOrigins = ["http://allowed-domain.com"]
                 });
 
                 // Test with allowed origin
                 let request1 = createMockRequest(#get, [("Origin", "http://allowed-domain.com")]);
-                let response1 = middleware.handle(request1);
+                let ?response1 = await* middleware.handleUpdate(request1) else Debug.trap("Response is null");
                 assert (getHeader(response1.headers, "Access-Control-Allow-Origin") == ?"http://allowed-domain.com");
                 assert (getHeader(response1.headers, "Vary") == ?"Origin");
 
                 // Test with different origin
                 let request2 = createMockRequest(#get, [("Origin", "http://other-domain.com")]);
-                let response2 = middleware.handle(request2);
+                let ?response2 = await* middleware.handleUpdate(request2) else Debug.trap("Response is null");
                 assert (getHeader(response2.headers, "Access-Control-Allow-Origin") == null);
                 assert (getHeader(response2.headers, "Vary") == null);
             },
         );
 
-        test(
+        await testAsync(
             "preflight request handling",
-            func() {
+            func() : async () {
 
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with
@@ -77,7 +80,7 @@ suite(
                         ("Access-Control-Request-Headers", "X-Custom-Header"),
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Response is null");
 
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST, PUT");
@@ -86,9 +89,9 @@ suite(
             },
         );
 
-        test(
+        await testAsync(
             "credentials handling",
-            func() {
+            func() : async () {
 
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with
@@ -97,15 +100,15 @@ suite(
 
                 // Test request with credentials
                 let request = createMockRequest(#get, [("Origin", "http://example.com")]);
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
 
                 assert (getHeader(response.headers, "Access-Control-Allow-Credentials") == ?"true");
             },
         );
 
-        test(
+        await testAsync(
             "exposed headers",
-            func() {
+            func() : async () {
 
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with
@@ -114,25 +117,25 @@ suite(
 
                 // Test request
                 let request = createMockRequest(#get, [("Origin", "http://example.com")]);
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
 
                 assert (getHeader(response.headers, "Access-Control-Expose-Headers") == ?"Content-Length, X-Custom-Response");
             },
         );
 
-        test(
+        await testAsync(
             "no origin header",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware(Cors.defaultOptions);
                 let (httpContext, next) = createMockRequest(#get, []); // No Origin header
-                let response = middleware.handle(httpContext, next);
+                let ?response = await* middleware.handleUpdate(httpContext, next) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
             },
         );
 
-        test(
+        await testAsync(
             "preflight request disallowed method",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with allowMethods = [#get, #post] // #put is not allowed
 
@@ -144,14 +147,14 @@ suite(
                         ("Access-Control-Request-Method", "PUT") // Requesting PUT method
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST");
             },
         );
 
-        test(
+        await testAsync(
             "preflight request disallowed header",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with allowHeaders = ["Content-Type"] // "X-Custom-Header" is not allowed
 
@@ -163,13 +166,13 @@ suite(
                         ("Access-Control-Request-Headers", "X-Custom-Header") // Requesting X-Custom-Header
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type"); // Should not set allow headers
             },
         );
-        test(
+        await testAsync(
             "preflight request with multiple request headers",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with allowHeaders = ["Content-Type", "Authorization"]
                 });
@@ -180,14 +183,14 @@ suite(
                         ("Access-Control-Request-Headers", "Content-Type, Authorization"),
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type, Authorization");
             },
         );
 
-        test(
+        await testAsync(
             "preflight request with case-insensitive header matching",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with allowHeaders = ["Content-Type"]
                 });
@@ -198,14 +201,14 @@ suite(
                         ("Access-Control-Request-Headers", "content-type") // lowercase
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type");
             },
         );
 
-        test(
+        await testAsync(
             "preflight request with no request method",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware(Cors.defaultOptions);
                 let request = createMockRequest(
                     #options,
@@ -214,15 +217,15 @@ suite(
                         // No Access-Control-Request-Method header
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == null);
             },
         );
 
-        test(
+        await testAsync(
             "wildcard origin with credentials",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware({
                     Cors.defaultOptions with
                     allowCredentials = true;
@@ -232,16 +235,16 @@ suite(
                     #get,
                     [("Origin", "http://example.com")],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 // Should not use wildcard with credentials
                 assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"http://example.com");
                 assert (getHeader(response.headers, "Vary") == ?"Origin");
             },
         );
 
-        test(
+        await testAsync(
             "preflight request with invalid method format",
-            func() {
+            func() : async () {
                 let middleware = Cors.createMiddleware(Cors.defaultOptions);
                 let request = createMockRequest(
                     #options,
@@ -250,7 +253,7 @@ suite(
                         ("Access-Control-Request-Method", "INVALID_METHOD"),
                     ],
                 );
-                let response = middleware.handle(request);
+                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") != null);
             },

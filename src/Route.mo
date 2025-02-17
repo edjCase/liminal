@@ -1,6 +1,5 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import HttpMethod "./HttpMethod";
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
@@ -13,17 +12,16 @@ module {
 
     public class RouteContext(
         httpContext_ : HttpContext.HttpContext,
-        route_ : Route,
+        handler_ : RouteHandler,
         params_ : [(Text, Text)],
     ) = self {
         public let httpContext : HttpContext.HttpContext = httpContext_;
-        public let route : Route = route_;
+        public let handler : RouteHandler = handler_;
         public let params : [(Text, Text)] = params_;
 
         public func getRouteParam(key : Text) : Text {
             let ?param = getRouteParamOrNull(key) else {
-                let path = pathSegmentsToText(route.pathSegments);
-                Debug.trap("Parameter '" # key # "' for route '" # path # "' was not parsed correctly");
+                Debug.trap("Parameter '" # key # "' for route was not parsed");
             };
             param;
         };
@@ -71,7 +69,7 @@ module {
         #unauthorized : Text;
         #forbidden : Text;
         #notFound : ?Text;
-        #methodNotAllowed : [HttpMethod.HttpMethod]; // Allowed methods
+        #methodNotAllowed : [RouteMethod]; // Allowed methods
         #unprocessableEntity : Text;
 
         // 5xx: Server Errors
@@ -90,10 +88,17 @@ module {
         #param : Text;
     };
 
+    public type RouteMethod = {
+        #get;
+        #post;
+        #put;
+        #patch;
+        #delete;
+    };
+
     public type Route = {
         pathSegments : [PathSegment];
-        methods : [HttpMethod.HttpMethod];
-        handler : RouteHandler;
+        methods : [(RouteMethod, RouteHandler)];
     };
 
     public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {
@@ -130,5 +135,13 @@ module {
         )
         |> Text.join("/", _);
         "/" # path;
+    };
+
+    public func pathSegmentEqual(s1 : PathSegment, s2 : PathSegment) : Bool {
+        switch (s1, s2) {
+            case ((#text(t1), #text(t2))) t1 == t2;
+            case ((#param(p1), #param(p2))) p1 == p2;
+            case (_, _) false;
+        };
     };
 };

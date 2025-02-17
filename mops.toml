@@ -16,3 +16,4 @@ glob = "0.0.1"
 
 [dev-dependencies]
 test = "2.0.0"
+ic = "2.0.0"

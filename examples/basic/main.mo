@@ -8,6 +8,9 @@ import UserRouter "UserRouter";
 import StaticAssetHandler "StaticAssetHandler";
 import Principal "mo:base/Principal";
 import Blob "mo:base/Blob";
+import Cors "../../src/Cors";
+import LoggingHandler "LoggingHandler";
+import IC "mo:ic";
 
 actor Actor {
 
@@ -29,58 +32,11 @@ actor Actor {
         #ok(#json(#object_([("message", #string("Hello, World!"))])));
     };
 
-    type CanisterInfoArgs = {
-        canister_id : Principal;
-        num_requested_changes : ?Nat64;
-    };
-    type CanisterInfoResult = {
-        controllers : [Principal];
-        module_hash : ?Blob;
-        recent_changes : [Change];
-        total_num_changes : Nat64;
-    };
-    type Change = {
-        timestamp_nanos : Nat64;
-        canister_version : Nat64;
-        origin : ChangeOrigin;
-        details : ChangeDetails;
-    };
-    type ChangeDetails = {
-        #creation : { controllers : [Principal] };
-        #code_deployment : {
-            mode : { #reinstall; #upgrade; #install };
-            module_hash : Blob;
-        };
-        #load_snapshot : {
-            canister_version : Nat64;
-            taken_at_timestamp : Nat64;
-            snapshot_id : Blob;
-        };
-        #controllers_change : { controllers : [Principal] };
-        #code_uninstall;
-    };
-    type ChangeOrigin = {
-        #from_user : { user_id : Principal };
-        #from_canister : { canister_version : ?Nat64; canister_id : Principal };
-    };
-    type IC = actor {
-        canister_info : shared CanisterInfoArgs -> async CanisterInfoResult;
-    };
-
-    private func getCanisterHashAsync(_ : Route.RouteContext) : async* Route.RouteResult {
-        let ic = actor ("aaaaa-aa") : IC;
-        let result = await ic.canister_info({
-            canister_id = Principal.fromActor(Actor);
-            num_requested_changes = ?0;
-        });
-        let hashJson = switch (result.module_hash) {
-            case (null) #null_;
-            case (?hash) #string(debug_show (Blob.toArray(hash)));
-        };
-        #ok(#json(#object_([("hash", hashJson)])));
-    };
-
     let pipeline = HttpPipeline.empty()
+    // Logging middleware
+    |> LoggingHandler.use(_)
+    // Cors middleware
+    |> Cors.use(_, Cors.defaultOptions)
     // Router
     |> HttpRouter.use(
         _,
@@ -89,7 +45,24 @@ actor Actor {
         |> _.getQuery("/users", userRouter.get)
         |> _.postUpdate("/users", userRouter.create)
         |> _.getQuery("/", helloWorld)
-        |> _.getUpdateAsync("/hash", getCanisterHashAsync)
+        |> _.deleteQuery("/", helloWorld)
+        |> _.putQuery("/", helloWorld)
+        |> _.patchQuery("/", helloWorld)
+        |> _.getUpdateAsync(
+            "/hash",
+            func(_ : Route.RouteContext) : async* Route.RouteResult {
+                let ic = actor ("aaaaa-aa") : IC.Service;
+                let result = await ic.canister_info({
+                    canister_id = Principal.fromActor(Actor);
+                    num_requested_changes = ?0;
+                });
+                let hashJson = switch (result.module_hash) {
+                    case (null) #null_;
+                    case (?hash) #string(debug_show (Blob.toArray(hash)));
+                };
+                #ok(#json(#object_([("hash", hashJson)])));
+            },
+        )
         |> _.addResponseHeader(("content-type", "application/json"))
         |> _.build(),
     )

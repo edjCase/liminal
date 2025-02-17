@@ -46,102 +46,155 @@ module Module {
             path : Text,
             handler : (Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#get], #syncQuery(handler));
+            route(path, #get, #syncQuery(handler));
         };
 
         public func getUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#get], #syncUpdate(handler));
+            route(path, #get, #syncUpdate(handler));
         };
 
         public func getUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#get], #asyncUpdate(handler));
+            route(path, #get, #asyncUpdate(handler));
         };
 
         public func postQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#post], #syncQuery(handler));
+            route(path, #post, #syncQuery(handler));
         };
 
         public func postUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#post], #syncUpdate(handler));
+            route(path, #post, #syncUpdate(handler));
         };
 
         public func postUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#post], #asyncUpdate(handler));
+            route(path, #post, #asyncUpdate(handler));
         };
 
         public func putQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#put], #syncQuery(handler));
+            route(path, #put, #syncQuery(handler));
         };
 
         public func putUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#put], #syncUpdate(handler));
+            route(path, #put, #syncUpdate(handler));
         };
 
         public func putUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#put], #asyncUpdate(handler));
+            route(path, #put, #asyncUpdate(handler));
+        };
+
+        public func patchQuery(
+            path : Text,
+            handler : Route.RouteContext -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, #patch, #syncQuery(handler));
+        };
+
+        public func patchUpdate(
+            path : Text,
+            handler : <system>(Route.RouteContext) -> Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, #patch, #syncUpdate(handler));
+        };
+
+        public func patchUpdateAsync(
+            path : Text,
+            handler : Route.RouteContext -> async* Route.RouteResult,
+        ) : RouterBuilder {
+            route(path, #patch, #asyncUpdate(handler));
         };
 
         public func deleteQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#delete], #syncQuery(handler));
+            route(path, #delete, #syncQuery(handler));
         };
 
         public func deleteUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#delete], #syncUpdate(handler));
+            route(path, #delete, #syncUpdate(handler));
         };
 
         public func deleteUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
         ) : RouterBuilder {
-            route(path, [#delete], #asyncUpdate(handler));
+            route(path, #delete, #asyncUpdate(handler));
         };
 
         public func route(
             path : Text,
-            methods : [HttpMethod.HttpMethod],
+            method : Route.RouteMethod,
             handler : Route.RouteHandler,
         ) : RouterBuilder {
             let pathSegments = switch (Route.parsePathSegments(path)) {
                 case (#ok(segments)) segments;
                 case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
             };
-            let route : Route.Route = {
-                pathSegments = pathSegments;
-                params = [];
-                methods = methods;
-                handler = handler;
+
+            func routeMatches(route : Route.Route) : Bool {
+                Array.equal(
+                    route.pathSegments,
+                    pathSegments,
+                    func(a : Route.PathSegment, b : Route.PathSegment) : Bool = switch (a, b) {
+                        case ((#text(a), #text(b))) TextX.equalIgnoreCase(a, b);
+                        case ((#param(a), #param(b))) TextX.equalIgnoreCase(a, b);
+                        case (_) false;
+                    },
+                );
             };
-            routes.add(route);
+
+            switch (IterTools.findIndex(routes.vals(), routeMatches)) {
+                case (null) {
+                    routes.add({
+                        pathSegments = pathSegments;
+                        methods = [(method, handler)];
+                    });
+                };
+                case (?index) {
+                    let existingRoute = routes.get(index);
+                    // Validate that the route does not already have a handler for the method
+                    switch (Array.find(existingRoute.methods, func(m : (Route.RouteMethod, Route.RouteHandler)) : Bool = m.0 == method)) {
+                        case (null) ();
+                        case (_) {
+                            // TODO trap here?
+                            Debug.trap("Route " # path # " already has a handler for method " # HttpMethod.toText(method));
+                        };
+                    };
+                    routes.put(
+                        index,
+                        {
+                            existingRoute with
+                            methods = Array.append(existingRoute.methods, [(method, handler)]);
+                        },
+                    );
+                };
+            };
             self;
         };
 
@@ -238,7 +291,7 @@ module Module {
         public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
 
-            let result = switch (routeContext.route.handler) {
+            let result = switch (routeContext.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
                 case (#syncUpdate(_)) return null; // Skip sync handlers that restrict to only updates, only handle in routeAsync
                 case (#asyncUpdate(_)) return null; // Skip async handlers, only handle in routeAsync
@@ -249,7 +302,7 @@ module Module {
         public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
 
-            let result = switch (routeContext.route.handler) {
+            let result = switch (routeContext.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
                 case (#syncUpdate(handler)) handler<system>(routeContext);
                 case (#asyncUpdate(handler)) await* handler(routeContext);
@@ -284,7 +337,7 @@ module Module {
                 case (#forbidden(msg)) serializeError(403, ?msg);
                 case (#methodNotAllowed(allowedMethods)) {
                     let allowedMethodsText = allowedMethods.vals()
-                    |> Iter.map(_, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m))
+                    |> Iter.map(_, func(m : Route.RouteMethod) : Text = HttpMethod.toText(m))
                     |> Text.join(", ", _);
                     let msg = "Method not allowed. Allowed methods: " # allowedMethodsText;
                     serializeError(405, ?msg);
@@ -310,14 +363,14 @@ module Module {
         private func findRoute(httpContext : HttpContext.HttpContext) : ?Route.RouteContext {
             let path = httpContext.getPath();
             label f for (route in routes.vals()) {
-                let methodMatch = Array.find(route.methods, func(m : HttpMethod.HttpMethod) : Bool = m == httpContext.method) != null;
-                if (not methodMatch) {
-                    continue f;
+                let handler = switch (Array.find(route.methods, func(m : (Route.RouteMethod, Route.RouteHandler)) : Bool = m.0 == httpContext.method)) {
+                    case (null) continue f;
+                    case (?(_, handler)) handler;
                 };
                 let ?{ params } = matchPath(route.pathSegments, path) else continue f;
                 return ?Route.RouteContext(
                     httpContext,
-                    route,
+                    handler,
                     params,
                 );
             };

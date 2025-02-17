@@ -7,6 +7,7 @@ module {
         #put;
         #patch;
         #delete;
+        #head;
         #options;
     };
 
@@ -17,6 +18,7 @@ module {
             case (#put) "PUT";
             case (#patch) "PATCH";
             case (#delete) "DELETE";
+            case (#head) "HEAD";
             case (#options) "OPTIONS";
         };
     };
@@ -28,6 +30,7 @@ module {
             case ("put") ?#put;
             case ("patch") ?#patch;
             case ("delete") ?#delete;
+            case ("head") ?#head;
             case ("options") ?#options;
             case (_) null;
         };

@@ -22,14 +22,14 @@ module {
 
     public let defaultOptions : Options = {
         allowOrigins = [];
-        allowMethods = [#get, #post, #put, #delete, #options];
+        allowMethods = [#get, #post, #put, #patch, #delete, #head, #options];
         allowHeaders = ["Content-Type", "Authorization"];
         maxAge = ?86400; // 24 hours
         allowCredentials = false;
         exposeHeaders = [];
     };
 
-    public func useCors(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
+    public func use(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
         let newMiddleware = createMiddleware(options);
         {
             middleware = Array.append(data.middleware, [newMiddleware]);
@@ -38,52 +38,83 @@ module {
 
     public func createMiddleware(options : Options) : Pipeline.Middleware {
         {
-            handle = func(context : HttpContext.HttpContext, next : Pipeline.Next) : Types.HttpResponse {
-
-                let corsHeaders = Buffer.Buffer<(Text, Text)>(8);
-
-                switch (context.getHeader("Origin")) {
-                    case (?origin) {
-                        if (not options.allowCredentials and options.allowOrigins.size() == 0) {
-                            // If credentials aren't required and all origins are allowed, then we can use '*' for the origin
-                            corsHeaders.add(("Access-Control-Allow-Origin", "*"));
-                        } else if (isOriginAllowed(origin, options.allowOrigins)) {
-                            // Otherwise specificy the origin if its allowed
-                            corsHeaders.add(("Access-Control-Allow-Origin", origin));
-                            corsHeaders.add(("Vary", "Origin"));
+            handleQuery = ?(
+                func(context : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
+                    switch (handlePreflight(context, options)) {
+                        case (#complete(response)) return ?response;
+                        case (#next({ corsHeaders })) {
+                            let ?response = next() else return null; // TODO should this be a 404 with the headers?;
+                            ?addHeadersToResponse(response, options, corsHeaders);
                         };
                     };
-                    case (null) ();
-                };
-
-                // Credentials
-                if (options.allowCredentials) {
-                    corsHeaders.add(("Access-Control-Allow-Credentials", "true"));
-                };
-
-                // Handle preflight requests
-                if (context.method == #options) {
-                    return handlePreflightRequest(context, corsHeaders, options);
-                };
-
-                // Handle actual request
-                let response = next();
-
-                if (options.exposeHeaders.size() > 0) {
-                    let exposedHeaders = Text.join(", ", options.exposeHeaders.vals());
-                    corsHeaders.add(("Access-Control-Expose-Headers", exposedHeaders));
-                };
-
-                // Combine headers
-                let responseHeaders = Buffer.Buffer<(Text, Text)>(response.headers.size() + corsHeaders.size());
-                responseHeaders.append(Buffer.fromArray(response.headers));
-                responseHeaders.append(corsHeaders); // Append CORS headers last
-
-                {
-                    response with
-                    headers = Buffer.toArray(responseHeaders);
+                }
+            );
+            handleUpdate = func(context : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
+                switch (handlePreflight(context, options)) {
+                    case (#complete(response)) return ?response;
+                    case (#next({ corsHeaders })) {
+                        let ?response = await* next() else return null; // TODO should this be a 404 with the headers?;
+                        ?addHeadersToResponse(response, options, corsHeaders);
+                    };
                 };
             };
+        };
+    };
+
+    private func handlePreflight(context : HttpContext.HttpContext, options : Options) : {
+        #complete : Types.HttpResponse;
+        #next : { corsHeaders : Buffer.Buffer<(Text, Text)> };
+    } {
+
+        let corsHeaders = Buffer.Buffer<(Text, Text)>(8);
+
+        switch (context.getHeader("Origin")) {
+            case (?origin) {
+                if (not options.allowCredentials and options.allowOrigins.size() == 0) {
+                    // If credentials aren't required and all origins are allowed, then we can use '*' for the origin
+                    corsHeaders.add(("Access-Control-Allow-Origin", "*"));
+                } else if (isOriginAllowed(origin, options.allowOrigins)) {
+                    // Otherwise specificy the origin if its allowed
+                    corsHeaders.add(("Access-Control-Allow-Origin", origin));
+                    corsHeaders.add(("Vary", "Origin"));
+                };
+            };
+            case (null) ();
+        };
+
+        // Credentials
+        if (options.allowCredentials) {
+            corsHeaders.add(("Access-Control-Allow-Credentials", "true"));
+        };
+
+        // Handle preflight requests
+        if (context.method == #options) {
+            return #complete(handlePreflightRequest(context, corsHeaders, options));
+        };
+
+        #next({ corsHeaders });
+
+    };
+
+    private func addHeadersToResponse(
+        response : Types.HttpResponse,
+        options : Options,
+        corsHeaders : Buffer.Buffer<(Text, Text)>,
+    ) : Types.HttpResponse {
+
+        if (options.exposeHeaders.size() > 0) {
+            let exposedHeaders = Text.join(", ", options.exposeHeaders.vals());
+            corsHeaders.add(("Access-Control-Expose-Headers", exposedHeaders));
+        };
+
+        // Combine headers
+        let responseHeaders = Buffer.Buffer<(Text, Text)>(response.headers.size() + corsHeaders.size());
+        responseHeaders.append(Buffer.fromArray(response.headers));
+        responseHeaders.append(corsHeaders); // Append CORS headers last
+
+        {
+            response with
+            headers = Buffer.toArray(responseHeaders);
         };
     };
 
