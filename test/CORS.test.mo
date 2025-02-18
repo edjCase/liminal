@@ -4,7 +4,7 @@ import Pipeline "../src/Pipeline";
 import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";
 import HttpMethod "../src/HttpMethod";
-import Cors "../src/Cors";
+import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";
 
 // Helper function to find header value
@@ -42,8 +42,8 @@ await suiteAsync(
         await testAsync(
             "custom origin handling",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with allowOrigins = ["http://allowed-domain.com"]
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with allowOrigins = ["http://allowed-domain.com"]
                 });
 
                 // Test with allowed origin
@@ -64,8 +64,8 @@ await suiteAsync(
             "preflight request handling",
             func() : async () {
 
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with
                     allowMethods = [#get, #post, #put];
                     allowHeaders = ["Content-Type", "X-Custom-Header"];
                     maxAge = ?3600;
@@ -93,8 +93,8 @@ await suiteAsync(
             "credentials handling",
             func() : async () {
 
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with
                     allowCredentials = true;
                 });
 
@@ -110,8 +110,8 @@ await suiteAsync(
             "exposed headers",
             func() : async () {
 
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with
                     exposeHeaders = ["Content-Length", "X-Custom-Response"];
                 });
 
@@ -126,7 +126,7 @@ await suiteAsync(
         await testAsync(
             "no origin header",
             func() : async () {
-                let middleware = Cors.createMiddleware(Cors.defaultOptions);
+                let middleware = CORS.createMiddleware(CORS.defaultOptions);
                 let (httpContext, next) = createMockRequest(#get, []); // No Origin header
                 let ?response = await* middleware.handleUpdate(httpContext, next) else Debug.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
@@ -136,8 +136,8 @@ await suiteAsync(
         await testAsync(
             "preflight request disallowed method",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with allowMethods = [#get, #post] // #put is not allowed
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with allowMethods = [#get, #post] // #put is not allowed
 
                 });
                 let request = createMockRequest(
@@ -155,8 +155,8 @@ await suiteAsync(
         await testAsync(
             "preflight request disallowed header",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with allowHeaders = ["Content-Type"] // "X-Custom-Header" is not allowed
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with allowHeaders = ["Content-Type"] // "X-Custom-Header" is not allowed
 
                 });
                 let request = createMockRequest(
@@ -173,8 +173,8 @@ await suiteAsync(
         await testAsync(
             "preflight request with multiple request headers",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with allowHeaders = ["Content-Type", "Authorization"]
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with allowHeaders = ["Content-Type", "Authorization"]
                 });
                 let request = createMockRequest(
                     #options,
@@ -191,8 +191,8 @@ await suiteAsync(
         await testAsync(
             "preflight request with case-insensitive header matching",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with allowHeaders = ["Content-Type"]
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with allowHeaders = ["Content-Type"]
                 });
                 let request = createMockRequest(
                     #options,
@@ -209,7 +209,7 @@ await suiteAsync(
         await testAsync(
             "preflight request with no request method",
             func() : async () {
-                let middleware = Cors.createMiddleware(Cors.defaultOptions);
+                let middleware = CORS.createMiddleware(CORS.defaultOptions);
                 let request = createMockRequest(
                     #options,
                     [
@@ -226,8 +226,8 @@ await suiteAsync(
         await testAsync(
             "wildcard origin with credentials",
             func() : async () {
-                let middleware = Cors.createMiddleware({
-                    Cors.defaultOptions with
+                let middleware = CORS.createMiddleware({
+                    CORS.defaultOptions with
                     allowCredentials = true;
                     allowOrigins = [];
                 });
@@ -245,7 +245,7 @@ await suiteAsync(
         await testAsync(
             "preflight request with invalid method format",
             func() : async () {
-                let middleware = Cors.createMiddleware(Cors.defaultOptions);
+                let middleware = CORS.createMiddleware(CORS.defaultOptions);
                 let request = createMockRequest(
                     #options,
                     [
