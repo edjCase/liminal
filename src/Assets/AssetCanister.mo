@@ -519,9 +519,43 @@ module {
             nextBatchId := 1;
         };
 
-        public func http_request_streaming_callback(request : StreamingCallbackRequest) : StreamingCallbackHttpResponse {
-            // TODO
-            Prelude.nyi();
+        public func http_request_streaming_callback(
+            request : StreamingCallbackRequest
+        ) : StreamingCallbackHttpResponse {
+            // Get the asset and validate it exists
+            let ?asset = assetStore.get(request.key) else Debug.trap("Asset key not found");
+
+            // Get the encoding and validate it exists
+            let ?encoding = Asset.encodingFromText(request.content_encoding) else Debug.trap("Asset encoding '" # request.content_encoding # "' is invalid.");
+            let ?assetData = Asset.getEncoding(asset, encoding) else Debug.trap("Encoding '" # Asset.encodingToText(encoding) # "' not found for asset");
+
+            // Validate hash if provided
+            let ?sha256 = request.sha256 else Debug.trap("Content sha256 required");
+            if (not Blob.equal(sha256, assetData.sha256)) {
+                Debug.trap("Content sha256 mismatch");
+            };
+
+            // Validate chunk index exists
+            if (request.index >= assetData.contentChunks.size()) {
+                Debug.trap("Chunk index out of bounds");
+            };
+
+            // Return the requested chunk and token for next chunk if there are more
+            let nextToken : ?StreamingCallbackRequest = if (request.index + 1 < assetData.contentChunks.size()) {
+                ?{
+                    key = request.key;
+                    content_encoding = request.content_encoding;
+                    index = request.index + 1;
+                    sha256 = request.sha256;
+                };
+            } else {
+                null;
+            };
+
+            {
+                body = assetData.contentChunks[request.index];
+                token = nextToken;
+            };
         };
 
         public func toStableData() : StableData {
@@ -536,7 +570,7 @@ module {
 
         private func throwIfNotAdmin(caller : Principal) : () {
             if (not Buffer.contains(adminIds, caller, Principal.equal)) {
-                Debug.trap("Unauthorized");
+                Debug.trap("Unauthorized ");
             };
         };
     };
