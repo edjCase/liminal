@@ -5,6 +5,7 @@ import Array "mo:base/Array";
 import Time "mo:base/Time";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
+import Result "mo:base/Result";
 import Sha256 "mo:sha2/Sha256";
 import IterTools "mo:itertools/Iter";
 import Asset "./Asset";
@@ -20,15 +21,15 @@ module {
     };
 
     public type ReadAndWriteStore = ReadOnlyStore and {
-        addOrUpdateAsset : (Text, Text, [Blob], ?Blob) -> ();
-        addOrUpdateAssetWithEncoding : (Text, Text, [Blob], Asset.Encoding, ?Blob) -> ();
-        delete : (Text) -> ();
-        deleteEncoding : (Text, Asset.Encoding) -> ();
+        addOrUpdateAsset : (key : Text, contentType : Text) -> ();
+        addOrUpdateEncodingData : (key : Text, contentChunks : [Blob], encoding : Asset.Encoding, sha256 : ?Blob) -> ();
+        deleteAsset : (key : Text) -> ();
+        deleteEncodingData : (key : Text, encoding : Asset.Encoding) -> ();
         toStableData : () -> StableData;
     };
 
     public class Store(data : StableData) : ReadAndWriteStore {
-        let assets = data.assets.vals()
+        var assets = data.assets.vals()
         |> Iter.map<Asset.Asset, (Text, Asset.Asset)>(_, func(asset : Asset.Asset) : (Text, Asset.Asset) = (asset.key, asset))
         |> HashMap.fromIter<Text, Asset.Asset>(_, data.assets.size(), Text.equal, Text.hash);
 
@@ -43,16 +44,19 @@ module {
         public func addOrUpdateAsset(
             key : Text,
             contentType : Text,
-            contentChunks : [Blob],
-            sha256 : ?Blob,
         ) : () {
-            addOrUpdateAssetWithEncoding(key, contentType, contentChunks, #identity, sha256);
+            assets.put(
+                key,
+                {
+                    key;
+                    contentType;
+                    encodedData = [];
+                },
+            );
         };
 
-        // Note that it updates the contentType of the asset if it already exists
-        public func addOrUpdateAssetWithEncoding(
+        public func addOrUpdateEncodingData(
             key : Text,
-            contentType : Text,
             contentChunks : [Blob],
             encoding : Asset.Encoding,
             sha256 : ?Blob,
@@ -61,20 +65,8 @@ module {
                 return Debug.trap("Content chunks must not be empty");
             };
             let sha256NotNull = getOrComputeSha256(contentChunks, sha256);
-            let updatedAsset : Asset.Asset = switch (assets.get(key)) {
-                case (?asset) {
-                    let updatedAsset = addOrUpdateEncoding(asset, encoding, contentChunks, sha256NotNull);
-                    {
-                        updatedAsset with
-                        contentType = contentType;
-                    };
-                };
-                case (null) ({
-                    key;
-                    contentType;
-                    encodedData = [buildAssetData(encoding, contentChunks, sha256NotNull)];
-                });
-            };
+            let ?asset = assets.get(key) else Debug.trap("Asset with id '" # key # "' not found");
+            let updatedAsset : Asset.Asset = addOrUpdateEncoding(asset, encoding, contentChunks, sha256NotNull);
             assets.put(key, updatedAsset);
         };
 
@@ -95,11 +87,11 @@ module {
             };
         };
 
-        public func delete(key : Text) : () {
+        public func deleteAsset(key : Text) : () {
             assets.delete(key);
         };
 
-        public func deleteEncoding(key : Text, encoding : Asset.Encoding) {
+        public func deleteEncodingData(key : Text, encoding : Asset.Encoding) {
             let ?asset = assets.get(key) else return;
 
             let updatedEncodedData = asset.encodedData.vals()
@@ -112,6 +104,10 @@ module {
                     encodedData = updatedEncodedData;
                 },
             );
+        };
+
+        public func deleteAllAssets() : () {
+            assets := HashMap.HashMap<Text, Asset.Asset>(0, Text.equal, Text.hash);
         };
 
         public func toStableData() : StableData {

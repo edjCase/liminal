@@ -7,11 +7,12 @@ import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import Prelude "mo:base/Prelude";
 import Blob "mo:base/Blob";
-import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
 import Nat "mo:base/Nat";
 import Nat32 "mo:base/Nat32";
 import Option "mo:base/Option";
+import Text "mo:base/Text";
+import Sha256 "mo:sha2/Sha256";
 
 module {
     public type StoreRequest = {
@@ -71,6 +72,7 @@ module {
         sha256 : ?Blob;
         length : Nat;
     };
+
     public type CommitBatchRequest = {
         batch_id : Nat;
         operations : [BatchRequestKind];
@@ -175,10 +177,10 @@ module {
         options : Options,
     ) = self {
         let adminIds = Buffer.fromArray<Principal>(data.adminIds);
-        let chunks = data.chunks.vals()
+        var chunks = data.chunks.vals()
         |> Iter.map<Chunk, (Nat, Chunk)>(_, func(chunk : Chunk) : (Nat, Chunk) = (chunk.id, chunk))
         |> HashMap.fromIter<Nat, Chunk>(_, data.chunks.size(), Nat.equal, Nat32.fromNat);
-        let batches = data.batches.vals()
+        var batches = data.batches.vals()
         |> Iter.map<Batch, (Nat, Batch)>(_, func(batch : Batch) : (Nat, Batch) = (batch.id, batch))
         |> HashMap.fromIter<Nat, Batch>(_, data.batches.size(), Nat.equal, Nat32.fromNat);
         var nextChunkId = data.nextChunkId;
@@ -195,7 +197,7 @@ module {
             let ?asset = assetStore.get(key) else Debug.trap("Asset with key '" # key # "' not found");
             let ?encoding = Asset.getEncoding(asset, #identity) else Debug.trap("Identity encoding not found for asset with key '" # key # "'");
             if (encoding.contentChunks.size() > 1) {
-                Debug.trap("Asset too large. Use get() and get_chunk() instead.");
+                Debug.trap("Asset too lrequeste. Use get() and get_chunk() instead.");
             };
             encoding.contentChunks[0];
         };
@@ -203,9 +205,12 @@ module {
         public func store(request : StoreRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
             let ?encoding = Asset.encodingFromText(request.content_encoding) else Debug.trap("Unsupported encoding: " # request.content_encoding);
-            assetStore.addOrUpdateAssetWithEncoding(
+            assetStore.addOrUpdateAsset(
                 request.key,
                 request.content_type,
+            );
+            assetStore.addOrUpdateEncodingData(
+                request.key,
                 [request.content],
                 encoding,
                 request.sha256,
@@ -343,26 +348,7 @@ module {
                 Debug.trap("Batch commit has already been proposed, cannot add more chunks");
             };
 
-            // Check limits if configured
-            let maxChunks = Option.get(options.maxChunks, 0);
-            if (maxChunks > 0 and chunks.size() >= maxChunks) {
-                Debug.trap("Chunk limit of " # Nat.toText(maxChunks) # " reached, cannot create more");
-            };
-
-            let maxBytes = Option.get(options.maxBytes, 0);
-            if (maxBytes > 0) {
-                func getAllBatchesSize() : Nat {
-                    var total = 0;
-                    for ((_, batch) in batches.entries()) {
-                        total += batch.contentSize;
-                    };
-                    total;
-                };
-                let newTotalBytes = getAllBatchesSize() + request.content.size();
-                if (newTotalBytes > maxBytes) {
-                    Debug.trap("Byte limit of " # Nat.toText(maxBytes) # " reached, cannot create more");
-                };
-            };
+            checkSizeLimits(1, request.content.size());
 
             // Update batch expiry and size
             let updatedBatch : Batch = {
@@ -386,39 +372,151 @@ module {
             return { chunk_id = chunkId };
         };
 
+        private func checkSizeLimits(chunksAdded : Nat, bytesAdded : Nat) : () {
+            // Check limits if configured
+            let maxChunks = Option.get(options.maxChunks, 0);
+            if (maxChunks > 0) {
+                let newChunkCount = chunks.size() + chunksAdded;
+                if (newChunkCount > maxChunks) {
+                    Debug.trap("Chunk limit of " # Nat.toText(maxChunks) # " reached, cannot create more");
+                };
+            };
+
+            let maxBytes = Option.get(options.maxBytes, 0);
+            if (maxBytes > 0) {
+                func getAllBatchesSize() : Nat {
+                    var total = 0;
+                    for ((_, batch) in batches.entries()) {
+                        total += batch.contentSize;
+                    };
+                    total;
+                };
+                let newTotalBytes = getAllBatchesSize() + bytesAdded;
+                if (newTotalBytes > maxBytes) {
+                    Debug.trap("Byte limit of " # Nat.toText(maxBytes) # " reached, cannot create more");
+                };
+            };
+        };
+
         public func commit_batch(request : CommitBatchRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+
+            // Process each operation in the batch
+            for (op in request.operations.vals()) {
+                switch (op) {
+                    case (#CreateAsset(createAsset)) createAssetInternal(createAsset);
+                    case (#SetAssetContent(setAssetContent)) setAssetContentInternal(setAssetContent, ?request.batch_id);
+                    case (#UnsetAssetContent(unsetAssetContent)) unsetAssetContentInternal(unsetAssetContent);
+                    case (#DeleteAsset(deleteAsset)) deleteAssetInternal(deleteAsset);
+                    case (#Clear(clearAsset)) clearInternal(clearAsset);
+                };
+            };
+
+            batches.delete(request.batch_id);
         };
 
         public func create_asset(request : CreateAssetRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+            createAssetInternal(request);
+        };
+
+        private func createAssetInternal(request : CreateAssetRequest) : () {
+            if (assetStore.get(request.key) != null) {
+                Debug.trap("Asset already exists: " # request.key);
+            };
+
+            assetStore.addOrUpdateAsset(
+                request.key,
+                request.content_type,
+            );
         };
 
         public func set_asset_content(request : SetAssetContentRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+            setAssetContentInternal(request, null);
+        };
+
+        private func setAssetContentInternal(request : SetAssetContentRequest, batchId : ?Nat) : () {
+            if (request.chunk_ids.size() == 0) {
+                Debug.trap("Asset content must provide at least one chunk");
+            };
+
+            let ?asset = assetStore.get(request.key) else Debug.trap("Asset not found: " # request.key);
+            let ?encoding = Asset.encodingFromText(request.content_encoding) else Debug.trap("Unsupported encoding: " # request.content_encoding);
+
+            // Collect all chunks into array
+            let contentChunks = Buffer.Buffer<Blob>(request.chunk_ids.size());
+            for (chunkId in request.chunk_ids.vals()) {
+                let ?chunk = chunks.get(chunkId) else Debug.trap("Chunk not found: " # Nat.toText(chunkId));
+                switch (batchId) {
+                    case (null) {};
+                    case (?batchId) {
+                        if (chunk.batchId != batchId) {
+                            Debug.trap("Chunk " # Nat.toText(chunkId) # " does not belong to batch " # Nat.toText(batchId));
+                        };
+                    };
+                };
+                contentChunks.add(chunk.content);
+                chunks.delete(chunkId);
+            };
+
+            // Validate SHA256 if provided
+            switch (request.sha256) {
+                case (null) {};
+                case (?expectedHash) {
+                    // Calculate actual hash
+                    let hasher = Sha256.Digest(#sha256);
+                    for (chunk in contentChunks.vals()) {
+                        hasher.writeBlob(chunk);
+                    };
+                    let actualHash = hasher.sum();
+
+                    if (not Blob.equal(expectedHash, actualHash)) {
+                        Debug.trap("SHA256 mismatch");
+                    };
+                };
+            };
+
+            assetStore.addOrUpdateEncodingData(
+                request.key,
+                Buffer.toArray(contentChunks),
+                encoding,
+                request.sha256,
+            );
         };
 
         public func unset_asset_content(request : UnsetAssetContentRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+            unsetAssetContentInternal(request);
+        };
+
+        private func unsetAssetContentInternal(request : UnsetAssetContentRequest) : () {
+            let ?asset = assetStore.get(request.key) else Debug.trap("Asset not found: " # request.key);
+            let ?encoding = Asset.encodingFromText(request.content_encoding) else Debug.trap("Unsupported encoding: " # request.content_encoding);
+
+            assetStore.deleteEncodingData(request.key, encoding);
         };
 
         public func delete_asset(request : DeleteAssetRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            assetStore.delete(request.key);
+            assetStore.deleteAsset(request.key);
+        };
+
+        private func deleteAssetInternal(request : DeleteAssetRequest) : () {
+            assetStore.deleteAsset(request.key);
         };
 
         public func clear(request : ClearRequest, caller : Principal) : () {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+            clearInternal(request);
+        };
+
+        private func clearInternal(_ : ClearRequest) : () {
+            assetStore.deleteAllAssets();
+            chunks := HashMap.HashMap<Nat, Chunk>(0, Nat.equal, Nat32.fromNat);
+            batches := HashMap.HashMap<Nat, Batch>(0, Nat.equal, Nat32.fromNat);
+            nextChunkId := 1;
+            nextBatchId := 1;
         };
 
         public func http_request_streaming_callback(request : StreamingCallbackRequest) : StreamingCallbackHttpResponse {

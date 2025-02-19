@@ -26,7 +26,9 @@ shared ({ caller = initializer }) actor class Actor() = self {
     stable var assetCanisterStableData : AssetCanister.StableData = {
         adminIds = [initializer];
         chunks = [];
+        nextChunkId = 1;
         batches = [];
+        nextBatchId = 1;
     };
 
     var assetStore = AssetStore.Store(assetStableData);
