@@ -26,13 +26,18 @@ shared ({ caller = initializer }) actor class Actor() = self {
     stable var assetCanisterStableData : AssetCanister.StableData = {
         adminIds = [initializer];
         chunks = [];
+        batches = [];
     };
 
     var assetStore = AssetStore.Store(assetStableData);
 
     var userHandler = UserHandler.Handler(userStableData);
 
-    var assetCanisterHandler = AssetCanister.Handler(assetCanisterStableData, assetStore);
+    var assetCanisterHandler = AssetCanister.Handler(
+        assetCanisterStableData,
+        assetStore,
+        AssetCanister.defaultOptions(),
+    );
 
     system func preupgrade() {
         userStableData := userHandler.toStableData();
@@ -43,7 +48,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
     system func postupgrade() {
         userHandler := UserHandler.Handler(userStableData);
         assetStore := AssetStore.Store(assetStableData);
-        assetCanisterHandler := AssetCanister.Handler(assetCanisterStableData, assetStore);
+        assetCanisterHandler := AssetCanister.Handler(assetCanisterStableData, assetStore, AssetCanister.defaultOptions());
     };
 
     let userRouter = UserRouter.Router(userHandler);
