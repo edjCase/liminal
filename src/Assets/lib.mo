@@ -133,37 +133,21 @@ module {
 
                 let ?asset = options.store.get(remainingPathText) else return null;
 
-                var excludeIdentity = false;
-                var assetDataOrNull : ?Asset.AssetData = null;
-                // Already ordered by quality
-                label f for (encoding in encodingTypes.vals()) {
-                    // Weight 0 means exclude
-                    if (encoding.weight == 0) {
-                        if (encoding.encoding == #identity) {
-                            excludeIdentity := true; // Only exclude identity if it is set to 0
-                        };
-                        continue f;
-                    };
-                    assetDataOrNull := Array.find(asset.encodedData, func(data : Asset.AssetData) : Bool = data.encoding == encoding.encoding);
-                    if (assetDataOrNull != null) {
-                        break f;
-                    };
+                let ?assetData = Asset.getEncodingByLargestWeight(asset, encodingTypes) else return ?{
+                    statusCode = 406; // Not Acceptable
+                    headers = [];
+                    body = null; // TODO error message?
                 };
-
-                let assetData = switch (assetDataOrNull) {
-                    case (null) return ?{
-                        statusCode = 406; // Not Acceptable
-                        headers = [];
-                        body = null; // TODO error message?
-                    };
-                    case (?assetData) assetData;
+                if (assetData.contentChunks.size() > 1) {
+                    // TODO Stream
+                    return null;
                 };
 
                 let httpAsset : HttpAsset = {
                     path = remainingPathText;
-                    bytes = assetData.content;
+                    bytes = assetData.contentChunks[0];
                     contentType = asset.contentType;
-                    size = assetData.content.size();
+                    size = assetData.totalContentSize;
                     etag = blobToHex(assetData.sha256);
                 };
 
@@ -232,22 +216,10 @@ module {
         label f for (entry in entries.vals()) {
             // Remove quality parameter if present
             let parts = Text.split(entry, #char(';'));
-            let ?encoding = parts.next() else Debug.trap("Invalid Accept-Encoding header: " # headerText);
-            let normalizedEncoding = encoding
-            |> Text.trim(_, #char(' '))
-            |> Text.toLowercase(_);
-            let encodingVariant = switch (normalizedEncoding) {
-                case ("identity") #identity;
-                case ("gzip") #gzip;
-                case ("deflate") #deflate;
-                case ("br") #br;
-                case ("compress") #compress;
-                case ("zstd") #zstd;
-                case ("*") #wildcard;
-                case (_) {
-                    Debug.print("Unknown http content encoding: " # encoding # " in header: " # headerText # ", skipping");
-                    continue f;
-                };
+            let ?encodingText = parts.next() else Debug.trap("Invalid Accept-Encoding header: " # headerText);
+            let ?encoding = Asset.encodingFromText(encodingText) else {
+                Debug.print("Unknown http content encoding: " # encodingText # " in header: " # headerText # ", skipping");
+                continue f;
             };
             let weight : Nat = switch (parts.next()) {
                 case (null) 1000;
@@ -266,7 +238,7 @@ module {
                 };
             };
             encodings.add({
-                encoding = encodingVariant;
+                encoding = encoding;
                 weight;
             });
         };

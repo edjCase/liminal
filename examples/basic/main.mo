@@ -11,8 +11,9 @@ import LoggingHandler "LoggingHandler";
 import IC "mo:ic";
 import HttpAssets "../../src/Assets";
 import AssetStore "../../src/Assets/AssetStore";
+import AssetCanister "../../src/Assets/AssetCanister";
 
-actor Actor {
+shared ({ caller = initializer }) actor class Actor() = self {
 
     stable var userStableData : UserHandler.StableData = {
         users = [];
@@ -22,18 +23,27 @@ actor Actor {
         assets = [];
     };
 
+    stable var assetCanisterStableData : AssetCanister.StableData = {
+        adminIds = [initializer];
+        chunks = [];
+    };
+
     var assetStore = AssetStore.Store(assetStableData);
 
     var userHandler = UserHandler.Handler(userStableData);
 
+    var assetCanisterHandler = AssetCanister.Handler(assetCanisterStableData, assetStore);
+
     system func preupgrade() {
         userStableData := userHandler.toStableData();
         assetStableData := assetStore.toStableData();
+        assetCanisterStableData := assetCanisterHandler.toStableData();
     };
 
     system func postupgrade() {
         userHandler := UserHandler.Handler(userStableData);
         assetStore := AssetStore.Store(assetStableData);
+        assetCanisterHandler := AssetCanister.Handler(assetCanisterStableData, assetStore);
     };
 
     let userRouter = UserRouter.Router(userHandler);
@@ -63,7 +73,7 @@ actor Actor {
             func(_ : Route.RouteContext) : async* Route.RouteResult {
                 let ic = actor ("aaaaa-aa") : IC.Service;
                 let result = await ic.canister_info({
-                    canister_id = Principal.fromActor(Actor);
+                    canister_id = Principal.fromActor(self);
                     num_requested_changes = ?0;
                 });
                 let hashJson = switch (result.module_hash) {
@@ -111,129 +121,64 @@ actor Actor {
 
     // Asset canister
 
-    // public shared ({ caller }) func authorize(other : Principal) : async () {
-    //     assets.authorize({
-    //         caller;
-    //         other;
-    //     });
-    // };
+    public shared ({ caller }) func authorize(other : Principal) : async () {
+        assetCanisterHandler.authorize(other, caller);
+    };
 
-    // public query func retrieve(path : Assets.Path) : async Assets.Contents {
-    //     assets.retrieve(path);
-    // };
+    public query func retrieve(path : Text) : async Blob {
+        assetCanisterHandler.retrieve(path);
+    };
 
-    // public shared ({ caller }) func store(
-    //     arg : {
-    //         key : Assets.Key;
-    //         content_type : Text;
-    //         content_encoding : Text;
-    //         content : Blob;
-    //         sha256 : ?Blob;
-    //     }
-    // ) : async () {
-    //     assets.store({
-    //         caller;
-    //         arg;
-    //     });
-    // };
+    public shared ({ caller }) func store(request : AssetCanister.StoreRequest) : async () {
+        assetCanisterHandler.store(request, caller);
+    };
 
-    // public query func list(arg : {}) : async [T.AssetDetails] {
-    //     assets.list(arg);
-    // };
-    // public query func get(
-    //     arg : {
-    //         key : T.Key;
-    //         accept_encodings : [Text];
-    //     }
-    // ) : async ({
-    //     content : Blob;
-    //     content_type : Text;
-    //     content_encoding : Text;
-    //     total_length : Nat;
-    //     sha256 : ?Blob;
-    // }) {
-    //     assets.get(arg);
-    // };
+    public query func list(request : {}) : async [AssetCanister.AssetDetails] {
+        assetCanisterHandler.list(request);
+    };
 
-    // public query func get_chunk(
-    //     arg : {
-    //         key : T.Key;
-    //         content_encoding : Text;
-    //         index : Nat;
-    //         sha256 : ?Blob;
-    //     }
-    // ) : async ({
-    //     content : Blob;
-    // }) {
-    //     assets.get_chunk(arg);
-    // };
+    public query func get(request : AssetCanister.GetRequest) : async AssetCanister.GetResponse {
+        assetCanisterHandler.get(request);
+    };
 
-    // public shared ({ caller }) func create_batch(arg : {}) : async ({
-    //     batch_id : T.BatchId;
-    // }) {
-    //     assets.create_batch({
-    //         caller;
-    //         arg;
-    //     });
-    // };
+    public query func get_chunk(request : AssetCanister.GetChunkRequest) : async AssetCanister.GetChunkResponse {
+        assetCanisterHandler.get_chunk(request);
+    };
 
-    // public shared ({ caller }) func create_chunk(
-    //     arg : {
-    //         batch_id : T.BatchId;
-    //         content : Blob;
-    //     }
-    // ) : async ({
-    //     chunk_id : T.ChunkId;
-    // }) {
-    //     assets.create_chunk({
-    //         caller;
-    //         arg;
-    //     });
-    // };
+    public shared ({ caller }) func create_batch(request : AssetCanister.CreateBatchRequest) : async AssetCanister.CreateBatchResponse {
+        assetCanisterHandler.create_batch(request, caller);
+    };
 
-    // public shared ({ caller }) func commit_batch(args : T.CommitBatchArguments) : async () {
-    //     assets.commit_batch({
-    //         caller;
-    //         args;
-    //     });
-    // };
-    // public shared ({ caller }) func create_asset(arg : T.CreateAssetArguments) : async () {
-    //     assets.create_asset({
-    //         caller;
-    //         arg;
-    //     });
-    // };
+    public shared ({ caller }) func create_chunk(request : AssetCanister.CreateChunkRequest) : async AssetCanister.CreateChunkResponse {
+        assetCanisterHandler.create_chunk(request, caller);
+    };
 
-    // public shared ({ caller }) func set_asset_content(arg : T.SetAssetContentArguments) : async () {
-    //     assets.set_asset_content({
-    //         caller;
-    //         arg;
-    //     });
-    // };
+    public shared ({ caller }) func commit_batch(request : AssetCanister.CommitBatchRequest) : async () {
+        assetCanisterHandler.commit_batch(request, caller);
+    };
 
-    // public shared ({ caller }) func unset_asset_content(args : T.UnsetAssetContentArguments) : async () {
-    //     assets.unset_asset_content({
-    //         caller;
-    //         args;
-    //     });
-    // };
+    public shared ({ caller }) func create_asset(request : AssetCanister.CreateAssetRequest) : async () {
+        assetCanisterHandler.create_asset(request, caller);
+    };
 
-    // public shared ({ caller }) func delete_asset(args : T.DeleteAssetArguments) : async () {
-    //     assets.delete_asset({
-    //         caller;
-    //         args;
-    //     });
-    // };
+    public shared ({ caller }) func set_asset_content(request : AssetCanister.SetAssetContentRequest) : async () {
+        assetCanisterHandler.set_asset_content(request, caller);
+    };
 
-    // public shared ({ caller }) func clear(args : T.ClearArguments) : async () {
-    //     assets.clear({
-    //         caller;
-    //         args;
-    //     });
-    // };
+    public shared ({ caller }) func unset_asset_content(request : AssetCanister.UnsetAssetContentRequest) : async () {
+        assetCanisterHandler.unset_asset_content(request, caller);
+    };
 
-    // public query func http_request_streaming_callback(token : T.StreamingCallbackToken) : async StreamingCallbackHttpResponse {
-    //     assets.http_request_streaming_callback(token);
-    // };
+    public shared ({ caller }) func delete_asset(request : AssetCanister.DeleteAssetRequest) : async () {
+        assetCanisterHandler.delete_asset(request, caller);
+    };
+
+    public shared ({ caller }) func clear(request : AssetCanister.ClearRequest) : async () {
+        assetCanisterHandler.clear(request, caller);
+    };
+
+    public query func http_request_streaming_callback(request : AssetCanister.StreamingCallbackRequest) : async AssetCanister.StreamingCallbackHttpResponse {
+        assetCanisterHandler.http_request_streaming_callback(request);
+    };
 
 };
