@@ -5,7 +5,6 @@ import Principal "mo:base/Principal";
 import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
-import Prelude "mo:base/Prelude";
 import Blob "mo:base/Blob";
 import HashMap "mo:base/HashMap";
 import Nat "mo:base/Nat";

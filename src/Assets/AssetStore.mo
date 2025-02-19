@@ -5,7 +5,6 @@ import Array "mo:base/Array";
 import Time "mo:base/Time";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
-import Result "mo:base/Result";
 import Sha256 "mo:sha2/Sha256";
 import IterTools "mo:itertools/Iter";
 import Asset "./Asset";
