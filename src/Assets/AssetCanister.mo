@@ -59,21 +59,6 @@ module {
         chunk_id : Nat;
     };
 
-    public type AuthorizeRequest = {
-        caller : Principal;
-        other : Principal;
-    };
-
-    public type BatchRequest = {
-        caller : Principal;
-        request : {};
-    };
-
-    public type StoreCallContext = {
-        caller : Principal;
-        request : StoreRequest;
-    };
-
     public type AssetDetails = {
         key : Text;
         content_type : Text;
@@ -141,7 +126,9 @@ module {
     public type StableData = {
         adminIds : [Principal];
         chunks : [Chunk];
+        nextChunkId : Nat;
         batches : [Batch];
+        nextBatchId : Nat;
     };
 
     public type Chunk = {
@@ -169,12 +156,16 @@ module {
     public type Options = {
         batchExpiry : Time.Time; // 5 minutes in nanoseconds
         maxBatches : ?Nat; // null or 0 for unlimited
+        maxChunks : ?Nat; // null or 0 for unlimited
+        maxBytes : ?Nat; // null or 0 for unlimited
     };
 
     public func defaultOptions() : Options {
         {
             batchExpiry = 300_000_000_000;
             maxBatches = null;
+            maxChunks = null;
+            maxBytes = null;
         };
     };
 
@@ -190,6 +181,8 @@ module {
         let batches = data.batches.vals()
         |> Iter.map<Batch, (Nat, Batch)>(_, func(batch : Batch) : (Nat, Batch) = (batch.id, batch))
         |> HashMap.fromIter<Nat, Batch>(_, data.batches.size(), Nat.equal, Nat32.fromNat);
+        var nextChunkId = data.nextChunkId;
+        var nextBatchId = data.nextBatchId;
 
         public func authorize(newId : Principal, caller : Principal) : () {
             throwIfNotAdmin(caller);
@@ -318,12 +311,13 @@ module {
             let maxBatches = Option.get(options.maxBatches, 0);
             if (maxBatches > 0) {
                 if (batches.size() >= maxBatches) {
-                    Debug.trap("batch limit exceeded");
+                    Debug.trap("Batch limit of " #Nat.toText(maxBatches) # " reached, cannot create more");
                 };
             };
 
             // Create new batch
-            let batchId = getNextBatchId();
+            let batchId = nextBatchId;
+            nextBatchId += 1;
 
             let newBatch : Batch = {
                 id = batchId;
@@ -340,8 +334,56 @@ module {
 
         public func create_chunk(request : CreateChunkRequest, caller : Principal) : CreateChunkResponse {
             throwIfNotAdmin(caller);
-            // TODO
-            Prelude.nyi();
+
+            // Check batch exists
+            let ?batch = batches.get(request.batch_id) else Debug.trap("Batch '" # Nat.toText(request.batch_id) # "' not found");
+
+            // Verify batch hasn't been proposed
+            if (batch.proposedCommit != null) {
+                Debug.trap("Batch commit has already been proposed, cannot add more chunks");
+            };
+
+            // Check limits if configured
+            let maxChunks = Option.get(options.maxChunks, 0);
+            if (maxChunks > 0 and chunks.size() >= maxChunks) {
+                Debug.trap("Chunk limit of " # Nat.toText(maxChunks) # " reached, cannot create more");
+            };
+
+            let maxBytes = Option.get(options.maxBytes, 0);
+            if (maxBytes > 0) {
+                func getAllBatchesSize() : Nat {
+                    var total = 0;
+                    for ((_, batch) in batches.entries()) {
+                        total += batch.contentSize;
+                    };
+                    total;
+                };
+                let newTotalBytes = getAllBatchesSize() + request.content.size();
+                if (newTotalBytes > maxBytes) {
+                    Debug.trap("Byte limit of " # Nat.toText(maxBytes) # " reached, cannot create more");
+                };
+            };
+
+            // Update batch expiry and size
+            let updatedBatch : Batch = {
+                batch with
+                expiresAt = Time.now() + options.batchExpiry;
+                contentSize = batch.contentSize + request.content.size();
+            };
+            batches.put(batch.id, updatedBatch);
+
+            // Create and store new chunk
+            let chunkId = nextChunkId;
+            nextChunkId += 1;
+            let newChunk : Chunk = {
+                id = chunkId;
+                batchId = request.batch_id;
+                content = request.content;
+            };
+
+            chunks.put(chunkId, newChunk);
+
+            return { chunk_id = chunkId };
         };
 
         public func commit_batch(request : CommitBatchRequest, caller : Principal) : () {
@@ -389,6 +431,8 @@ module {
                 adminIds = Buffer.toArray(adminIds);
                 chunks = chunks.vals() |> Iter.toArray(_);
                 batches = batches.vals() |> Iter.toArray(_);
+                nextChunkId = nextChunkId;
+                nextBatchId = nextBatchId;
             };
         };
 
@@ -396,15 +440,6 @@ module {
             if (not Buffer.contains(adminIds, caller, Principal.equal)) {
                 Debug.trap("Unauthorized");
             };
-        };
-
-        // Iterate up starting at 1 and return the first unused id
-        private func getNextBatchId() : Nat {
-            var nextId = 1;
-            while (batches.get(nextId) != null) {
-                nextId += 1;
-            };
-            nextId;
         };
     };
 };
