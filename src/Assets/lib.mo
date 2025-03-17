@@ -16,14 +16,14 @@ import Nat8 "mo:base/Nat8";
 import Glob "mo:glob";
 import NatX "mo:xtended-numbers/NatX";
 import Asset "Asset";
-import AssetStore "AssetStore";
+import Assets "mo:ic-assets";
 
 module {
     public type Seconds = Nat;
 
     public type Options = {
         cache : CacheOptions;
-        store : AssetStore.ReadOnlyStore;
+        store : Assets.Assets;
     };
 
     public type CacheOptions = {
@@ -57,6 +57,7 @@ module {
         path : Text;
         bytes : Blob;
         contentType : Text; // MIME type
+        contentEncoding : Text; // Encoding type
         size : Nat; // File size in bytes
         etag : Text; // Hash of content for caching
     };
@@ -129,26 +130,35 @@ module {
                         };
                     };
                 };
+                let acceptEncodings : [Text] = encodingTypes.vals()
+                |> Iter.sort(_, func(a : Asset.EncodingWithWeight, b : Asset.EncodingWithWeight) : Order.Order = Nat.compare(b.weight, a.weight))
+                |> Iter.map(
+                    _,
+                    func(e : Asset.EncodingWithWeight) : Text = Asset.encodingToText(e.encoding),
+                )
+                |> Iter.toArray(_);
                 let remainingPathText = Path.toText(remainingPath);
 
-                let ?asset = options.store.get(remainingPathText) else return null;
+                let assetData = switch (options.store.get({ key = remainingPathText; accept_encodings = acceptEncodings })) {
+                    case (#ok(ok)) ok;
+                    case (#err(_)) return null;
+                };
 
-                let ?assetData = Asset.getEncodingByLargestWeight(asset, encodingTypes) else return ?{
-                    statusCode = 406; // Not Acceptable
-                    headers = [];
-                    body = null; // TODO error message?
-                };
-                if (assetData.contentChunks.size() > 1) {
-                    // TODO Stream
-                    return null;
-                };
+                // if (assetData.total_length > 1_572_864) {
+                //     // TODO Stream
+                //     return null;
+                // };
 
                 let httpAsset : HttpAsset = {
                     path = remainingPathText;
-                    bytes = assetData.contentChunks[0];
-                    contentType = asset.contentType;
-                    size = assetData.totalContentSize;
-                    etag = blobToHex(assetData.sha256);
+                    bytes = assetData.content;
+                    contentType = assetData.content_type;
+                    contentEncoding = assetData.content_encoding;
+                    size = assetData.total_length;
+                    etag = switch (assetData.sha256) {
+                        case (?hash) blobToHex(hash);
+                        case (null) Debug.trap("SHA256 hash not found for asset: " # remainingPathText); // Even though it's optional, it should always be present
+                    };
                 };
 
                 // Get cache control for this asset
@@ -192,6 +202,7 @@ module {
                     headers = [
                         ("Content-Type", httpAsset.contentType),
                         ("Content-Length", Nat.toText(httpAsset.size)),
+                        ("Content-Encoding", httpAsset.contentEncoding),
                         ("Cache-Control", formatCacheControl(cacheControl)),
                         ("ETag", httpAsset.etag),
                     ];

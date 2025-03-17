@@ -6,11 +6,12 @@ import UserHandler "UserHandler";
 import UserRouter "UserRouter";
 import Principal "mo:base/Principal";
 import Blob "mo:base/Blob";
+import Result "mo:base/Result";
 import CORS "../../src/CORS";
 import LoggingHandler "LoggingHandler";
 import IC "mo:ic";
 import HttpAssets "../../src/Assets";
-import AssetStore "../../src/Assets/AssetStore";
+import Assets "mo:ic-assets";
 import AssetCanister "../../src/Assets/AssetCanister";
 
 shared ({ caller = initializer }) actor class Actor() = self {
@@ -19,38 +20,21 @@ shared ({ caller = initializer }) actor class Actor() = self {
         users = [];
     };
 
-    stable var assetStableData : AssetStore.StableData = {
-        assets = [];
-    };
+    let canisterId = Principal.fromActor(self);
 
-    stable var assetCanisterStableData : AssetCanister.StableData = {
-        adminIds = [initializer];
-        chunks = [];
-        nextChunkId = 1;
-        batches = [];
-        nextBatchId = 1;
-    };
+    stable var assetStableData = Assets.init_stable_store(canisterId, initializer);
 
-    var assetStore = AssetStore.Store(assetStableData);
+    var assetStore = Assets.Assets(assetStableData);
+    var assetCanister = AssetCanister.AssetCanister(assetStore);
 
     var userHandler = UserHandler.Handler(userStableData);
 
-    var assetCanisterHandler = AssetCanister.Handler(
-        assetCanisterStableData,
-        assetStore,
-        AssetCanister.defaultOptions(),
-    );
-
     system func preupgrade() {
         userStableData := userHandler.toStableData();
-        assetStableData := assetStore.toStableData();
-        assetCanisterStableData := assetCanisterHandler.toStableData();
     };
 
     system func postupgrade() {
         userHandler := UserHandler.Handler(userStableData);
-        assetStore := AssetStore.Store(assetStableData);
-        assetCanisterHandler := AssetCanister.Handler(assetCanisterStableData, assetStore, AssetCanister.defaultOptions());
     };
 
     let userRouter = UserRouter.Router(userHandler);
@@ -128,64 +112,145 @@ shared ({ caller = initializer }) actor class Actor() = self {
 
     // Asset canister
 
-    public shared ({ caller }) func authorize(other : Principal) : async () {
-        assetCanisterHandler.authorize(other, caller);
+    public query func http_request_streaming_callback(token : Assets.StreamingToken) : async (Assets.StreamingCallbackResponse) {
+        assetStore.http_request_streaming_callback(token);
     };
 
-    public query func retrieve(path : Text) : async Blob {
-        assetCanisterHandler.retrieve(path);
+    assetStore.set_streaming_callback(http_request_streaming_callback);
+
+    public shared query func api_version() : async Nat16 {
+        assetCanister.api_version();
     };
 
-    public shared ({ caller }) func store(request : AssetCanister.StoreRequest) : async () {
-        assetCanisterHandler.store(request, caller);
+    public shared query func get(args : Assets.GetArgs) : async Assets.EncodedAsset {
+        assetCanister.get(args);
     };
 
-    public query func list(request : {}) : async [AssetCanister.AssetDetails] {
-        assetCanisterHandler.list(request);
+    public shared query func get_chunk(args : Assets.GetChunkArgs) : async (Assets.ChunkContent) {
+        assetCanister.get_chunk(args);
     };
 
-    public query func get(request : AssetCanister.GetRequest) : async AssetCanister.GetResponse {
-        assetCanisterHandler.get(request);
+    public shared ({ caller }) func grant_permission(args : Assets.GrantPermission) : async () {
+        await* assetCanister.grant_permission(caller, args);
     };
 
-    public query func get_chunk(request : AssetCanister.GetChunkRequest) : async AssetCanister.GetChunkResponse {
-        assetCanisterHandler.get_chunk(request);
+    public shared ({ caller }) func revoke_permission(args : Assets.RevokePermission) : async () {
+        await* assetCanister.revoke_permission(caller, args);
     };
 
-    public shared ({ caller }) func create_batch(request : AssetCanister.CreateBatchRequest) : async AssetCanister.CreateBatchResponse {
-        assetCanisterHandler.create_batch(request, caller);
+    public shared query func list(args : {}) : async [Assets.AssetDetails] {
+        assetCanister.list(args);
     };
 
-    public shared ({ caller }) func create_chunk(request : AssetCanister.CreateChunkRequest) : async AssetCanister.CreateChunkResponse {
-        assetCanisterHandler.create_chunk(request, caller);
+    public shared ({ caller }) func store(args : Assets.StoreArgs) : async () {
+        assetCanister.store(caller, args);
     };
 
-    public shared ({ caller }) func commit_batch(request : AssetCanister.CommitBatchRequest) : async () {
-        assetCanisterHandler.commit_batch(request, caller);
+    public shared ({ caller }) func create_asset(args : Assets.CreateAssetArguments) : async () {
+        assetCanister.create_asset(caller, args);
     };
 
-    public shared ({ caller }) func create_asset(request : AssetCanister.CreateAssetRequest) : async () {
-        assetCanisterHandler.create_asset(request, caller);
+    public shared ({ caller }) func set_asset_content(args : Assets.SetAssetContentArguments) : async () {
+        await* assetCanister.set_asset_content(caller, args);
     };
 
-    public shared ({ caller }) func set_asset_content(request : AssetCanister.SetAssetContentRequest) : async () {
-        assetCanisterHandler.set_asset_content(request, caller);
+    public shared ({ caller }) func unset_asset_content(args : Assets.UnsetAssetContentArguments) : async () {
+        assetCanister.unset_asset_content(caller, args);
     };
 
-    public shared ({ caller }) func unset_asset_content(request : AssetCanister.UnsetAssetContentRequest) : async () {
-        assetCanisterHandler.unset_asset_content(request, caller);
+    public shared ({ caller }) func delete_asset(args : Assets.DeleteAssetArguments) : async () {
+        assetCanister.delete_asset(caller, args);
     };
 
-    public shared ({ caller }) func delete_asset(request : AssetCanister.DeleteAssetRequest) : async () {
-        assetCanisterHandler.delete_asset(request, caller);
+    public shared ({ caller }) func set_asset_properties(args : Assets.SetAssetPropertiesArguments) : async () {
+        assetCanister.set_asset_properties(caller, args);
     };
 
-    public shared ({ caller }) func clear(request : AssetCanister.ClearRequest) : async () {
-        assetCanisterHandler.clear(request, caller);
+    public shared ({ caller }) func clear(args : Assets.ClearArguments) : async () {
+        assetCanister.clear(caller, args);
     };
 
-    public query func http_request_streaming_callback(request : AssetCanister.StreamingCallbackRequest) : async AssetCanister.StreamingCallbackHttpResponse {
-        assetCanisterHandler.http_request_streaming_callback(request);
+    public shared ({ caller }) func create_batch(args : {}) : async (Assets.CreateBatchResponse) {
+        assetCanister.create_batch(caller, args);
+    };
+
+    public shared ({ caller }) func create_chunk(args : Assets.CreateChunkArguments) : async (Assets.CreateChunkResponse) {
+        assetCanister.create_chunk(caller, args);
+    };
+
+    public shared ({ caller }) func create_chunks(args : Assets.CreateChunksArguments) : async Assets.CreateChunksResponse {
+        await* assetCanister.create_chunks(caller, args);
+    };
+
+    public shared ({ caller }) func commit_batch(args : Assets.CommitBatchArguments) : async () {
+        await* assetCanister.commit_batch(caller, args);
+    };
+
+    public shared ({ caller }) func propose_commit_batch(args : Assets.CommitBatchArguments) : async () {
+        assetCanister.propose_commit_batch(caller, args);
+    };
+
+    public shared ({ caller }) func commit_proposed_batch(args : Assets.CommitProposedBatchArguments) : async () {
+        await* assetCanister.commit_proposed_batch(caller, args);
+    };
+
+    public shared ({ caller }) func compute_evidence(args : Assets.ComputeEvidenceArguments) : async (?Blob) {
+        await* assetCanister.compute_evidence(caller, args);
+    };
+
+    public shared ({ caller }) func delete_batch(args : Assets.DeleteBatchArguments) : async () {
+        assetCanister.delete_batch(caller, args);
+    };
+
+    public shared ({ caller }) func authorize(principal : Principal) : async () {
+        await* assetCanister.authorize(caller, principal);
+    };
+
+    public shared ({ caller }) func deauthorize(principal : Principal) : async () {
+        await* assetCanister.deauthorize(caller, principal);
+    };
+
+    public shared func list_authorized() : async ([Principal]) {
+        assetCanister.list_authorized();
+    };
+
+    public shared func list_permitted(args : Assets.ListPermitted) : async ([Principal]) {
+        assetCanister.list_permitted(args);
+    };
+
+    public shared ({ caller }) func take_ownership() : async () {
+        await* assetCanister.take_ownership(caller);
+    };
+
+    public shared ({ caller }) func get_configuration() : async (Assets.ConfigurationResponse) {
+        assetCanister.get_configuration(caller);
+    };
+
+    public shared ({ caller }) func configure(args : Assets.ConfigureArguments) : async () {
+        assetCanister.configure(caller, args);
+    };
+
+    public shared func certified_tree(args : {}) : async (Assets.CertifiedTree) {
+        assetCanister.certified_tree(args);
+    };
+    public shared func validate_grant_permission(args : Assets.GrantPermission) : async (Result.Result<Text, Text>) {
+        assetCanister.validate_grant_permission(args);
+    };
+
+    public shared func validate_revoke_permission(args : Assets.RevokePermission) : async (Result.Result<Text, Text>) {
+        assetCanister.validate_revoke_permission(args);
+    };
+
+    public shared func validate_take_ownership() : async (Result.Result<Text, Text>) {
+        assetCanister.validate_take_ownership();
+    };
+
+    public shared func validate_commit_proposed_batch(args : Assets.CommitProposedBatchArguments) : async (Result.Result<Text, Text>) {
+        assetCanister.validate_commit_proposed_batch(args);
+    };
+
+    public shared func validate_configure(args : Assets.ConfigureArguments) : async (Result.Result<Text, Text>) {
+        assetCanister.validate_configure(args);
     };
 
 };
