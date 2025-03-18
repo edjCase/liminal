@@ -57,16 +57,15 @@ shared ({ caller = initializer }) actor class Actor() = self {
             routes = HttpRouter.RouteBuilder()
             |> _.prefix(
                 "/api",
-                func() : [HttpRouter.Route] {
-                    HttpRouter.RouteBuilder()
+                func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
+                    builder
                     |> _.prefix(
                         "/users",
-                        func() : [HttpRouter.Route] {
-                            HttpRouter.RouteBuilder()
+                        func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
+                            builder
                             |> _.getQuery("/{id}", userRouter.getById)
                             |> _.getQuery("/", userRouter.get)
-                            |> _.postUpdate("/", userRouter.create)
-                            |> _.build();
+                            |> _.postUpdate("/", userRouter.create);
                         },
                     )
                     |> _.getUpdateAsync(
@@ -83,8 +82,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
                             };
                             #ok(#json(#object_([("hash", hashJson)])));
                         },
-                    )
-                    |> _.build();
+                    );
                 },
             )
             |> _.build();

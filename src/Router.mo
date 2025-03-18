@@ -42,13 +42,14 @@ module Module {
 
         public func prefix(
             prefix : Text,
-            routeBuilder : () -> [Route],
+            routeBuilderFunc : (RouteBuilder) -> (RouteBuilder),
         ) : RouteBuilder {
             let pathSegments = switch (Route.parsePathSegments(prefix)) {
                 case (#ok(segments)) segments;
                 case (#err(e)) Debug.trap("Failed to parse prefix " # prefix # " into segments: " # e);
             };
-            let subRoutes = routeBuilder();
+            let routeBuilder = routeBuilderFunc(RouteBuilder());
+            let subRoutes = routeBuilder.build();
             for (subRoute in subRoutes.vals()) {
                 routes.add({
                     pathSegments = Array.append(pathSegments, subRoute.pathSegments);

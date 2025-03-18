@@ -119,7 +119,17 @@ module {
                 let requestPath = httpContext.getPath();
 
                 let ?remainingPath = Path.match(rootPath, requestPath) else return await* next();
-                let assetPath = Path.toText(remainingPath);
+
+                var assetPath = Path.toText(remainingPath);
+                switch (options.indexAssetPath) {
+                    case (?indexAssetPath) {
+                        if (remainingPath.size() == 0) {
+                            // Override asset path with index asset
+                            assetPath := indexAssetPath;
+                        };
+                    };
+                    case (null) {};
+                };
 
                 serve(httpContext, assetPath, options);
             };
