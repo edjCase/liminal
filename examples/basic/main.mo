@@ -29,6 +29,10 @@ shared ({ caller = initializer }) actor class Actor() = self {
 
     var userHandler = UserHandler.Handler(userStableData);
 
+    let userRouter = UserRouter.Router(userHandler);
+
+    // Upgrade methods
+
     system func preupgrade() {
         userStableData := userHandler.toStableData();
     };
@@ -37,11 +41,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
         userHandler := UserHandler.Handler(userStableData);
     };
 
-    let userRouter = UserRouter.Router(userHandler);
-
-    private func helloWorld(_ : Route.RouteContext) : Route.RouteResult {
-        #ok(#json(#object_([("message", #string("Hello, World!"))])));
-    };
+    // Http Server pipeline
 
     let pipeline = HttpPipeline.empty()
     // Logging middleware
@@ -51,36 +51,50 @@ shared ({ caller = initializer }) actor class Actor() = self {
     // Router
     |> HttpRouter.use(
         _,
-        HttpRouter.RouterBuilder()
-        |> _.getQuery("/users/{id}", userRouter.getById)
-        |> _.getQuery("/users", userRouter.get)
-        |> _.postUpdate("/users", userRouter.create)
-        |> _.getQuery("/", helloWorld)
-        |> _.deleteQuery("/", helloWorld)
-        |> _.putQuery("/", helloWorld)
-        |> _.patchQuery("/", helloWorld)
-        |> _.getUpdateAsync(
-            "/hash",
-            func(_ : Route.RouteContext) : async* Route.RouteResult {
-                let ic = actor ("aaaaa-aa") : IC.Service;
-                let result = await ic.canister_info({
-                    canister_id = Principal.fromActor(self);
-                    num_requested_changes = ?0;
-                });
-                let hashJson = switch (result.module_hash) {
-                    case (null) #null_;
-                    case (?hash) #string(debug_show (Blob.toArray(hash)));
-                };
-                #ok(#json(#object_([("hash", hashJson)])));
-            },
-        )
-        |> _.addResponseHeader(("content-type", "application/json"))
-        |> _.build(),
+        {
+            errorSerializer = null;
+            responseHeaders = [];
+            routes = HttpRouter.RouteBuilder()
+            |> _.prefix(
+                "/api",
+                func() : [HttpRouter.Route] {
+                    HttpRouter.RouteBuilder()
+                    |> _.prefix(
+                        "/users",
+                        func() : [HttpRouter.Route] {
+                            HttpRouter.RouteBuilder()
+                            |> _.getQuery("/{id}", userRouter.getById)
+                            |> _.getQuery("/", userRouter.get)
+                            |> _.postUpdate("/", userRouter.create)
+                            |> _.build();
+                        },
+                    )
+                    |> _.getUpdateAsync(
+                        "/hash",
+                        func(_ : Route.RouteContext) : async* Route.RouteResult {
+                            let ic = actor ("aaaaa-aa") : IC.Service;
+                            let result = await ic.canister_info({
+                                canister_id = Principal.fromActor(self);
+                                num_requested_changes = ?0;
+                            });
+                            let hashJson = switch (result.module_hash) {
+                                case (null) #null_;
+                                case (?hash) #string(debug_show (Blob.toArray(hash)));
+                            };
+                            #ok(#json(#object_([("hash", hashJson)])));
+                        },
+                    )
+                    |> _.build();
+                },
+            )
+            |> _.build();
+        }
+
     )
     // Static assets
     |> HttpAssets.use(
         _,
-        "/static",
+        "/",
         {
             cache = {
                 default = #public_({
@@ -98,9 +112,12 @@ shared ({ caller = initializer }) actor class Actor() = self {
                 ];
             };
             store = assetStore;
+            indexAssetPath = ?"/index.html";
         },
     )
     |> HttpPipeline.build(_);
+
+    // Http server
 
     public query func http_request(request : Http.RawQueryHttpRequest) : async Http.RawQueryHttpResponse {
         pipeline.http_request(request);

@@ -21,129 +21,146 @@ module Module {
         statusCode : Nat;
         message : ?Text;
     };
-    public type RouterData = {
-        routes : [Route.Route];
-        errorSerializer : (Error) -> Blob;
-        responseHeaders : [(Text, Text)];
+
+    public type SerializedError = {
+        body : Blob;
+        headers : [(Text, Text)];
     };
 
-    public class RouterBuilder() = self {
-        let routes = Buffer.Buffer<Route.Route>(2);
-        let responseHeaders = Buffer.Buffer<(Text, Text)>(2);
-        var errorSerializer : ?((Error) -> Blob) = null;
+    public type Route = {
+        pathSegments : [Route.PathSegment];
+        method : Route.RouteMethod;
+        handler : Route.RouteHandler;
+    };
 
-        public func withErrorSerializer(handler : (Error) -> Blob) : RouterBuilder {
-            errorSerializer := ?handler;
-            self;
-        };
+    public type ErrorSerializer = (Error -> SerializedError);
 
-        public func addResponseHeader(header : (Text, Text)) : RouterBuilder {
-            responseHeaders.add(header);
+    public type ResponseHeader = (Text, Text);
+
+    public class RouteBuilder() = self {
+        let routes = Buffer.Buffer<Route>(2);
+
+        public func prefix(
+            prefix : Text,
+            routeBuilder : () -> [Route],
+        ) : RouteBuilder {
+            let pathSegments = switch (Route.parsePathSegments(prefix)) {
+                case (#ok(segments)) segments;
+                case (#err(e)) Debug.trap("Failed to parse prefix " # prefix # " into segments: " # e);
+            };
+            let subRoutes = routeBuilder();
+            for (subRoute in subRoutes.vals()) {
+                routes.add({
+                    pathSegments = Array.append(pathSegments, subRoute.pathSegments);
+                    method = subRoute.method;
+                    handler = subRoute.handler;
+                });
+            };
             self;
         };
 
         public func getQuery(
             path : Text,
             handler : (Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #get, #syncQuery(handler));
         };
 
         public func getUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #get, #syncUpdate(handler));
         };
 
         public func getUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #get, #asyncUpdate(handler));
         };
 
         public func postQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #post, #syncQuery(handler));
         };
 
         public func postUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #post, #syncUpdate(handler));
         };
 
         public func postUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #post, #asyncUpdate(handler));
         };
 
         public func putQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #put, #syncQuery(handler));
         };
 
         public func putUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #put, #syncUpdate(handler));
         };
 
         public func putUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #put, #asyncUpdate(handler));
         };
 
         public func patchQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #patch, #syncQuery(handler));
         };
 
         public func patchUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #patch, #syncUpdate(handler));
         };
 
         public func patchUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #patch, #asyncUpdate(handler));
         };
 
         public func deleteQuery(
             path : Text,
             handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #delete, #syncQuery(handler));
         };
 
         public func deleteUpdate(
             path : Text,
             handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #delete, #syncUpdate(handler));
         };
 
         public func deleteUpdateAsync(
             path : Text,
             handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             route(path, #delete, #asyncUpdate(handler));
         };
 
@@ -151,64 +168,27 @@ module Module {
             path : Text,
             method : Route.RouteMethod,
             handler : Route.RouteHandler,
-        ) : RouterBuilder {
+        ) : RouteBuilder {
             let pathSegments = switch (Route.parsePathSegments(path)) {
                 case (#ok(segments)) segments;
                 case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
             };
 
-            func routeMatches(route : Route.Route) : Bool {
-                Array.equal(
-                    route.pathSegments,
-                    pathSegments,
-                    func(a : Route.PathSegment, b : Route.PathSegment) : Bool = switch (a, b) {
-                        case ((#text(a), #text(b))) TextX.equalIgnoreCase(a, b);
-                        case ((#param(a), #param(b))) TextX.equalIgnoreCase(a, b);
-                        case (_) false;
-                    },
-                );
-            };
-
-            switch (IterTools.findIndex(routes.vals(), routeMatches)) {
-                case (null) {
-                    routes.add({
-                        pathSegments = pathSegments;
-                        methods = [(method, handler)];
-                    });
-                };
-                case (?index) {
-                    let existingRoute = routes.get(index);
-                    // Validate that the route does not already have a handler for the method
-                    switch (Array.find(existingRoute.methods, func(m : (Route.RouteMethod, Route.RouteHandler)) : Bool = m.0 == method)) {
-                        case (null) ();
-                        case (_) {
-                            // TODO trap here?
-                            Debug.trap("Route " # path # " already has a handler for method " # HttpMethod.toText(method));
-                        };
-                    };
-                    routes.put(
-                        index,
-                        {
-                            existingRoute with
-                            methods = Array.append(existingRoute.methods, [(method, handler)]);
-                        },
-                    );
-                };
-            };
+            routes.add({
+                pathSegments = pathSegments;
+                method = method;
+                handler = handler;
+            });
             self;
         };
 
-        public func build() : Router {
-            Router({
-                routes = Buffer.toArray(routes);
-                errorSerializer = Option.get(errorSerializer, defaultErrorSerializer);
-                responseHeaders = Buffer.toArray(responseHeaders);
-            });
+        public func build() : [Route] {
+            Buffer.toArray(routes);
         };
 
     };
 
-    private func defaultErrorSerializer(error : Error) : Blob {
+    private func defaultErrorSerializer(error : Error) : SerializedError {
         let errorType = switch (error.statusCode) {
             // 4xx Client Errors
             case (400) "Bad Request";
@@ -257,26 +237,54 @@ module Module {
             case (_) "Unknown Error"; // Default case for unknown status codes
         };
 
-        #object_([
+        let body = #object_([
             ("error", #string(errorType)),
             ("message", #string(Option.get(error.message, ""))),
             ("status", #number(#int(error.statusCode))),
         ])
         |> Json.stringify(_, null)
         |> Text.encodeUtf8(_);
+        {
+            body = body;
+            headers = [("content-type", "application/json")];
+        };
     };
 
-    public func use(pipeline : Pipeline.PipelineData, router : Router) : Pipeline.PipelineData {
+    public func use(
+        pipeline : Pipeline.PipelineData,
+        data : {
+            routes : [Route];
+            errorSerializer : ?ErrorSerializer;
+            responseHeaders : [ResponseHeader];
+        },
+    ) : Pipeline.PipelineData {
+        let router = Router(
+            data.routes,
+            Option.get(data.errorSerializer, defaultErrorSerializer),
+            data.responseHeaders,
+        );
+        useRouter(pipeline, router);
+    };
+
+    public func useRouter(
+        pipeline : Pipeline.PipelineData,
+        router : Router,
+    ) : Pipeline.PipelineData {
+
         let middleware : Pipeline.Middleware = {
             handleQuery = ?(
                 func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
-                    let ?response = router.route(httpContext) else return next();
-                    ?response;
+                    switch (router.route(httpContext)) {
+                        case (?response) ?response;
+                        case (null) next();
+                    };
                 }
             );
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
-                let ?response = await* router.routeAsync(httpContext) else return await* next();
-                ?response;
+                switch (await* router.routeAsync(httpContext)) {
+                    case (?response) ?response;
+                    case (null) await* next();
+                };
             };
         };
 
@@ -285,8 +293,14 @@ module Module {
         };
     };
 
-    public class Router(routerData : RouterData) = self {
-        let routes = routerData.routes;
+    public class Router(
+        routes_ : [Route],
+        errorSerializer_ : ErrorSerializer,
+        responseHeaders_ : [ResponseHeader],
+    ) = self {
+        let routes = routes_;
+        let errorSerializer = errorSerializer_;
+        let responseHeaders = responseHeaders_;
 
         public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
@@ -301,7 +315,6 @@ module Module {
 
         public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
-
             let result = switch (routeContext.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
                 case (#syncUpdate(handler)) handler<system>(routeContext);
@@ -310,27 +323,47 @@ module Module {
             handleResult(result);
         };
 
+        private func findRoute(
+            httpContext : HttpContext.HttpContext
+        ) : ?Route.RouteContext {
+            let path = httpContext.getPath();
+            label f for (route in routes.vals()) {
+                if (route.method != httpContext.method) continue f;
+                let ?{ params } = matchPath(route.pathSegments, path) else continue f;
+                return ?Route.RouteContext(
+                    httpContext,
+                    route.handler,
+                    params,
+                )
+
+            };
+            null;
+        };
+
         private func handleResult(
             result : Route.RouteResult
         ) : ?Types.HttpResponse {
 
-            func serializeError(statusCode : Nat, msg : ?Text) : (Nat, ?Blob) {
-                let error = routerData.errorSerializer({
+            func serializeError(statusCode : Nat, msg : ?Text) : Types.HttpResponse {
+                let error = errorSerializer({
                     message = msg;
                     statusCode = statusCode;
                 });
-                (statusCode, ?error);
-            };
-            let (statusCode, body) : (Nat, ?Blob) = switch (result) {
-                case (#raw(raw)) {
-                    return ?{
-                        raw with
-                        headers = Array.append(raw.headers, routerData.responseHeaders); // Add response headers
-                    };
+                {
+                    statusCode = statusCode;
+                    headers = error.headers;
+                    body = ?error.body;
                 };
-                case (#ok(ok)) (200, ?serializeReponseBody(ok));
-                case (#created(created)) (201, ?serializeReponseBody(created));
-                case (#noContent) (204, null);
+            };
+            let response : Types.HttpResponse = switch (result) {
+                case (#raw(raw)) raw;
+                case (#ok(ok)) serializeReponseBody(200, ok);
+                case (#created(created)) serializeReponseBody(201, created);
+                case (#noContent) ({
+                    statusCode = 204;
+                    headers = [];
+                    body = null;
+                });
                 case (#notFound(notFound)) serializeError(404, notFound);
                 case (#badRequest(msg)) serializeError(400, ?msg);
                 case (#unauthorized(msg)) serializeError(401, ?msg);
@@ -346,60 +379,65 @@ module Module {
                 case (#internalServerError(msg)) serializeError(500, ?msg);
                 case (#serviceUnavailable(msg)) serializeError(503, ?msg);
             };
-            ?{
-                statusCode = statusCode;
-                headers = routerData.responseHeaders;
-                body = body;
-            };
-        };
-
-        private func serializeReponseBody(body : Route.ResponseBody) : Blob {
-            switch (body) {
-                case (#raw(blob)) blob;
-                case (#json(json)) Json.stringify(json, null) |> Text.encodeUtf8(_);
-            };
-        };
-
-        private func findRoute(httpContext : HttpContext.HttpContext) : ?Route.RouteContext {
-            let path = httpContext.getPath();
-            label f for (route in routes.vals()) {
-                let handler = switch (Array.find(route.methods, func(m : (Route.RouteMethod, Route.RouteHandler)) : Bool = m.0 == httpContext.method)) {
-                    case (null) continue f;
-                    case (?(_, handler)) handler;
+            if (responseHeaders.size() <= 0) {
+                ?response;
+            } else {
+                ?{
+                    response with
+                    headers = Array.append(response.headers, responseHeaders);
                 };
-                let ?{ params } = matchPath(route.pathSegments, path) else continue f;
-                return ?Route.RouteContext(
-                    httpContext,
-                    handler,
-                    params,
-                );
             };
-            null;
         };
 
-        private func matchPath(segments : [Route.PathSegment], requestPath : [Path.Segment]) : ?{
+        private func serializeReponseBody(statusCode : Nat, body : Route.ResponseBody) : Types.HttpResponse {
+            switch (body) {
+                case (#custom(custom)) ({
+                    statusCode = statusCode;
+                    headers = custom.headers;
+                    body = ?custom.body;
+                });
+                case (#json(json)) ({
+                    statusCode = statusCode;
+                    headers = [("content-type", "application/json")];
+                    body = Json.stringify(json, null) |> ?Text.encodeUtf8(_);
+                });
+                case (#text(text)) ({
+                    statusCode = statusCode;
+                    headers = [("content-type", "text/plain")];
+                    body = ?Text.encodeUtf8(text);
+                });
+                case (#empty) ({
+                    statusCode = statusCode;
+                    headers = [];
+                    body = null;
+                });
+            };
+        };
+
+        private func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
             params : [(Text, Text)];
         } {
-            if (segments.size() != requestPath.size()) {
+            if (expected.size() != actual.size()) {
                 return null;
             };
 
             let params = Buffer.Buffer<(Text, Text)>(2);
-            for ((i, segment) in IterTools.enumerate(segments.vals())) {
-                let segment = segments[i];
-                let requestSegment = requestPath[i];
-                switch (segment) {
-                    case (#text(s)) {
-                        if (not TextX.equalIgnoreCase(s, requestSegment)) {
+            for ((i, actualSegment) in IterTools.enumerate(actual.vals())) {
+                let expectedSegment = expected[i];
+                switch (expectedSegment) {
+                    case (#text(text)) {
+                        if (not TextX.equalIgnoreCase(text, actualSegment)) {
                             return null;
                         };
                     };
-                    case (#param(p)) {
-                        params.add((p, requestSegment));
+                    case (#param(param)) {
+                        params.add((param, actualSegment));
                     };
                 };
             };
-            ?{ params = Buffer.toArray(params) };
+            ?{
+                params = Buffer.toArray(params);
+            };
         };
 
     };

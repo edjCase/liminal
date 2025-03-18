@@ -6,7 +6,6 @@ import HttpContext "./HttpContext";
 
 module {
     public type Router = HttpRouter.Router;
-    public func Router(data : HttpRouter.RouterData) : Router = HttpRouter.Router(data);
 
     public type Pipeline = HttpPipeline.Pipeline;
     public func Pipeline(data : HttpPipeline.PipelineData) : Pipeline = HttpPipeline.Pipeline(data);

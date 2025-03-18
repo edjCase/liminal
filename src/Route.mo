@@ -5,6 +5,7 @@ import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 import Result "mo:base/Result";
 import Debug "mo:base/Debug";
+import Blob "mo:base/Blob";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
 
@@ -47,8 +48,13 @@ module {
     };
 
     public type ResponseBody = {
-        #raw : Blob;
+        #empty;
+        #custom : {
+            headers : [(Text, Text)];
+            body : Blob;
+        };
         #json : Json.Json;
+        #text : Text;
     };
 
     public type ValidationError = {
@@ -94,11 +100,6 @@ module {
         #put;
         #patch;
         #delete;
-    };
-
-    public type Route = {
-        pathSegments : [PathSegment];
-        methods : [(RouteMethod, RouteHandler)];
     };
 
     public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {
