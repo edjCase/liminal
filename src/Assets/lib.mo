@@ -20,7 +20,8 @@ import Path "../Path";
 module {
     public type Seconds = Nat;
 
-    public type Options = {
+    public type Config = {
+        prefix : ?Text;
         cache : CacheOptions;
         store : Assets.Assets;
         indexAssetPath : ?Text;
@@ -107,14 +108,13 @@ module {
 
     public func serve(
         httpContext : HttpContext.HttpContext,
-        options : Options,
-        rootPath : ?Path.Path,
+        options : Config,
     ) : ?Types.HttpResponse {
 
         let requestPath = httpContext.getPath();
 
-        let ?remainingPath = switch (rootPath) {
-            case (?rootPath) Path.match(rootPath, requestPath);
+        let ?remainingPath = switch (options.prefix) {
+            case (?prefix) Path.match(Path.parse(prefix), requestPath);
             case (null) ?requestPath;
         } else return null;
 

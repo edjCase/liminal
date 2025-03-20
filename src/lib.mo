@@ -1,11 +1,11 @@
-import HttpRouter "./Router";
+import RouterModule "./Router";
 import Types "./Types";
 import HttpTypes "./HttpTypes";
 import HttpContext "./HttpContext";
 import AppModule "./App";
 
 module {
-    public type Router = HttpRouter.Router;
+    public type Router = RouterModule.Router;
 
     public type HttpContext = HttpContext.HttpContext;
 
@@ -23,4 +23,5 @@ module {
 
     public type AppBuilder = AppModule.Builder;
     public func AppBuilder() : AppBuilder = AppModule.Builder();
+
 };

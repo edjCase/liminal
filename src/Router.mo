@@ -1,8 +1,8 @@
 import Types "./Types";
 import Text "mo:base/Text";
-import Array "mo:base/Array";
+import Array "mo:new-base/Array";
 import Debug "mo:base/Debug";
-import Iter "mo:base/Iter";
+import Iter "mo:new-base/Iter";
 import Buffer "mo:base/Buffer";
 import Error "mo:base/Error";
 import Option "mo:base/Option";
@@ -30,167 +30,163 @@ module Module {
 
     public type ResponseHeader = (Text, Text);
 
-    public class RouteBuilder() = self {
-        let routes = Buffer.Buffer<Route.Route>(2);
-
-        public func prefix(
-            prefix : Text,
-            routeBuilderFunc : (RouteBuilder) -> (RouteBuilder),
-        ) : RouteBuilder {
-            let pathSegments = switch (Route.parsePathSegments(prefix)) {
-                case (#ok(segments)) segments;
-                case (#err(e)) Debug.trap("Failed to parse prefix " # prefix # " into segments: " # e);
-            };
-            let routeBuilder = routeBuilderFunc(RouteBuilder());
-            let subRoutes = routeBuilder.build();
-            for (subRoute in subRoutes.vals()) {
-                routes.add({
-                    pathSegments = Array.append(pathSegments, subRoute.pathSegments);
-                    method = subRoute.method;
-                    handler = subRoute.handler;
-                });
-            };
-            self;
-        };
-
-        public func getQuery(
-            path : Text,
-            handler : (Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #get, #syncQuery(handler));
-        };
-
-        public func getUpdate(
-            path : Text,
-            handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #get, #syncUpdate(handler));
-        };
-
-        public func getUpdateAsync(
-            path : Text,
-            handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #get, #asyncUpdate(handler));
-        };
-
-        public func postQuery(
-            path : Text,
-            handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #post, #syncQuery(handler));
-        };
-
-        public func postUpdate(
-            path : Text,
-            handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #post, #syncUpdate(handler));
-        };
-
-        public func postUpdateAsync(
-            path : Text,
-            handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #post, #asyncUpdate(handler));
-        };
-
-        public func putQuery(
-            path : Text,
-            handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #put, #syncQuery(handler));
-        };
-
-        public func putUpdate(
-            path : Text,
-            handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #put, #syncUpdate(handler));
-        };
-
-        public func putUpdateAsync(
-            path : Text,
-            handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #put, #asyncUpdate(handler));
-        };
-
-        public func patchQuery(
-            path : Text,
-            handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #patch, #syncQuery(handler));
-        };
-
-        public func patchUpdate(
-            path : Text,
-            handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #patch, #syncUpdate(handler));
-        };
-
-        public func patchUpdateAsync(
-            path : Text,
-            handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #patch, #asyncUpdate(handler));
-        };
-
-        public func deleteQuery(
-            path : Text,
-            handler : Route.RouteContext -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #delete, #syncQuery(handler));
-        };
-
-        public func deleteUpdate(
-            path : Text,
-            handler : <system>(Route.RouteContext) -> Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #delete, #syncUpdate(handler));
-        };
-
-        public func deleteUpdateAsync(
-            path : Text,
-            handler : Route.RouteContext -> async* Route.RouteResult,
-        ) : RouteBuilder {
-            route(path, #delete, #asyncUpdate(handler));
-        };
-
-        public func route(
-            path : Text,
-            method : Route.RouteMethod,
-            handler : Route.RouteHandler,
-        ) : RouteBuilder {
-            let pathSegments = switch (Route.parsePathSegments(path)) {
-                case (#ok(segments)) segments;
-                case (#err(e)) Debug.trap("Failed to parse path " # path # " into segments: " # e);
-            };
-
-            routes.add({
-                pathSegments = pathSegments;
-                method = method;
-                handler = handler;
-            });
-            self;
-        };
-
-        public func build() : [Route.Route] {
-            Buffer.toArray(routes);
-        };
-
-    };
-
     public type Config = {
-        routes : [Route.Route];
+        routes : [RouteConfig];
         errorSerializer : ?ErrorSerializer;
-        responseHeaders : ?[ResponseHeader];
+        prefix : ?Text;
     };
+
+    public type RouteConfig = {
+        #route : Route.Route;
+        #group : {
+            prefix : [Route.PathSegment];
+            routes : [RouteConfig];
+        };
+    };
+
+    public func get(path : Text, handler : Route.RouteHandler) : RouteConfig {
+        route(path, #get, handler);
+    };
+
+    public func getQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #get, #syncQuery(handler));
+    };
+
+    public func getUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #get, #syncUpdate(handler));
+    };
+
+    public func getAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+        route(path, #get, #asyncUpdate(handler));
+    };
+
+    public func post(path : Text, handler : Route.RouteHandler) : RouteConfig {
+        route(path, #post, handler);
+    };
+
+    public func postQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #post, #syncQuery(handler));
+    };
+
+    public func postUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #post, #syncUpdate(handler));
+    };
+
+    public func postAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+        route(path, #post, #asyncUpdate(handler));
+    };
+
+    public func put(path : Text, handler : Route.RouteHandler) : RouteConfig {
+        route(path, #put, handler);
+    };
+
+    public func putQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #put, #syncQuery(handler));
+    };
+
+    public func putUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #put, #syncUpdate(handler));
+    };
+
+    public func putAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+        route(path, #put, #asyncUpdate(handler));
+    };
+
+    public func patch(path : Text, handler : Route.RouteHandler) : RouteConfig {
+        route(path, #patch, handler);
+    };
+
+    public func patchQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #patch, #syncQuery(handler));
+    };
+
+    public func patchUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #patch, #syncUpdate(handler));
+    };
+
+    public func patchAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+        route(path, #patch, #asyncUpdate(handler));
+    };
+
+    public func delete(path : Text, handler : Route.RouteHandler) : RouteConfig {
+        route(path, #delete, handler);
+    };
+
+    public func deleteQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #delete, #syncQuery(handler));
+    };
+
+    public func deleteUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+        route(path, #delete, #syncUpdate(handler));
+    };
+
+    public func deleteAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+        route(path, #delete, #asyncUpdate(handler));
+    };
+
+    public func route(path : Text, method : Route.RouteMethod, handler : Route.RouteHandler) : RouteConfig {
+        let pathSegments = switch (Route.parsePathSegments(path)) {
+            case (#ok(segments)) segments;
+            case (#err(e)) Debug.trap("Failed to parse path '" # path # "' into segments: " # e);
+        };
+        #route({
+            pathSegments = pathSegments;
+            method = method;
+            handler = handler;
+        });
+    };
+
+    public func group(prefix : Text, routes : [RouteConfig]) : RouteConfig {
+        let pathSegments = switch (Route.parsePathSegments(prefix)) {
+            case (#ok(segments)) segments;
+            case (#err(e)) Debug.trap("Failed to parse path prefix '" # prefix # "' into segments: " # e);
+        };
+        #group({
+            prefix = pathSegments;
+            routes = routes;
+        });
+    };
+
+    private func buildRoutesFromConfig(config : RouteConfig, prefix : ?[Route.PathSegment]) : Iter.Iter<Route.Route> {
+        switch (config) {
+            case (#route(route)) {
+                let r = switch (prefix) {
+                    case (?prefix) ({
+                        route with
+                        pathSegments = Array.concat(prefix, route.pathSegments);
+                    });
+                    case (null) route;
+                };
+                Iter.singleton(r);
+            };
+            case (#group(group)) {
+                let groupPrefix = switch (prefix) {
+                    case (?prefix) Array.concat(prefix, group.prefix);
+                    case (null) group.prefix;
+                };
+                Array.flatMap(
+                    group.routes,
+                    func(config : RouteConfig) : Iter.Iter<Route.Route> = buildRoutesFromConfig(config, ?groupPrefix),
+                ).vals();
+            };
+        };
+    };
+
     public class Router(config : Config) = self {
-        let routes = config.routes;
+        let prefix = switch (config.prefix) {
+            case (?prefix) ?(
+                switch (Route.parsePathSegments(prefix)) {
+                    case (#ok(segments)) segments;
+                    case (#err(e)) Debug.trap("Failed to parse prefix '" # prefix # "' into segments: " # e);
+                }
+            );
+            case (null) null;
+        };
+        let routes = Array.flatMap(
+            config.routes,
+            func(routeConfig : RouteConfig) : Iter.Iter<Route.Route> = buildRoutesFromConfig(routeConfig, prefix),
+        );
         let errorSerializer = Option.get<ErrorSerializer>(config.errorSerializer, defaultErrorSerializer);
-        let responseHeaders = Option.get(config.responseHeaders, []);
 
         public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
@@ -269,14 +265,7 @@ module Module {
                 case (#internalServerError(msg)) serializeError(500, ?msg);
                 case (#serviceUnavailable(msg)) serializeError(503, ?msg);
             };
-            if (responseHeaders.size() <= 0) {
-                ?response;
-            } else {
-                ?{
-                    response with
-                    headers = Array.append(response.headers, responseHeaders);
-                };
-            };
+            ?response;
         };
 
         private func serializeReponseBody(statusCode : Nat, body : Route.ResponseBody) : Types.HttpResponse {

@@ -6,9 +6,9 @@ import Types "../Types";
 
 module {
 
-    public func new(prefix : Text, options : Assets.Options) : App.Middleware {
-        let rootPath = Path.parse(prefix);
+    public type Config = Assets.Config;
 
+    public func new(options : Config) : App.Middleware {
         {
             handleQuery = ?(
                 func(httpContext : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
@@ -16,7 +16,7 @@ module {
                 }
             );
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
-                Assets.serve(httpContext, options, ?rootPath);
+                Assets.serve(httpContext, options);
             };
         };
     };
