@@ -17,7 +17,7 @@ module {
 
         public func getById(routeContext : Route.RouteContext) : Route.RouteResult {
             let idText = routeContext.getRouteParam("id");
-            let ?id = Nat.fromText(idText) else return #badRequest("Invalid id '" #idText # "', must be a positive integer");
+            let ?id = Nat.fromText(idText) else return #badRequest("Invalid id '" # idText # "', must be a positive integer");
 
             let ?user = userHandler.getById(id) else return #notFound(null);
 

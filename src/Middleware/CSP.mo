@@ -1,9 +1,9 @@
-import Pipeline "./Pipeline";
+import Pipeline "../Pipeline";
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
-import HttpContext "./HttpContext";
-import Types "./Types";
+import HttpContext "../HttpContext";
+import Types "../Types";
 
 module {
     public type Options = {
@@ -37,13 +37,13 @@ module {
     };
 
     public func use(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
-        let newMiddleware = createMiddleware(options);
+        let newMiddleware = new(options);
         {
             middleware = Array.append(data.middleware, [newMiddleware]);
         };
     };
 
-    public func createMiddleware(options : Options) : Pipeline.Middleware {
+    public func new(options : Options) : Pipeline.Middleware {
         {
             handleQuery = ?(
                 func(context : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {

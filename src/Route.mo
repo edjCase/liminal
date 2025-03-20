@@ -11,6 +11,12 @@ import Json "mo:json";
 
 module {
 
+    public type Route = {
+        pathSegments : [PathSegment];
+        method : RouteMethod;
+        handler : RouteHandler;
+    };
+
     public class RouteContext(
         httpContext_ : HttpContext.HttpContext,
         handler_ : RouteHandler,

@@ -1,13 +1,12 @@
-import Pipeline "./Pipeline";
-import Array "mo:base/Array";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
 import Nat "mo:base/Nat";
 import Iter "mo:base/Iter";
 import TextX "mo:xtended-text/TextX";
-import HttpContext "./HttpContext";
-import Types "./Types";
-import HttpMethod "./HttpMethod";
+import HttpContext "../HttpContext";
+import Types "../Types";
+import HttpMethod "../HttpMethod";
+import App "../App";
 
 module {
 
@@ -29,17 +28,14 @@ module {
         exposeHeaders = [];
     };
 
-    public func use(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
-        let newMiddleware = createMiddleware(options);
-        {
-            middleware = Array.append(data.middleware, [newMiddleware]);
-        };
+    public func default() : App.Middleware {
+        new(defaultOptions);
     };
 
-    public func createMiddleware(options : Options) : Pipeline.Middleware {
+    public func new(options : Options) : App.Middleware {
         {
             handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
+                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
                     switch (handlePreflight(context, options)) {
                         case (#complete(response)) return ?response;
                         case (#next({ corsHeaders })) {
@@ -49,7 +45,7 @@ module {
                     };
                 }
             );
-            handleUpdate = func(context : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
                 switch (handlePreflight(context, options)) {
                     case (#complete(response)) return ?response;
                     case (#next({ corsHeaders })) {

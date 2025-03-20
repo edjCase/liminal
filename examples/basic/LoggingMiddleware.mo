@@ -1,15 +1,14 @@
-import HttpPipeline "../../src/Pipeline";
 import HttpContext "../../src/HttpContext";
 import Types "../../src/Types";
 import HttpMethod "../../src/HttpMethod";
 import Nat "mo:base/Nat";
 import Debug "mo:base/Debug";
-import Array "mo:base/Array";
 import Path "../../src/Path";
+import App "../../src/App";
 
 module {
 
-    public func use(data : HttpPipeline.PipelineData) : HttpPipeline.PipelineData {
+    public func new() : App.Middleware {
 
         func getPrefix(kind : { #query_; #update }) : Text {
             switch (kind) {
@@ -31,25 +30,21 @@ module {
             };
             Debug.print(prefix # "HTTP Response: " # responseText);
         };
-
-        let newMiddleware : HttpPipeline.Middleware = {
+        {
             handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : HttpPipeline.Next) : ?Types.HttpResponse {
+                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
                     logRequest(#query_, context);
                     let responseOrNull = next();
                     logResponse(#query_, responseOrNull);
                     responseOrNull;
                 }
             );
-            handleUpdate = func(context : HttpContext.HttpContext, next : HttpPipeline.NextAsync) : async* ?Types.HttpResponse {
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
                 logRequest(#update, context);
                 let responseOrNull = await* next();
                 logResponse(#update, responseOrNull);
                 responseOrNull;
             };
-        };
-        {
-            middleware = Array.append(data.middleware, [newMiddleware]);
         };
     };
 };

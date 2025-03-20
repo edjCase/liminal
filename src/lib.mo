@@ -1,14 +1,11 @@
 import HttpRouter "./Router";
 import Types "./Types";
-import HttpPipeline "./Pipeline";
 import HttpTypes "./HttpTypes";
 import HttpContext "./HttpContext";
+import AppModule "./App";
 
 module {
     public type Router = HttpRouter.Router;
-
-    public type Pipeline = HttpPipeline.Pipeline;
-    public func Pipeline(data : HttpPipeline.PipelineData) : Pipeline = HttpPipeline.Pipeline(data);
 
     public type HttpContext = HttpContext.HttpContext;
 
@@ -20,4 +17,10 @@ module {
 
     public type RawUpdateHttpRequest = HttpTypes.UpdateRequest;
     public type RawUpdateHttpResponse = HttpTypes.UpdateResponse;
+
+    public type App = AppModule.App;
+    public func App(data : AppModule.Data) : App = AppModule.App(data);
+
+    public type AppBuilder = AppModule.Builder;
+    public func AppBuilder() : AppBuilder = AppModule.Builder();
 };

@@ -1,7 +1,5 @@
-import Pipeline "../Pipeline";
 import HttpContext "../HttpContext";
 import Types "../Types";
-import Path "../Path";
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 import Blob "mo:base/Blob";
@@ -17,6 +15,7 @@ import Glob "mo:glob";
 import NatX "mo:xtended-numbers/NatX";
 import Asset "Asset";
 import Assets "mo:ic-assets";
+import Path "../Path";
 
 module {
     public type Seconds = Nat;
@@ -106,46 +105,29 @@ module {
         };
     };
 
-    public func use(pipeline : Pipeline.PipelineData, prefix : Text, options : Options) : Pipeline.PipelineData {
-        let rootPath = Path.parse(prefix);
-
-        let middleware : Pipeline.Middleware = {
-            handleQuery = ?(
-                func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
-                    next(); // TODO
-                }
-            );
-            handleUpdate = func(httpContext : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
-                let requestPath = httpContext.getPath();
-
-                let ?remainingPath = Path.match(rootPath, requestPath) else return await* next();
-
-                var assetPath = Path.toText(remainingPath);
-                switch (options.indexAssetPath) {
-                    case (?indexAssetPath) {
-                        if (remainingPath.size() == 0) {
-                            // Override asset path with index asset
-                            assetPath := indexAssetPath;
-                        };
-                    };
-                    case (null) {};
-                };
-
-                serve(httpContext, assetPath, options);
-            };
-        };
-
-        {
-            middleware = Array.append(pipeline.middleware, [middleware]);
-        };
-    };
-
-    private func serve(
+    public func serve(
         httpContext : HttpContext.HttpContext,
-        assetPath : Text,
         options : Options,
+        rootPath : ?Path.Path,
     ) : ?Types.HttpResponse {
 
+        let requestPath = httpContext.getPath();
+
+        let ?remainingPath = switch (rootPath) {
+            case (?rootPath) Path.match(rootPath, requestPath);
+            case (null) ?requestPath;
+        } else return null;
+
+        var assetPath = Path.toText(remainingPath);
+        switch (options.indexAssetPath) {
+            case (?indexAssetPath) {
+                if (remainingPath.size() == 0) {
+                    // Override asset path with index asset
+                    assetPath := indexAssetPath;
+                };
+            };
+            case (null) {};
+        };
         let encodingTypes = switch (parseEncodingTypes(httpContext.getHeader("Accept-Encoding"))) {
             case (#ok(encodings)) encodings;
             case (#err(err)) {
@@ -168,7 +150,11 @@ module {
 
         let assetData = switch (options.store.get({ key = assetPath; accept_encodings = acceptEncodings })) {
             case (#ok(ok)) ok;
-            case (#err(_)) return null;
+            case (#err(_)) return ?{
+                statusCode = 404; // TODO better error handling?
+                headers = [];
+                body = null;
+            };
         };
 
         // if (assetData.total_length > 1_572_864) {

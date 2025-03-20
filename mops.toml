@@ -16,6 +16,7 @@ glob = "0.0.1"
 certified-assets = "0.5.1"
 sha2 = "0.1.0"
 ic-assets = "0.1.0"
+new-base = "0.3.0"
 
 [dev-dependencies]
 test = "2.0.0"

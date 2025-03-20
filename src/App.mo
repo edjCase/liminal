@@ -2,11 +2,11 @@ import Types "./Types";
 import Blob "mo:base/Blob";
 import Nat16 "mo:base/Nat16";
 import Option "mo:base/Option";
+import List "mo:new-base/List";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
 
-module Module {
-
+module {
     public type Next = () -> ?Types.HttpResponse;
     public type NextAsync = () -> async* ?Types.HttpResponse;
 
@@ -15,21 +15,26 @@ module Module {
         handleUpdate : (HttpContext.HttpContext, NextAsync) -> async* ?Types.HttpResponse;
     };
 
-    public type PipelineData = {
+    public type Data = {
         middleware : [Middleware];
     };
 
-    public func empty() : PipelineData {
-        {
-            middleware = [];
+    public class Builder() = self {
+        var orderedMiddleware = List.empty<Middleware>();
+
+        public func use(middleware : Middleware) : Builder {
+            List.add(orderedMiddleware, middleware);
+            self;
+        };
+
+        public func build() : App {
+            App({
+                middleware = List.toArray(orderedMiddleware);
+            });
         };
     };
 
-    public func build(data : PipelineData) : Pipeline {
-        Pipeline(data);
-    };
-
-    public class Pipeline(pipelineData : PipelineData) = self {
+    public class App(data : Data) = self {
 
         public func http_request(req : HttpTypes.QueryRequest) : HttpTypes.QueryResponse {
             let httpContext = HttpContext.HttpContext(req);
@@ -46,21 +51,21 @@ module Module {
             // Helper function to create the middleware chain
             func createNext(index : Nat) : Next {
                 func() : ?Types.HttpResponse {
-                    if (index >= pipelineData.middleware.size()) {
+                    if (index >= data.middleware.size()) {
                         return null;
                     };
 
-                    let middleware = pipelineData.middleware[index];
+                    let middleware = data.middleware[index];
                     let next = createNext(index + 1);
                     handle(middleware, next);
                 };
             };
 
-            let response = if (pipelineData.middleware.size() < 1) {
+            let response = if (data.middleware.size() < 1) {
                 notFoundResponse();
             } else {
                 // Start the middleware chain with the first middleware
-                let middleware = pipelineData.middleware[0];
+                let middleware = data.middleware[0];
                 let next = createNext(1);
                 let responseOrNull = handle(middleware, next);
 
@@ -89,21 +94,21 @@ module Module {
             // Helper function to create the middleware chain
             func createNext(index : Nat) : NextAsync {
                 func() : async* ?Types.HttpResponse {
-                    if (index >= pipelineData.middleware.size()) {
+                    if (index >= data.middleware.size()) {
                         return null;
                     };
 
-                    let middleware = pipelineData.middleware[index];
+                    let middleware = data.middleware[index];
                     let next = createNext(index + 1);
                     await* middleware.handleUpdate(httpContext, next);
                 };
             };
 
-            let response = if (pipelineData.middleware.size() < 1) {
+            let response = if (data.middleware.size() < 1) {
                 notFoundResponse();
             } else {
                 // Start the middleware chain with the first middleware
-                let middleware = pipelineData.middleware[0];
+                let middleware = data.middleware[0];
                 let next = createNext(1);
                 let responseOrNull = await* middleware.handleUpdate(httpContext, next);
 
@@ -126,5 +131,4 @@ module Module {
             };
         };
     };
-
 };

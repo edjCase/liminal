@@ -6,14 +6,13 @@ import Iter "mo:base/Iter";
 import Buffer "mo:base/Buffer";
 import Error "mo:base/Error";
 import Option "mo:base/Option";
-import Pipeline "./Pipeline";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
 import HttpMethod "./HttpMethod";
 import Route "./Route";
 import IterTools "mo:itertools/Iter";
 import Json "mo:json";
-import Path "Path";
+import Path "./Path";
 
 module Module {
 
@@ -27,18 +26,12 @@ module Module {
         headers : [(Text, Text)];
     };
 
-    public type Route = {
-        pathSegments : [Route.PathSegment];
-        method : Route.RouteMethod;
-        handler : Route.RouteHandler;
-    };
-
     public type ErrorSerializer = (Error -> SerializedError);
 
     public type ResponseHeader = (Text, Text);
 
     public class RouteBuilder() = self {
-        let routes = Buffer.Buffer<Route>(2);
+        let routes = Buffer.Buffer<Route.Route>(2);
 
         public func prefix(
             prefix : Text,
@@ -183,125 +176,21 @@ module Module {
             self;
         };
 
-        public func build() : [Route] {
+        public func build() : [Route.Route] {
             Buffer.toArray(routes);
         };
 
     };
 
-    private func defaultErrorSerializer(error : Error) : SerializedError {
-        let errorType = switch (error.statusCode) {
-            // 4xx Client Errors
-            case (400) "Bad Request";
-            case (401) "Unauthorized";
-            case (402) "Payment Required";
-            case (403) "Forbidden";
-            case (404) "Not Found";
-            case (405) "Method Not Allowed";
-            case (406) "Not Acceptable";
-            case (407) "Proxy Authentication Required";
-            case (408) "Request Timeout";
-            case (409) "Conflict";
-            case (410) "Gone";
-            case (411) "Length Required";
-            case (412) "Precondition Failed";
-            case (413) "Payload Too Large";
-            case (414) "URI Too Long";
-            case (415) "Unsupported Media Type";
-            case (416) "Range Not Satisfiable";
-            case (417) "Expectation Failed";
-            case (418) "I'm a teapot";
-            case (421) "Misdirected Request";
-            case (422) "Unprocessable Entity";
-            case (423) "Locked";
-            case (424) "Failed Dependency";
-            case (425) "Too Early";
-            case (426) "Upgrade Required";
-            case (428) "Precondition Required";
-            case (429) "Too Many Requests";
-            case (431) "Request Header Fields Too Large";
-            case (451) "Unavailable For Legal Reasons";
-
-            // 5xx Server Errors
-            case (500) "Internal Server Error";
-            case (501) "Not Implemented";
-            case (502) "Bad Gateway";
-            case (503) "Service Unavailable";
-            case (504) "Gateway Timeout";
-            case (505) "HTTP Version Not Supported";
-            case (506) "Variant Also Negotiates";
-            case (507) "Insufficient Storage";
-            case (508) "Loop Detected";
-            case (510) "Not Extended";
-            case (511) "Network Authentication Required";
-
-            case (_) "Unknown Error"; // Default case for unknown status codes
-        };
-
-        let body = #object_([
-            ("error", #string(errorType)),
-            ("message", #string(Option.get(error.message, ""))),
-            ("status", #number(#int(error.statusCode))),
-        ])
-        |> Json.stringify(_, null)
-        |> Text.encodeUtf8(_);
-        {
-            body = body;
-            headers = [("content-type", "application/json")];
-        };
+    public type Config = {
+        routes : [Route.Route];
+        errorSerializer : ?ErrorSerializer;
+        responseHeaders : ?[ResponseHeader];
     };
-
-    public func use(
-        pipeline : Pipeline.PipelineData,
-        data : {
-            routes : [Route];
-            errorSerializer : ?ErrorSerializer;
-            responseHeaders : [ResponseHeader];
-        },
-    ) : Pipeline.PipelineData {
-        let router = Router(
-            data.routes,
-            Option.get(data.errorSerializer, defaultErrorSerializer),
-            data.responseHeaders,
-        );
-        useRouter(pipeline, router);
-    };
-
-    public func useRouter(
-        pipeline : Pipeline.PipelineData,
-        router : Router,
-    ) : Pipeline.PipelineData {
-
-        let middleware : Pipeline.Middleware = {
-            handleQuery = ?(
-                func(httpContext : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
-                    switch (router.route(httpContext)) {
-                        case (?response) ?response;
-                        case (null) next();
-                    };
-                }
-            );
-            handleUpdate = func(httpContext : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
-                switch (await* router.routeAsync(httpContext)) {
-                    case (?response) ?response;
-                    case (null) await* next();
-                };
-            };
-        };
-
-        {
-            middleware = Array.append(pipeline.middleware, [middleware]);
-        };
-    };
-
-    public class Router(
-        routes_ : [Route],
-        errorSerializer_ : ErrorSerializer,
-        responseHeaders_ : [ResponseHeader],
-    ) = self {
-        let routes = routes_;
-        let errorSerializer = errorSerializer_;
-        let responseHeaders = responseHeaders_;
+    public class Router(config : Config) = self {
+        let routes = config.routes;
+        let errorSerializer = Option.get<ErrorSerializer>(config.errorSerializer, defaultErrorSerializer);
+        let responseHeaders = Option.get(config.responseHeaders, []);
 
         public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
             let ?routeContext = findRoute(httpContext) else return null;
@@ -442,4 +331,67 @@ module Module {
         };
 
     };
+
+    private func defaultErrorSerializer(error : Error) : SerializedError {
+        let errorType = switch (error.statusCode) {
+            // 4xx Client Errors
+            case (400) "Bad Request";
+            case (401) "Unauthorized";
+            case (402) "Payment Required";
+            case (403) "Forbidden";
+            case (404) "Not Found";
+            case (405) "Method Not Allowed";
+            case (406) "Not Acceptable";
+            case (407) "Proxy Authentication Required";
+            case (408) "Request Timeout";
+            case (409) "Conflict";
+            case (410) "Gone";
+            case (411) "Length Required";
+            case (412) "Precondition Failed";
+            case (413) "Payload Too Large";
+            case (414) "URI Too Long";
+            case (415) "Unsupported Media Type";
+            case (416) "Range Not Satisfiable";
+            case (417) "Expectation Failed";
+            case (418) "I'm a teapot";
+            case (421) "Misdirected Request";
+            case (422) "Unprocessable Entity";
+            case (423) "Locked";
+            case (424) "Failed Dependency";
+            case (425) "Too Early";
+            case (426) "Upgrade Required";
+            case (428) "Precondition Required";
+            case (429) "Too Many Requests";
+            case (431) "Request Header Fields Too Large";
+            case (451) "Unavailable For Legal Reasons";
+
+            // 5xx Server Errors
+            case (500) "Internal Server Error";
+            case (501) "Not Implemented";
+            case (502) "Bad Gateway";
+            case (503) "Service Unavailable";
+            case (504) "Gateway Timeout";
+            case (505) "HTTP Version Not Supported";
+            case (506) "Variant Also Negotiates";
+            case (507) "Insufficient Storage";
+            case (508) "Loop Detected";
+            case (510) "Not Extended";
+            case (511) "Network Authentication Required";
+
+            case (_) "Unknown Error"; // Default case for unknown status codes
+        };
+
+        let body = #object_([
+            ("error", #string(errorType)),
+            ("message", #string(Option.get(error.message, ""))),
+            ("status", #number(#int(error.statusCode))),
+        ])
+        |> Json.stringify(_, null)
+        |> Text.encodeUtf8(_);
+        {
+            body = body;
+            headers = [("content-type", "application/json")];
+        };
+    };
+
 };

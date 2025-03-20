@@ -1,18 +1,18 @@
-import Http "../../src";
-import HttpPipeline "../../src/Pipeline";
-import HttpRouter "../../src/Router";
+import Liminal "../../src";
 import Route "../../src/Route";
 import UserHandler "UserHandler";
 import UserRouter "UserRouter";
 import Principal "mo:base/Principal";
 import Blob "mo:base/Blob";
 import Result "mo:base/Result";
-import CORS "../../src/CORS";
-import LoggingHandler "LoggingHandler";
+import LoggingMiddleware "LoggingMiddleware";
 import IC "mo:ic";
-import HttpAssets "../../src/Assets";
+import AssetsMiddleware "../../src/Middleware/Assets";
 import Assets "mo:ic-assets";
 import AssetCanister "../../src/Assets/AssetCanister";
+import CORSMiddleware "../../src/Middleware/CORS";
+import RouterMiddleware "../../src/Middleware/Router";
+import HttpRouter "../../src/Router";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 
@@ -41,88 +41,98 @@ shared ({ caller = initializer }) actor class Actor() = self {
         userHandler := UserHandler.Handler(userStableData);
     };
 
-    // Http Server pipeline
-
-    let pipeline = HttpPipeline.empty()
-    // Logging middleware
-    |> LoggingHandler.use(_)
-    // CORS middleware
-    |> CORS.use(_, CORS.defaultOptions)
-    // Router
-    |> HttpRouter.use(
-        _,
-        {
-            errorSerializer = null;
-            responseHeaders = [];
-            routes = HttpRouter.RouteBuilder()
-            |> _.prefix(
-                "/api",
-                func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
-                    builder
-                    |> _.prefix(
-                        "/users",
-                        func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
-                            builder
-                            |> _.getQuery("/{id}", userRouter.getById)
-                            |> _.getQuery("/", userRouter.get)
-                            |> _.postUpdate("/", userRouter.create);
-                        },
-                    )
-                    |> _.getUpdateAsync(
-                        "/hash",
-                        func(_ : Route.RouteContext) : async* Route.RouteResult {
-                            let ic = actor ("aaaaa-aa") : IC.Service;
-                            let result = await ic.canister_info({
-                                canister_id = Principal.fromActor(self);
-                                num_requested_changes = ?0;
-                            });
-                            let hashJson = switch (result.module_hash) {
-                                case (null) #null_;
-                                case (?hash) #string(debug_show (Blob.toArray(hash)));
-                            };
-                            #ok(#json(#object_([("hash", hashJson)])));
-                        },
-                    );
-                },
-            )
-            |> _.build();
-        }
-
-    )
-    // Static assets
-    |> HttpAssets.use(
-        _,
-        "/",
-        {
-            cache = {
-                default = #public_({
-                    immutable = false;
-                    maxAge = 3600;
-                });
-                rules = [
-                    {
-                        pattern = "/index.html";
-                        cache = #public_({
-                            immutable = true;
-                            maxAge = 3600;
-                        });
+    let routerConfig : RouterMiddleware.Config = {
+        errorSerializer = null;
+        responseHeaders = null;
+        routes = HttpRouter.RouteBuilder()
+        |> _.prefix(
+            "/api",
+            func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
+                builder
+                |> _.prefix(
+                    "/users",
+                    func(builder : HttpRouter.RouteBuilder) : HttpRouter.RouteBuilder {
+                        builder
+                        |> _.getQuery("/{id}", userRouter.getById)
+                        |> _.getQuery("/", userRouter.get)
+                        |> _.postUpdate("/", userRouter.create);
                     },
-                ];
-            };
-            store = assetStore;
-            indexAssetPath = ?"/index.html";
-        },
+                )
+                |> _.getUpdateAsync(
+                    "/hash",
+                    func(_ : Route.RouteContext) : async* Route.RouteResult {
+                        let ic = actor ("aaaaa-aa") : IC.Service;
+                        let result = await ic.canister_info({
+                            canister_id = Principal.fromActor(self);
+                            num_requested_changes = ?0;
+                        });
+                        let hashJson = switch (result.module_hash) {
+                            case (null) #null_;
+                            case (?hash) #string(debug_show (Blob.toArray(hash)));
+                        };
+                        #ok(#json(#object_([("hash", hashJson)])));
+                    },
+                );
+            },
+        )
+        |> _.build();
+    };
+
+    // Http Server pipeline
+    let app = Liminal.AppBuilder()
+    // Logging middleware
+    |> _.use(LoggingMiddleware.new())
+    // CORS middleware
+    |> _.use(CORSMiddleware.default())
+    // Router
+    |> _.use(RouterMiddleware.new(routerConfig))
+
+    // let apiRoutes = Routes.group([
+    //     Routes.get("/users", userController.listUsers),
+    //     Routes.post("/users", userController.createUser),
+    //     Routes.group([
+    //         Routes.get("/{id}", userController.getUser),
+    //         Routes.put("/{id}", userController.updateUser),
+    //         Routes.delete("/{id}", userController.deleteUser)
+    //     ], "/users")
+    //     ], "/api");
+
+    //     app.useRoutes(apiRoutes);
+    // Static assets
+    |> _.use(
+        AssetsMiddleware.new(
+            "/",
+            {
+                cache = {
+                    default = #public_({
+                        immutable = false;
+                        maxAge = 3600;
+                    });
+                    rules = [
+                        {
+                            pattern = "/index.html";
+                            cache = #public_({
+                                immutable = true;
+                                maxAge = 3600;
+                            });
+                        },
+                    ];
+                };
+                store = assetStore;
+                indexAssetPath = ?"/index.html";
+            },
+        )
     )
-    |> HttpPipeline.build(_);
+    |> _.build();
 
     // Http server
 
-    public query func http_request(request : Http.RawQueryHttpRequest) : async Http.RawQueryHttpResponse {
-        pipeline.http_request(request);
+    public query func http_request(request : Liminal.RawQueryHttpRequest) : async Liminal.RawQueryHttpResponse {
+        app.http_request(request);
     };
 
-    public func http_request_update(req : Http.RawUpdateHttpRequest) : async Http.RawUpdateHttpResponse {
-        await* pipeline.http_request_update(req);
+    public func http_request_update(req : Liminal.RawUpdateHttpRequest) : async Liminal.RawUpdateHttpResponse {
+        await* app.http_request_update(req);
     };
 
     // Asset canister
