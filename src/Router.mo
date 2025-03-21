@@ -1,11 +1,11 @@
 import Types "./Types";
-import Text "mo:base/Text";
+import Text "mo:new-base/Text";
 import Array "mo:new-base/Array";
-import Debug "mo:base/Debug";
 import Iter "mo:new-base/Iter";
-import Buffer "mo:base/Buffer";
-import Error "mo:base/Error";
-import Option "mo:base/Option";
+import List "mo:new-base/List";
+import Error "mo:new-base/Error";
+import Option "mo:new-base/Option";
+import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
 import HttpMethod "./HttpMethod";
@@ -127,7 +127,7 @@ module Module {
     public func route(path : Text, method : Route.RouteMethod, handler : Route.RouteHandler) : RouteConfig {
         let pathSegments = switch (Route.parsePathSegments(path)) {
             case (#ok(segments)) segments;
-            case (#err(e)) Debug.trap("Failed to parse path '" # path # "' into segments: " # e);
+            case (#err(e)) Runtime.trap("Failed to parse path '" # path # "' into segments: " # e);
         };
         #route({
             pathSegments = pathSegments;
@@ -139,7 +139,7 @@ module Module {
     public func group(prefix : Text, routes : [RouteConfig]) : RouteConfig {
         let pathSegments = switch (Route.parsePathSegments(prefix)) {
             case (#ok(segments)) segments;
-            case (#err(e)) Debug.trap("Failed to parse path prefix '" # prefix # "' into segments: " # e);
+            case (#err(e)) Runtime.trap("Failed to parse path prefix '" # prefix # "' into segments: " # e);
         };
         #group({
             prefix = pathSegments;
@@ -177,7 +177,7 @@ module Module {
             case (?prefix) ?(
                 switch (Route.parsePathSegments(prefix)) {
                     case (#ok(segments)) segments;
-                    case (#err(e)) Debug.trap("Failed to parse prefix '" # prefix # "' into segments: " # e);
+                    case (#err(e)) Runtime.trap("Failed to parse prefix '" # prefix # "' into segments: " # e);
                 }
             );
             case (null) null;
@@ -300,7 +300,7 @@ module Module {
                 return null;
             };
 
-            let params = Buffer.Buffer<(Text, Text)>(2);
+            let params = List.empty<(Text, Text)>();
             for ((i, actualSegment) in IterTools.enumerate(actual.vals())) {
                 let expectedSegment = expected[i];
                 switch (expectedSegment) {
@@ -310,12 +310,12 @@ module Module {
                         };
                     };
                     case (#param(param)) {
-                        params.add((param, actualSegment));
+                        List.add(params, (param, actualSegment));
                     };
                 };
             };
             ?{
-                params = Buffer.toArray(params);
+                params = List.toArray(params);
             };
         };
 

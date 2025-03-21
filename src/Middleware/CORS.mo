@@ -1,7 +1,7 @@
-import Text "mo:base/Text";
-import Buffer "mo:base/Buffer";
-import Nat "mo:base/Nat";
-import Iter "mo:base/Iter";
+import Text "mo:new-base/Text";
+import List "mo:new-base/List";
+import Nat "mo:new-base/Nat";
+import Iter "mo:new-base/Iter";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "../HttpContext";
 import Types "../Types";
@@ -59,20 +59,20 @@ module {
 
     private func handlePreflight(context : HttpContext.HttpContext, options : Options) : {
         #complete : Types.HttpResponse;
-        #next : { corsHeaders : Buffer.Buffer<(Text, Text)> };
+        #next : { corsHeaders : List.List<(Text, Text)> };
     } {
 
-        let corsHeaders = Buffer.Buffer<(Text, Text)>(8);
+        let corsHeaders = List.empty<(Text, Text)>();
 
         switch (context.getHeader("Origin")) {
             case (?origin) {
                 if (not options.allowCredentials and options.allowOrigins.size() == 0) {
                     // If credentials aren't required and all origins are allowed, then we can use '*' for the origin
-                    corsHeaders.add(("Access-Control-Allow-Origin", "*"));
+                    List.add(corsHeaders, ("Access-Control-Allow-Origin", "*"));
                 } else if (isOriginAllowed(origin, options.allowOrigins)) {
                     // Otherwise specificy the origin if its allowed
-                    corsHeaders.add(("Access-Control-Allow-Origin", origin));
-                    corsHeaders.add(("Vary", "Origin"));
+                    List.add(corsHeaders, ("Access-Control-Allow-Origin", origin));
+                    List.add(corsHeaders, ("Vary", "Origin"));
                 };
             };
             case (null) ();
@@ -80,7 +80,7 @@ module {
 
         // Credentials
         if (options.allowCredentials) {
-            corsHeaders.add(("Access-Control-Allow-Credentials", "true"));
+            List.add(corsHeaders, ("Access-Control-Allow-Credentials", "true"));
         };
 
         // Handle preflight requests
@@ -95,28 +95,27 @@ module {
     private func addHeadersToResponse(
         response : Types.HttpResponse,
         options : Options,
-        corsHeaders : Buffer.Buffer<(Text, Text)>,
+        corsHeaders : List.List<(Text, Text)>,
     ) : Types.HttpResponse {
 
         if (options.exposeHeaders.size() > 0) {
             let exposedHeaders = Text.join(", ", options.exposeHeaders.vals());
-            corsHeaders.add(("Access-Control-Expose-Headers", exposedHeaders));
+            List.add(corsHeaders, ("Access-Control-Expose-Headers", exposedHeaders));
         };
 
         // Combine headers
-        let responseHeaders = Buffer.Buffer<(Text, Text)>(response.headers.size() + corsHeaders.size());
-        responseHeaders.append(Buffer.fromArray(response.headers));
-        responseHeaders.append(corsHeaders); // Append CORS headers last
+        let responseHeaders = List.fromArray<(Text, Text)>(response.headers);
+        List.addAll(responseHeaders, List.values(corsHeaders)); // Append CORS headers last
 
         {
             response with
-            headers = Buffer.toArray(responseHeaders);
+            headers = List.toArray(responseHeaders);
         };
     };
 
     private func handlePreflightRequest(
         context : HttpContext.HttpContext,
-        responseHeaders : Buffer.Buffer<(Text, Text)>,
+        responseHeaders : List.List<(Text, Text)>,
         options : Options,
     ) : Types.HttpResponse {
 
@@ -126,13 +125,13 @@ module {
                 // Only include when header is present
                 if (options.allowMethods.size() == 0) {
                     // If no methods are specified, then allow all
-                    responseHeaders.add(("Access-Control-Allow-Methods", "*"));
+                    List.add(responseHeaders, ("Access-Control-Allow-Methods", "*"));
                 } else {
                     // Otherwise specify the allowed methods
                     let allowMethodsText = options.allowMethods.vals()
                     |> Iter.map(_, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m))
                     |> Text.join(", ", _);
-                    responseHeaders.add(("Access-Control-Allow-Methods", allowMethodsText));
+                    List.add(responseHeaders, ("Access-Control-Allow-Methods", allowMethodsText));
                 };
             };
             case (null) {};
@@ -143,7 +142,7 @@ module {
             case (?_) {
                 // Only include when header is present
                 let allowHeadersText = Text.join(", ", options.allowHeaders.vals());
-                responseHeaders.add(("Access-Control-Allow-Headers", allowHeadersText));
+                List.add(responseHeaders, ("Access-Control-Allow-Headers", allowHeadersText));
             };
             case (null) ();
         };
@@ -151,14 +150,14 @@ module {
         // Max age
         switch (options.maxAge) {
             case (?maxAge) {
-                responseHeaders.add(("Access-Control-Max-Age", Nat.toText(maxAge)));
+                List.add(responseHeaders, ("Access-Control-Max-Age", Nat.toText(maxAge)));
             };
             case (null) {};
         };
 
         return {
             statusCode = 204;
-            headers = Buffer.toArray(responseHeaders);
+            headers = List.toArray(responseHeaders);
             body = null;
         };
     };

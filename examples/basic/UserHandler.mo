@@ -1,5 +1,5 @@
-import Array "mo:base/Array";
-import Nat "mo:base/Nat";
+import Array "mo:new-base/Array";
+import Nat "mo:new-base/Nat";
 
 module {
     public type StableData = {
@@ -37,7 +37,7 @@ module {
                 name = request.name;
             };
 
-            users := Array.append(users, [newUser]);
+            users := Array.concat(users, [newUser]);
 
             newUser;
         };

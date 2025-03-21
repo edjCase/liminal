@@ -1,5 +1,5 @@
-import Text "mo:base/Text";
-import Iter "mo:base/Iter";
+import Text "mo:new-base/Text";
+import Iter "mo:new-base/Iter";
 import IterTools "mo:itertools/Iter";
 
 module {

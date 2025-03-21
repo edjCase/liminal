@@ -7,7 +7,7 @@ keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
 license = "MIT"
 
 [dependencies]
-base = "0.14.0"
+new-base = "0.3.0"
 itertools = "0.2.2"
 json = "1.0.0"
 xtended-text = "1.0.0"
@@ -16,7 +16,6 @@ glob = "0.0.1"
 certified-assets = "0.5.1"
 sha2 = "0.1.0"
 ic-assets = "0.1.0"
-new-base = "0.3.0"
 
 [dev-dependencies]
 test = "2.0.0"

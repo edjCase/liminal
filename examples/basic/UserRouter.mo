@@ -1,6 +1,6 @@
 import Route "../../src/Route";
-import Nat "mo:base/Nat";
-import Array "mo:base/Array";
+import Nat "mo:new-base/Nat";
+import Array "mo:new-base/Array";
 import UserHandler "UserHandler";
 import Json "mo:json";
 import Serializer "Serializer";

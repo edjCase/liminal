@@ -1,4 +1,4 @@
-import Text "mo:base/Text";
+import Text "mo:new-base/Text";
 
 module {
 
@@ -19,7 +19,7 @@ module {
     public func encodingFromText(encoding : Text) : ?Encoding {
         let normalizedEncoding = encoding
         |> Text.trim(_, #char(' '))
-        |> Text.toLowercase(_);
+        |> Text.toLower(_);
         let encodingVariant = switch (normalizedEncoding) {
             case ("identity") #identity;
             case ("gzip") #gzip;

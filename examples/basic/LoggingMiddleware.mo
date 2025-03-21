@@ -1,8 +1,8 @@
 import HttpContext "../../src/HttpContext";
 import Types "../../src/Types";
 import HttpMethod "../../src/HttpMethod";
-import Nat "mo:base/Nat";
-import Debug "mo:base/Debug";
+import Nat "mo:new-base/Nat";
+import Debug "mo:new-base/Debug";
 import Path "../../src/Path";
 import App "../../src/App";
 

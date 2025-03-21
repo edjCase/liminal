@@ -1,9 +1,9 @@
 import HttpTypes "./HttpTypes";
-import Text "mo:base/Text";
+import Text "mo:new-base/Text";
 import TextX "mo:xtended-text/TextX";
-import Array "mo:base/Array";
-import Debug "mo:base/Debug";
-import Result "mo:base/Result";
+import Array "mo:new-base/Array";
+import Result "mo:new-base/Result";
+import Runtime "mo:new-base/Runtime";
 import IterTools "mo:itertools/Iter";
 import Parser "./Parser";
 import HttpMethod "./HttpMethod";
@@ -17,7 +17,7 @@ module {
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 
-        public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Debug.trap("Unsupported HTTP method: " # request.method);
+        public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Runtime.trap("Unsupported HTTP method: " # request.method);
 
         public func getPath() : Path.Path {
             Path.parse(getPathQueryInternal().0); // TODO cache or not?

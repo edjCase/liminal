@@ -1,4 +1,4 @@
-import Text "mo:base/Text";
+import Text "mo:new-base/Text";
 module {
 
     public type HttpMethod = {
@@ -24,7 +24,7 @@ module {
     };
 
     public func fromText(value : Text) : ?HttpMethod {
-        switch (Text.toLowercase(value)) {
+        switch (Text.toLower(value)) {
             case ("get") ?#get;
             case ("post") ?#post;
             case ("put") ?#put;

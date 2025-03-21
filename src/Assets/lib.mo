@@ -1,16 +1,17 @@
 import HttpContext "../HttpContext";
 import Types "../Types";
-import Array "mo:base/Array";
-import Nat "mo:base/Nat";
-import Blob "mo:base/Blob";
-import Text "mo:base/Text";
-import Iter "mo:base/Iter";
-import Result "mo:base/Result";
-import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
-import Int "mo:base/Int";
-import Order "mo:base/Order";
-import Nat8 "mo:base/Nat8";
+import Array "mo:new-base/Array";
+import Nat "mo:new-base/Nat";
+import Blob "mo:new-base/Blob";
+import Text "mo:new-base/Text";
+import Iter "mo:new-base/Iter";
+import Result "mo:new-base/Result";
+import List "mo:new-base/List";
+import Debug "mo:new-base/Debug";
+import Int "mo:new-base/Int";
+import Order "mo:new-base/Order";
+import Nat8 "mo:new-base/Nat8";
+import Runtime "mo:new-base/Runtime";
 import Glob "mo:glob";
 import NatX "mo:xtended-numbers/NatX";
 import Asset "Asset";
@@ -170,7 +171,7 @@ module {
             size = assetData.total_length;
             etag = switch (assetData.sha256) {
                 case (?hash) blobToHex(hash);
-                case (null) Debug.trap("SHA256 hash not found for asset: " # assetPath); // Even though it's optional, it should always be present
+                case (null) Runtime.trap("SHA256 hash not found for asset: " # assetPath); // Even though it's optional, it should always be present
             };
         };
 
@@ -230,11 +231,11 @@ module {
         |> Text.split(_, #char(','))
         |> Iter.toArray(_);
 
-        let encodings = Buffer.Buffer<Asset.EncodingWithWeight>(entries.size());
+        let encodings = List.empty<Asset.EncodingWithWeight>();
         label f for (entry in entries.vals()) {
             // Remove quality parameter if present
             let parts = Text.split(entry, #char(';'));
-            let ?encodingText = parts.next() else Debug.trap("Invalid Accept-Encoding header: " # headerText);
+            let ?encodingText = parts.next() else Runtime.trap("Invalid Accept-Encoding header: " # headerText);
             let ?encoding = Asset.encodingFromText(encodingText) else {
                 Debug.print("Unknown http content encoding: " # encodingText # " in header: " # headerText # ", skipping");
                 continue f;
@@ -255,12 +256,15 @@ module {
                     q;
                 };
             };
-            encodings.add({
-                encoding = encoding;
-                weight;
-            });
+            List.add(
+                encodings,
+                {
+                    encoding = encoding;
+                    weight;
+                },
+            );
         };
-        let orderedEncodings = encodings.vals()
+        let orderedEncodings = List.values(encodings)
         |> Iter.sort<Asset.EncodingWithWeight>(
             _,
             func(a : Asset.EncodingWithWeight, b : Asset.EncodingWithWeight) : Order.Order = Nat.compare(a.weight, b.weight),
@@ -333,14 +337,12 @@ module {
 
     // Convert a Blob to a hex string
     public func blobToHex(b : Blob) : Text {
-        let bytes = Blob.toArray(b);
-        var buffer = Buffer.Buffer<Text>(bytes.size() * 2);
-
-        for (byte in bytes.vals()) {
-            buffer.add(byteToHex(byte));
-        };
-
-        Text.join("", buffer.vals());
+        b.vals()
+        |> Iter.map<Nat8, Text>(
+            _,
+            byteToHex,
+        )
+        |> Text.join("", _);
     };
 
 };

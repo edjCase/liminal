@@ -1,11 +1,12 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Array "mo:base/Array";
-import Text "mo:base/Text";
-import Iter "mo:base/Iter";
-import Result "mo:base/Result";
-import Debug "mo:base/Debug";
-import Blob "mo:base/Blob";
+import Array "mo:new-base/Array";
+import Text "mo:new-base/Text";
+import Iter "mo:new-base/Iter";
+import Result "mo:new-base/Result";
+import Debug "mo:new-base/Debug";
+import Blob "mo:new-base/Blob";
+import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
 
@@ -28,7 +29,7 @@ module {
 
         public func getRouteParam(key : Text) : Text {
             let ?param = getRouteParamOrNull(key) else {
-                Debug.trap("Parameter '" # key # "' for route was not parsed");
+                Runtime.trap("Parameter '" # key # "' for route was not parsed");
             };
             param;
         };

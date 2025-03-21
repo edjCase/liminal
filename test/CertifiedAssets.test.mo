@@ -1,8 +1,8 @@
 // import { test = testAsync; suite = suiteAsync } "mo:test/async";
 // import Types "../src/Types";
 // import Pipeline "../src/Pipeline";
-// import Blob "mo:base/Blob";
-// import Debug "mo:base/Debug";
+// import Blob "mo:new-base/Blob";
+// import Debug "mo:new-base/Debug";
 // import CertifiedAssets "mo:certified-assets";
 // import CertAssetsMiddleware "../src/CertifiedAssets";
 // import HttpContext "../src/HttpContext";
@@ -53,7 +53,7 @@
 //                 });
 
 //                 let request = createMockRequest("/test");
-//                 let ?response = await* middleware.handleUpdate(request) else Debug.trap("Response is null");
+//                 let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Response is null");
 
 //                 assert (getHeader(response.headers, "IC-Certificate") != null);
 //                 assert (getHeader(response.headers, "IC-CertificateExpression") != null);
@@ -76,7 +76,7 @@
 //                 });
 
 //                 let request = createMockRequest("/unknown");
-//                 let ?response = await* middleware.handleUpdate(request) else Debug.trap("Response is null");
+//                 let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Response is null");
 
 //                 assert (getHeader(response.headers, "IC-Certificate") != null);
 //                 assert (getHeader(response.headers, "IC-CertificateExpression") != null);
@@ -95,7 +95,7 @@
 //                 });
 
 //                 let request = createMockRequest("/uncertified");
-//                 let ?response = await* middleware.handleUpdate(request) else Debug.trap("Response is null");
+//                 let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Response is null");
 
 //                 assert (response.statusCode == 200);
 //                 assert (getHeader(response.headers, "IC-Certificate") == null);

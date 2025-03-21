@@ -1,6 +1,6 @@
 import UserHandler "UserHandler";
 import Json "mo:json";
-import Result "mo:base/Result";
+import Result "mo:new-base/Result";
 
 module {
 

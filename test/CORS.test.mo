@@ -1,8 +1,8 @@
 import { test = testAsync; suite = suiteAsync } "mo:test/async";
 import Types "../src/Types";
 import Pipeline "../src/Pipeline";
-import Blob "mo:base/Blob";
-import Debug "mo:base/Debug";
+import Blob "mo:new-base/Blob";
+import Debug "mo:new-base/Debug";
 import HttpMethod "../src/HttpMethod";
 import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";
@@ -48,13 +48,13 @@ await suiteAsync(
 
                 // Test with allowed origin
                 let request1 = createMockRequest(#get, [("Origin", "http://allowed-domain.com")]);
-                let ?response1 = await* middleware.handleUpdate(request1) else Debug.trap("Response is null");
+                let ?response1 = await* middleware.handleUpdate(request1) else Runtime.trap("Response is null");
                 assert (getHeader(response1.headers, "Access-Control-Allow-Origin") == ?"http://allowed-domain.com");
                 assert (getHeader(response1.headers, "Vary") == ?"Origin");
 
                 // Test with different origin
                 let request2 = createMockRequest(#get, [("Origin", "http://other-domain.com")]);
-                let ?response2 = await* middleware.handleUpdate(request2) else Debug.trap("Response is null");
+                let ?response2 = await* middleware.handleUpdate(request2) else Runtime.trap("Response is null");
                 assert (getHeader(response2.headers, "Access-Control-Allow-Origin") == null);
                 assert (getHeader(response2.headers, "Vary") == null);
             },
@@ -80,7 +80,7 @@ await suiteAsync(
                         ("Access-Control-Request-Headers", "X-Custom-Header"),
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Response is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Response is null");
 
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST, PUT");
@@ -100,7 +100,7 @@ await suiteAsync(
 
                 // Test request with credentials
                 let request = createMockRequest(#get, [("Origin", "http://example.com")]);
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
 
                 assert (getHeader(response.headers, "Access-Control-Allow-Credentials") == ?"true");
             },
@@ -117,7 +117,7 @@ await suiteAsync(
 
                 // Test request
                 let request = createMockRequest(#get, [("Origin", "http://example.com")]);
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
 
                 assert (getHeader(response.headers, "Access-Control-Expose-Headers") == ?"Content-Length, X-Custom-Response");
             },
@@ -128,7 +128,7 @@ await suiteAsync(
             func() : async () {
                 let middleware = CORS.createMiddleware(CORS.defaultOptions);
                 let (httpContext, next) = createMockRequest(#get, []); // No Origin header
-                let ?response = await* middleware.handleUpdate(httpContext, next) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(httpContext, next) else Runtime.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
             },
         );
@@ -147,7 +147,7 @@ await suiteAsync(
                         ("Access-Control-Request-Method", "PUT") // Requesting PUT method
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST");
             },
         );
@@ -166,7 +166,7 @@ await suiteAsync(
                         ("Access-Control-Request-Headers", "X-Custom-Header") // Requesting X-Custom-Header
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type"); // Should not set allow headers
             },
         );
@@ -183,7 +183,7 @@ await suiteAsync(
                         ("Access-Control-Request-Headers", "Content-Type, Authorization"),
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type, Authorization");
             },
         );
@@ -201,7 +201,7 @@ await suiteAsync(
                         ("Access-Control-Request-Headers", "content-type") // lowercase
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type");
             },
         );
@@ -217,7 +217,7 @@ await suiteAsync(
                         // No Access-Control-Request-Method header
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") == null);
             },
@@ -235,7 +235,7 @@ await suiteAsync(
                     #get,
                     [("Origin", "http://example.com")],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 // Should not use wildcard with credentials
                 assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"http://example.com");
                 assert (getHeader(response.headers, "Vary") == ?"Origin");
@@ -253,7 +253,7 @@ await suiteAsync(
                         ("Access-Control-Request-Method", "INVALID_METHOD"),
                     ],
                 );
-                let ?response = await* middleware.handleUpdate(request) else Debug.trap("Request is null");
+                let ?response = await* middleware.handleUpdate(request) else Runtime.trap("Request is null");
                 assert (response.statusCode == 204);
                 assert (getHeader(response.headers, "Access-Control-Allow-Methods") != null);
             },
