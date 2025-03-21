@@ -99,10 +99,10 @@ shared ({ caller = initializer }) actor class Actor() = self {
     |> _.use(LoggingMiddleware.new())
     // CORS middleware
     |> _.use(CORSMiddleware.default())
-    // CSP middleware
-    |> _.use(CSPMiddleware.default())
     // Router
     |> _.use(RouterMiddleware.new(routerConfig))
+    // CSP middleware
+    |> _.use(CSPMiddleware.default())
     // Static assets
     |> _.use(AssetsMiddleware.new(assetMiddlewareConfig))
     |> _.build();
