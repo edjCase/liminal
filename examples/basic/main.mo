@@ -12,6 +12,7 @@ import Assets "mo:ic-assets";
 import AssetCanister "../../src/Assets/AssetCanister";
 import CORSMiddleware "../../src/Middleware/CORS";
 import RouterMiddleware "../../src/Middleware/Router";
+import CSPMiddleware "../../src/Middleware/CSP";
 import Router "../../src/Router";
 
 shared ({ caller = initializer }) actor class Actor() = self {
@@ -98,6 +99,8 @@ shared ({ caller = initializer }) actor class Actor() = self {
     |> _.use(LoggingMiddleware.new())
     // CORS middleware
     |> _.use(CORSMiddleware.default())
+    // CSP middleware
+    |> _.use(CSPMiddleware.default())
     // Router
     |> _.use(RouterMiddleware.new(routerConfig))
     // Static assets

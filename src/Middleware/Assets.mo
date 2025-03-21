@@ -1,6 +1,5 @@
 import Assets "../Assets";
 import App "../App";
-import Path "../Path";
 import HttpContext "../HttpContext";
 import Types "../Types";
 

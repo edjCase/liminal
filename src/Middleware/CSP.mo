@@ -1,5 +1,4 @@
-import Pipeline "../Pipeline";
-import Array "mo:base/Array";
+import App "../App";
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
 import HttpContext "../HttpContext";
@@ -36,22 +35,19 @@ module {
         upgradeInsecureRequests = true;
     };
 
-    public func use(data : Pipeline.PipelineData, options : Options) : Pipeline.PipelineData {
-        let newMiddleware = new(options);
-        {
-            middleware = Array.append(data.middleware, [newMiddleware]);
-        };
+    public func default() : App.Middleware {
+        new(defaultOptions);
     };
 
-    public func new(options : Options) : Pipeline.Middleware {
+    public func new(options : Options) : App.Middleware {
         {
             handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : Pipeline.Next) : ?Types.HttpResponse {
+                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
                     let ?response = next() else return null;
                     ?addCSPHeaders(response, options);
                 }
             );
-            handleUpdate = func(_ : HttpContext.HttpContext, next : Pipeline.NextAsync) : async* ?Types.HttpResponse {
+            handleUpdate = func(_ : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
                 let ?response = await* next() else return null;
                 ?addCSPHeaders(response, options);
             };
