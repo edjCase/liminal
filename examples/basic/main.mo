@@ -93,21 +93,18 @@ shared ({ caller = initializer }) actor class Actor() = self {
         };
     };
 
-    // Http Server pipeline
-    let app = Liminal.AppBuilder()
-    // Logging middleware
-    |> _.use(LoggingMiddleware.new())
-    // CORS middleware
-    |> _.use(CORSMiddleware.default())
-    // Router
-    |> _.use(RouterMiddleware.new(routerConfig))
-    // CSP middleware
-    |> _.use(CSPMiddleware.default())
-    // Static assets
-    |> _.use(AssetsMiddleware.new(assetMiddlewareConfig))
-    |> _.build();
+    // Http App
+    let app = Liminal.App({
+        middleware = [
+            LoggingMiddleware.new(),
+            CORSMiddleware.default(),
+            RouterMiddleware.new(routerConfig),
+            CSPMiddleware.default(),
+            AssetsMiddleware.new(assetMiddlewareConfig),
+        ];
+    });
 
-    // Http server
+    // Http server methods
 
     public query func http_request(request : Liminal.RawQueryHttpRequest) : async Liminal.RawQueryHttpResponse {
         app.http_request(request);
@@ -117,7 +114,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
         await* app.http_request_update(req);
     };
 
-    // Asset canister
+    // Asset canister methods
 
     public query func http_request_streaming_callback(token : Assets.StreamingToken) : async (Assets.StreamingCallbackResponse) {
         assetStore.http_request_streaming_callback(token);

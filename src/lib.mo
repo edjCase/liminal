@@ -20,8 +20,4 @@ module {
 
     public type App = AppModule.App;
     public func App(data : AppModule.Data) : App = AppModule.App(data);
-
-    public type AppBuilder = AppModule.Builder;
-    public func AppBuilder() : AppBuilder = AppModule.Builder();
-
 };

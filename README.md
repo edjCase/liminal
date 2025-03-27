@@ -11,12 +11,10 @@ Liminal is a flexible HTTP framework designed to make building web applications 
 
 Key features:
 
-- 🔄 **Middleware Pipeline**: Compose your application using reusable middleware components
+- 🔄 **Middleware**: Compose your application using reusable middleware components
 - 🛣️ **Routing**: Powerful route matching with parameter extraction and group support
-- 🔌 **Asset Serving**: Built-in static file serving with various caching strategies
 - 🔒 **CORS Support**: Configurable Cross-Origin Resource Sharing
 - 🔐 **CSP Support**: Content Security Policy configuration
-- 🧰 **Utilities**: Context handling, path manipulation, and more
 - 📦 **Asset Canister Integration**: Simplified interface with Internet Computer's certified assets
 
 ## Package
@@ -38,6 +36,7 @@ import Liminal "mo:liminal";
 import Route "mo:liminal/Route";
 import Router "mo:liminal/Router";
 import RouterMiddleware "mo:liminal/Middleware/Router";
+import CORSMiddleware "mo:liminal/Middleware/CORS";
 
 actor {
     // Define your routes
@@ -55,10 +54,16 @@ actor {
         ]
     };
 
-    // Create the HTTP handler pipeline
-    let app = Liminal.AppBuilder()
-        |> _.use(RouterMiddleware.new(routerConfig))
-        |> _.build();
+    // Create the HTTP App with middleware
+    let app = Liminal.App({
+        middleware = [
+            // Order matters
+            // First middleware will be called FIRST with the HTTP request
+            // and LAST with handling the HTTP response
+            CORSMiddleware.default(),
+            RouterMiddleware.new(routerConfig),
+        ];
+    });
 
     // Expose standard HTTP interface
     public query func http_request(request : Liminal.RawQueryHttpRequest) : async Liminal.RawQueryHttpResponse {
@@ -117,16 +122,17 @@ The routing system supports:
 // Route configuration example
 let routerConfig = {
     errorSerializer = null;
-    prefix = ?"/api";
+    prefix = ?"/api"; // All routes with have prefix `/api`
     routes = [
+        // Group adds a prefix to all nested routes of `/users`
         Router.group(
             "/users",
             [
-                Router.getQuery("/", getAllUsers),
-                Router.postUpdate("/", createUser),
-                Router.getQuery("/{id}", getUserById),
-                Router.putUpdate("/{id}", updateUser),
-                Router.deleteUpdate("/{id}", deleteUser)
+                Router.getQuery("/", getAllUsers), // GET + query call -> getAllUsers
+                Router.postUpdate("/", createUser), // POST + update call -> createUser
+                Router.getQuery("/{id}", getUserById), // GET + query call -> getUserById
+                Router.putUpdateAsync("/{id}", updateUser), // GET + update call (using async method) -> updateUser
+                Router.deleteUpdate("/{id}", deleteUser) // DELETE + update call -> deleteUser
             ]
         )
     ]
@@ -168,7 +174,7 @@ public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
 Handles route matching and dispatching to the appropriate handler.
 
 ```motoko
-|> _.use(RouterMiddleware.new(routerConfig))
+RouterMiddleware.new(routerConfig)
 ```
 
 ### CORS
@@ -176,17 +182,17 @@ Handles route matching and dispatching to the appropriate handler.
 Configures Cross-Origin Resource Sharing.
 
 ```motoko
-|> _.use(CORSMiddleware.default())
+CORSMiddleware.default()
 
 // Or with custom options
-|> _.use(CORSMiddleware.new({
+CORSMiddleware.new({
     allowOrigins = ["https://yourdomain.com"];
     allowMethods = [#get, #post, #put, #delete];
     allowHeaders = ["Content-Type", "Authorization"];
     maxAge = ?86400;
     allowCredentials = true;
     exposeHeaders = ["Content-Length"];
-}))
+})
 ```
 
 ### Assets
@@ -194,7 +200,7 @@ Configures Cross-Origin Resource Sharing.
 Serves static files with configurable caching.
 
 ```motoko
-|> _.use(AssetsMiddleware.new({
+AssetsMiddleware.new({
     prefix = ?"/static";
     store = assetStore;
     indexAssetPath = ?"/index.html";
@@ -213,7 +219,7 @@ Serves static files with configurable caching.
             }
         ];
     };
-}))
+})
 ```
 
 ### CSP (Content Security Policy)
@@ -221,12 +227,12 @@ Serves static files with configurable caching.
 Configures security policies for your application.
 
 ```motoko
-|> _.use(CSP.new({
+CSP.new({
     defaultSrc = ["'self'"];
     scriptSrc = ["'self'", "https://trusted-scripts.com"];
     connectSrc = ["'self'", "https://api.example.com"];
     // Additional CSP directives...
-}))
+})
 ```
 
 ## Assets Integration
@@ -239,13 +245,17 @@ stable var assetStableData = Assets.init_stable_store(canisterId, initializer);
 var assetStore = Assets.Assets(assetStableData);
 var assetCanister = AssetCanister.AssetCanister(assetStore);
 
+...
+
 // Use in middleware
-|> _.use(AssetsMiddleware.new({
+AssetsMiddleware.new({
     prefix = null;
     store = assetStore;
     indexAssetPath = ?"/index.html";
     // Cache configuration...
-}))
+})
+
+...
 
 // Expose asset canister methods
 public shared query func get(args : Assets.GetArgs) : async Assets.EncodedAsset {
@@ -279,16 +289,6 @@ let routerConfig = {
     // Rest of router config...
 };
 ```
-
-## Examples
-
-Check out the complete examples in the repository:
-
-- Basic API with user management
-- Static file serving
-- CORS configuration
-- Authentication middleware
-- And more!
 
 ## Testing
 

@@ -2,7 +2,6 @@ import Types "./Types";
 import Blob "mo:new-base/Blob";
 import Nat16 "mo:new-base/Nat16";
 import Option "mo:new-base/Option";
-import List "mo:new-base/List";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
 
@@ -17,21 +16,6 @@ module {
 
     public type Data = {
         middleware : [Middleware];
-    };
-
-    public class Builder() = self {
-        var orderedMiddleware = List.empty<Middleware>();
-
-        public func use(middleware : Middleware) : Builder {
-            List.add(orderedMiddleware, middleware);
-            self;
-        };
-
-        public func build() : App {
-            App({
-                middleware = List.toArray(orderedMiddleware);
-            });
-        };
     };
 
     public class App(data : Data) = self {
