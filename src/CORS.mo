@@ -47,12 +47,8 @@ module {
 
                 // Check if origin is allowed
                 if (not isOriginAllowed(origin, options.allowOrigins)) {
-                    // Return normal response without CORS headers as per spec 6.2
-                    return #complete({
-                        statusCode = 200;
-                        headers = [];
-                        body = null;
-                    });
+                    // Per spec 6.1/6.2, don't set CORS headers if origin is not allowed
+                    return #next({ corsHeaders = [] });
                 };
 
                 // Set Access-Control-Allow-Origin header
