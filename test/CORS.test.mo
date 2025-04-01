@@ -43,19 +43,25 @@ await suiteAsync(
                     case (#complete(_)) Runtime.trap("Expected #next, got #complete");
                 };
 
-                // Test with different origin
+                // Test with different origin - should return response without CORS headers
+                let context2 = HttpContext.HttpContext({
+                    method = HttpMethod.toText(#get);
+                    url = "/test";
+                    headers = [("Origin", "http://disallowed-domain.com")];
+                    body = Blob.fromArray([]);
+                });
                 let response2 = CORS.handlePreflight(
-                    context,
+                    context2,
                     {
                         CORS.defaultOptions with allowOrigins = ["http://other-domain.com"]
                     },
                 );
                 switch (response2) {
-                    case (#next({ corsHeaders })) {
-                        assert (getHeader(corsHeaders, "Access-Control-Allow-Origin") == null);
-                        assert (getHeader(corsHeaders, "Vary") == null);
+                    case (#complete(response)) {
+                        assert (response.statusCode == 200);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
                     };
-                    case (#complete(_)) Runtime.trap("Expected #next, got #complete");
+                    case (#next(_)) Runtime.trap("Expected #complete, got #next");
                 };
             },
         );
@@ -87,7 +93,7 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
-                        assert (response.statusCode == 204);
+                        assert (response.statusCode == 200); // Should be 200 OK, not 204
                         assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"*");
                         assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST, PUT");
                         assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type, X-Custom-Header");
@@ -118,11 +124,12 @@ await suiteAsync(
                 // Test request with credentials
                 switch (response) {
                     case (#next({ corsHeaders })) {
+                        assert (getHeader(corsHeaders, "Access-Control-Allow-Origin") == ?"http://example.com");
                         assert (getHeader(corsHeaders, "Access-Control-Allow-Credentials") == ?"true");
+                        assert (getHeader(corsHeaders, "Vary") == ?"Origin");
                     };
-                    case (#complete(response)) Runtime.trap("Expected #next, got #complete");
+                    case (#complete(_)) Runtime.trap("Expected #next, got #complete");
                 };
-
             },
         );
 
@@ -149,7 +156,7 @@ await suiteAsync(
                     case (#next({ corsHeaders })) {
                         assert (getHeader(corsHeaders, "Access-Control-Expose-Headers") == ?"Content-Length, X-Custom-Response");
                     };
-                    case (#complete(response)) Runtime.trap("Expected #next, got #complete");
+                    case (#complete(_)) Runtime.trap("Expected #next, got #complete");
                 };
             },
         );
@@ -169,7 +176,7 @@ await suiteAsync(
                 // Test request with no origin header
                 switch (response) {
                     case (#next({ corsHeaders })) {
-                        assert (getHeader(corsHeaders, "Access-Control-Allow-Origin") == null);
+                        assert (corsHeaders.size() == 0); // No CORS headers should be set
                     };
                     case (#complete(_)) Runtime.trap("Expected #next, got #complete");
                 };
@@ -196,7 +203,9 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
-                        assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"GET, POST");
+                        assert (response.statusCode == 200); // No CORS error, just no CORS headers
+                        assert (getHeader(response.headers, "Access-Control-Allow-Methods") == null);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
                     };
                 };
             },
@@ -211,6 +220,7 @@ await suiteAsync(
                         url = "/test";
                         headers = [
                             ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "GET"), // Need valid method first
                             ("Access-Control-Request-Headers", "X-Custom-Header") // Requesting X-Custom-Header
                         ];
                         body = Blob.fromArray([]);
@@ -222,11 +232,14 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
-                        assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type"); // Should not set allow headers
+                        assert (response.statusCode == 200);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Headers") == null);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == null);
                     };
                 };
             },
         );
+
         await testAsync(
             "preflight request with multiple request headers",
             func() : async () {
@@ -236,6 +249,7 @@ await suiteAsync(
                         url = "/test";
                         headers = [
                             ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "GET"),
                             ("Access-Control-Request-Headers", "Content-Type, Authorization"),
                         ];
                         body = Blob.fromArray([]);
@@ -247,6 +261,8 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
+                        assert (response.statusCode == 200);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"*");
                         assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type, Authorization");
                     };
                 };
@@ -262,6 +278,7 @@ await suiteAsync(
                         url = "/test";
                         headers = [
                             ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "GET"),
                             ("Access-Control-Request-Headers", "content-type") // lowercase
                         ];
                         body = Blob.fromArray([]);
@@ -273,6 +290,8 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
+                        assert (response.statusCode == 200);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"*");
                         assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type");
                     };
                 };
@@ -297,8 +316,8 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
-                        assert (response.statusCode == 204);
-                        assert (getHeader(response.headers, "Access-Control-Allow-Methods") == null);
+                        assert (response.statusCode == 200);
+                        assert (response.headers.size() == 0); // No CORS headers should be set
                     };
                 };
             },
@@ -327,8 +346,9 @@ await suiteAsync(
                         // Should not use wildcard with credentials
                         assert (getHeader(corsHeaders, "Access-Control-Allow-Origin") == ?"http://example.com");
                         assert (getHeader(corsHeaders, "Vary") == ?"Origin");
+                        assert (getHeader(corsHeaders, "Access-Control-Allow-Credentials") == ?"true");
                     };
-                    case (#complete(_)) Runtime.trap("Expected #complete, got #next");
+                    case (#complete(_)) Runtime.trap("Expected #next, got #complete");
                 };
             },
         );
@@ -351,14 +371,118 @@ await suiteAsync(
                 switch (response) {
                     case (#next(_)) Runtime.trap("Expected #complete, got #next");
                     case (#complete(response)) {
-                        assert (response.statusCode == 204);
-                        // No specific handling for invalid methods, just return 204
-                        Debug.print(debug_show (response.headers));
-                        assert (getHeader(response.headers, "Access-Control-Allow-Methods") == null);
+                        assert (response.statusCode == 200);
+                        // No CORS headers should be set for invalid method
+                        assert (response.headers.size() == 0);
                     };
                 };
             },
         );
 
+        await testAsync(
+            "preflight request with invalid origin format",
+            func() : async () {
+                let response = CORS.handlePreflight(
+                    HttpContext.HttpContext({
+                        method = HttpMethod.toText(#options);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "invalid-origin"),
+                            ("Access-Control-Request-Method", "GET"),
+                        ];
+                        body = Blob.fromArray([]);
+                    }),
+                    CORS.defaultOptions,
+                );
+                switch (response) {
+                    case (#next(_)) Runtime.trap("Expected #complete, got #next");
+                    case (#complete(response)) {
+                        assert (response.statusCode == 400);
+                        assert (response.body != null);
+                    };
+                };
+            },
+        );
+
+        await testAsync(
+            "preflight request with invalid headers format",
+            func() : async () {
+                let response = CORS.handlePreflight(
+                    HttpContext.HttpContext({
+                        method = HttpMethod.toText(#options);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "GET"),
+                            ("Access-Control-Request-Headers", ",,invalid,,"),
+                        ];
+                        body = Blob.fromArray([]);
+                    }),
+                    CORS.defaultOptions,
+                );
+                switch (response) {
+                    case (#next(_)) Runtime.trap("Expected #complete, got #next");
+                    case (#complete(response)) {
+                        assert (response.statusCode == 200);
+                        assert (response.headers.size() == 0); // No CORS headers for invalid format
+                    };
+                };
+            },
+        );
+
+        await testAsync(
+            "simple method test",
+            func() : async () {
+                // GET is a simple method, should not require preflight
+                let response = CORS.handlePreflight(
+                    HttpContext.HttpContext({
+                        method = HttpMethod.toText(#get);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "http://example.com"),
+                            ("Content-Type", "text/plain"), // Simple header value
+                        ];
+                        body = Blob.fromArray([]);
+                    }),
+                    CORS.defaultOptions,
+                );
+                switch (response) {
+                    case (#next({ corsHeaders })) {
+                        assert (getHeader(corsHeaders, "Access-Control-Allow-Origin") == ?"*");
+                    };
+                    case (#complete(_)) Runtime.trap("Expected #next, got #complete");
+                };
+            },
+        );
+
+        await testAsync(
+            "content-type with non-simple value",
+            func() : async () {
+                // Preflight should be required for non-simple Content-Type
+                let response = CORS.handlePreflight(
+                    HttpContext.HttpContext({
+                        method = HttpMethod.toText(#options);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "POST"),
+                            ("Access-Control-Request-Headers", "Content-Type"),
+                        ];
+                        body = Blob.fromArray([]);
+                    }),
+                    {
+                        CORS.defaultOptions with
+                        allowHeaders = ["Content-Type"];
+                    },
+                );
+                switch (response) {
+                    case (#next(_)) Runtime.trap("Expected #complete, got #next");
+                    case (#complete(response)) {
+                        assert (response.statusCode == 200);
+                        assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"Content-Type");
+                    };
+                };
+            },
+        );
     },
 );

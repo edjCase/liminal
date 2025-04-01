@@ -2,7 +2,7 @@ import Text "mo:new-base/Text";
 import List "mo:new-base/List";
 import Nat "mo:new-base/Nat";
 import Iter "mo:new-base/Iter";
-import TextX "mo:xtended-text/TextX";
+import Array "mo:new-base/Array";
 import HttpContext "./HttpContext";
 import Types "./Types";
 import HttpMethod "./HttpMethod";
@@ -26,104 +26,237 @@ module {
         allowCredentials = false;
         exposeHeaders = [];
     };
-
     public func handlePreflight(context : HttpContext.HttpContext, options : Options) : {
         #complete : Types.HttpResponse;
         #next : { corsHeaders : [(Text, Text)] };
     } {
-
         let corsHeaders = List.empty<(Text, Text)>();
 
+        // 1. Check Origin header
         switch (context.getHeader("Origin")) {
+            case (null) {
+                // No Origin header, not a CORS request
+                return #next({ corsHeaders = [] });
+            };
             case (?origin) {
+                // Validate origin format
+                if (not validOriginFormat(origin)) {
+                    // Per spec 6.1/6.2, don't set CORS headers if origin format is invalid
+                    return #next({ corsHeaders = [] });
+                };
+
+                // Check if origin is allowed
+                if (not isOriginAllowed(origin, options.allowOrigins)) {
+                    // Return normal response without CORS headers as per spec 6.2
+                    return #complete({
+                        statusCode = 200;
+                        headers = [];
+                        body = null;
+                    });
+                };
+
+                // Set Access-Control-Allow-Origin header
                 if (not options.allowCredentials and options.allowOrigins.size() == 0) {
-                    // If credentials aren't required and all origins are allowed, then we can use '*' for the origin
                     List.add(corsHeaders, ("Access-Control-Allow-Origin", "*"));
-                } else if (isOriginAllowed(origin, options.allowOrigins)) {
-                    // Otherwise specificy the origin if its allowed
+                } else {
                     List.add(corsHeaders, ("Access-Control-Allow-Origin", origin));
                     List.add(corsHeaders, ("Vary", "Origin"));
-                } else {
-                    // If the origin is not allowed, don't return CORS headers so the browser will block the request
+                };
+
+                // Set credentials header if needed
+                if (options.allowCredentials) {
+                    List.add(corsHeaders, ("Access-Control-Allow-Credentials", "true"));
                 };
             };
-            case (null) ();
         };
 
-        // Credentials
-        if (options.allowCredentials) {
-            List.add(corsHeaders, ("Access-Control-Allow-Credentials", "true"));
+        // Check if this is actually a preflight request
+        // OPTIONS method with Access-Control-Request-Method header indicates preflight
+        let isPreflightRequest = context.method == #options and context.getHeader("Access-Control-Request-Method") != null;
+
+        // Handle preflight request
+        if (isPreflightRequest) {
+            // Check Access-Control-Request-Method header
+            switch (context.getHeader("Access-Control-Request-Method")) {
+                case (null) {
+                    // Missing required header, per spec 6.2 don't set additional headers
+                    return #complete({
+                        statusCode = 200;
+                        headers = [];
+                        body = null;
+                    });
+                };
+                case (?requestMethodHeader) {
+                    // Parse the method
+                    switch (parseRequestMethod(requestMethodHeader)) {
+                        case (null) {
+                            // Parsing failed, per spec 6.2 don't set additional headers
+                            return #complete({
+                                statusCode = 200;
+                                headers = [];
+                                body = null;
+                            });
+                        };
+                        case (?requestMethod) {
+                            // Check if method is allowed
+                            if (not isMethodAllowed(requestMethod, options.allowMethods)) {
+                                // Method not allowed, per spec 6.2 don't set additional headers
+                                return #complete({
+                                    statusCode = 200;
+                                    headers = [];
+                                    body = null;
+                                });
+                            };
+
+                            // Add Access-Control-Allow-Methods header
+                            let allowedMethodsText = Text.join(
+                                ", ",
+                                Iter.map<HttpMethod.HttpMethod, Text>(
+                                    options.allowMethods.vals(),
+                                    func(m) { HttpMethod.toText(m) },
+                                ),
+                            );
+                            List.add(corsHeaders, ("Access-Control-Allow-Methods", allowedMethodsText));
+
+                            // Handle Access-Control-Request-Headers
+                            switch (context.getHeader("Access-Control-Request-Headers")) {
+                                case (null) {
+                                    // No headers requested, that's fine
+                                };
+                                case (?requestHeadersHeader) {
+                                    // Parse headers
+                                    switch (parseHeaderList(requestHeadersHeader)) {
+                                        case (null) {
+                                            // Parsing failed, per spec 6.2 don't set additional headers
+                                            return #complete({
+                                                statusCode = 200;
+                                                headers = [];
+                                                body = null;
+                                            });
+                                        };
+                                        case (?requestedHeaders) {
+                                            // Check if all headers are allowed
+                                            if (not areHeadersAllowed(requestedHeaders, options.allowHeaders)) {
+                                                // Some headers not allowed, per spec 6.2 don't set additional headers
+                                                return #complete({
+                                                    statusCode = 200;
+                                                    headers = [];
+                                                    body = null;
+                                                });
+                                            };
+
+                                            // Add Access-Control-Allow-Headers header
+                                            let allowedHeadersText = Text.join(", ", options.allowHeaders.vals());
+                                            List.add(corsHeaders, ("Access-Control-Allow-Headers", allowedHeadersText));
+                                        };
+                                    };
+                                };
+                            };
+
+                            // Add max-age header if configured
+                            switch (options.maxAge) {
+                                case (null) {};
+                                case (?maxAge) {
+                                    // Limit max-age to reasonable value (24 hours)
+                                    let limitedMaxAge = if (maxAge > 86400) 86400 else maxAge;
+                                    List.add(corsHeaders, ("Access-Control-Max-Age", Nat.toText(limitedMaxAge)));
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+
+            // Complete the preflight request with appropriate headers
+            return #complete({
+                statusCode = 200; // OK is standard for OPTIONS preflight response
+                headers = List.toArray(corsHeaders);
+                body = null;
+            });
         };
 
-        // Handle preflight requests
-        if (context.method == #options) {
-            return #complete(handlePreflightRequest(context, corsHeaders, options));
-        };
-
-        // Expose headers only in non-preflight requests
+        // For non-preflight requests, add exposed headers if configured
         if (options.exposeHeaders.size() > 0) {
-            let exposedHeaders = Text.join(", ", options.exposeHeaders.vals());
-            List.add(corsHeaders, ("Access-Control-Expose-Headers", exposedHeaders));
+            let exposedHeadersText = Text.join(", ", options.exposeHeaders.vals());
+            List.add(corsHeaders, ("Access-Control-Expose-Headers", exposedHeadersText));
         };
 
         #next({ corsHeaders = List.toArray(corsHeaders) });
-
     };
 
-    private func handlePreflightRequest(
-        context : HttpContext.HttpContext,
-        responseHeaders : List.List<(Text, Text)>,
-        options : Options,
-    ) : Types.HttpResponse {
+    // Parse and validate request method
+    private func parseRequestMethod(method : Text) : ?HttpMethod.HttpMethod {
+        let trimmed = Text.trim(method, #predicate(func(c : Char) : Bool { c == ' ' }));
+        HttpMethod.fromText(trimmed);
+    };
 
-        // Methods
-        switch (context.getHeader("Access-Control-Request-Method")) {
-            case (?_) {
-                // Only include when header is present
-                if (options.allowMethods.size() == 0) {
-                    // If no methods are specified, then allow all
-                    List.add(responseHeaders, ("Access-Control-Allow-Methods", "*"));
+    // Parse and validate headers list
+    private func parseHeaderList(headerList : Text) : ?[Text] {
+        let parts = Iter.toArray(Text.split(headerList, #char ','));
+
+        var valid = true;
+        let parsedHeaders = Array.foldLeft<Text, List.List<Text>>(
+            parts,
+            List.empty<Text>(),
+            func(acc : List.List<Text>, part : Text) : List.List<Text> {
+                let trimmed = Text.trim(part, #predicate(func(c : Char) : Bool { c == ' ' }));
+                if (trimmed == "") {
+                    valid := false;
                 } else {
-                    // Otherwise specify the allowed methods
-                    let allowMethodsText = options.allowMethods.vals()
-                    |> Iter.map(_, func(m : HttpMethod.HttpMethod) : Text = HttpMethod.toText(m))
-                    |> Text.join(", ", _);
-                    List.add(responseHeaders, ("Access-Control-Allow-Methods", allowMethodsText));
+                    List.add(acc, trimmed);
+                };
+                acc;
+            },
+        );
+
+        if (valid) {
+            ?List.toArray(parsedHeaders);
+        } else {
+            null;
+        };
+    };
+
+    // Check if all requested headers are allowed
+    private func areHeadersAllowed(requestedHeaders : [Text], allowedHeaders : [Text]) : Bool {
+        if (allowedHeaders.size() == 0) return true; // All headers allowed
+
+        for (header in requestedHeaders.vals()) {
+            var found = false;
+            let headerLower = Text.toLower(header);
+            label f for (allowed in allowedHeaders.vals()) {
+                if (Text.toLower(allowed) == headerLower) {
+                    found := true;
+                    break f;
                 };
             };
-            case (null) {};
+            if (not found) return false;
         };
 
-        // Headers
-        switch (context.getHeader("Access-Control-Request-Headers")) {
-            case (?_) {
-                // Only include when header is present
-                let allowHeadersText = Text.join(", ", options.allowHeaders.vals());
-                List.add(responseHeaders, ("Access-Control-Allow-Headers", allowHeadersText));
-            };
-            case (null) ();
+        true;
+    };
+
+    // Validate origin format
+    private func validOriginFormat(origin : Text) : Bool {
+        Text.startsWith(origin, #text "http://") or Text.startsWith(origin, #text "https://");
+    };
+
+    private func isMethodAllowed(method : HttpMethod.HttpMethod, allowedMethods : [HttpMethod.HttpMethod]) : Bool {
+        if (allowedMethods.size() == 0) return true; // All methods allowed
+
+        for (allowed in allowedMethods.vals()) {
+            if (method == allowed) return true;
         };
 
-        // Max age
-        switch (options.maxAge) {
-            case (?maxAge) {
-                List.add(responseHeaders, ("Access-Control-Max-Age", Nat.toText(maxAge)));
-            };
-            case (null) {};
-        };
-
-        return {
-            statusCode = 204;
-            headers = List.toArray(responseHeaders);
-            body = null;
-        };
+        false;
     };
 
     private func isOriginAllowed(origin : Text, allowedOrigins : [Text]) : Bool {
         if (allowedOrigins.size() == 0) return true; // All origins allowed
+
         for (allowed in allowedOrigins.vals()) {
-            if (TextX.equalIgnoreCase(origin, allowed)) return true;
+            if (Text.toLower(origin) == Text.toLower(allowed)) return true;
         };
+
         false;
     };
 };
