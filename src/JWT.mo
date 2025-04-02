@@ -69,66 +69,11 @@ module {
         };
     };
 
-    public func getHeaderValue(token : Token, key : Text) : ?Json.Json {
-        let ?kv = Array.find(
-            token.header.raw,
-            func((k, _value) : (Text, Json.Json)) : Bool = k == key,
-        ) else return null;
-        ?kv.1;
-    };
-
-    public func getPayloadValue(token : Token, key : Text) : ?Json.Json {
-        let ?kv = Array.find(
-            token.payload.raw,
-            func((k, _value) : (Text, Json.Json)) : Bool = k == key,
-        ) else return null;
-        ?kv.1;
-    };
-
-    public func validateExpiration(token : Token) : Bool {
-        switch (token.payload.exp) {
-            case (null) true; // No expiration claim, consider valid by default
-            case (?expTime) Time.now() >= Float.toInt(expTime * 1_000_000_000);
-        };
-    };
-
-    // Validate "not before" time
-    public func validateNotBefore(token : Token) : Bool {
-        switch (token.payload.nbf) {
-            case (null) true; // No nbf claim, consider valid by default
-            case (?nbfTime) Time.now() >= Float.toInt(nbfTime * 1_000_000_000);
-        };
-    };
-
-    // Verify signature based on algorithm
-    public func verifySignature(token : Token, key : Blob) : Result.Result<Bool, Text> {
-        // Reconstruct the signing input (header.payload)
-        let partsIter = Text.split(token.raw, #char('.'));
-        let ?headerPart = partsIter.next() else return #err("Invalid JWT format - missing header part");
-        let ?payloadPart = partsIter.next() else return #err("Invalid JWT format - missing payload part");
-        let message = Text.encodeUtf8(headerPart # "." # payloadPart);
-
-        // Verify based on algorithm
-        type HashAlgorithm = {
-            #sha256;
-            // #sha384;
-            // #sha512;
-        };
-        type Verifier = (hashAlgorithm : HashAlgorithm, message : Iter.Iter<Nat8>, key : Blob, signature : Blob) -> Result.Result<Bool, Text>;
-        let (hashAlg, verifier) : (HashAlgorithm, Verifier) = switch (token.header.alg) {
-            case ("HS256") (#sha256, verifyHmacSignature);
-            // case ("HS384") verifyHmacSignature(#sha384, signingInput.vals(), key, token.signature);
-            // case ("HS512") verifyHmacSignature(#sha512, signingInput.vals(), key, token.signature);
-            case ("ES256") (#sha256, verifyEcdsaSignature);
-            // case ("ES384") (#sha384, verifyEcdsaSignature);
-            // case ("ES512") (#sha512, verifyEcdsaSignature);
-            case ("none") return #err("Algorithm 'none' is not supported for security reasons");
-            case (_) return #err("Unsupported algorithm: " # token.header.alg);
-        };
-        switch (verifier(hashAlg, message.vals(), key, token.signature)) {
-            case (#err(e)) return #err("Failed to verify signature: " # debug_show (e));
-            case (#ok(isValid)) #ok(isValid);
-        };
+    public let defaultValidationOptions : ValidationOptions = {
+        validateExpiration = true;
+        validateNotBefore = true;
+        validateSignature = true;
+        audienceValidation = #none;
     };
 
     // Comprehensive validation
@@ -246,6 +191,52 @@ module {
             signature = signatureBytes;
             raw = jwt;
         });
+    };
+
+    private func validateExpiration(token : Token) : Bool {
+        switch (token.payload.exp) {
+            case (null) true; // No expiration claim, consider valid by default
+            case (?expTime) Time.now() >= Float.toInt(expTime * 1_000_000_000);
+        };
+    };
+
+    // Validate "not before" time
+    private func validateNotBefore(token : Token) : Bool {
+        switch (token.payload.nbf) {
+            case (null) true; // No nbf claim, consider valid by default
+            case (?nbfTime) Time.now() >= Float.toInt(nbfTime * 1_000_000_000);
+        };
+    };
+
+    // Verify signature based on algorithm
+    private func verifySignature(token : Token, key : Blob) : Result.Result<Bool, Text> {
+        // Reconstruct the signing input (header.payload)
+        let partsIter = Text.split(token.raw, #char('.'));
+        let ?headerPart = partsIter.next() else return #err("Invalid JWT format - missing header part");
+        let ?payloadPart = partsIter.next() else return #err("Invalid JWT format - missing payload part");
+        let message = Text.encodeUtf8(headerPart # "." # payloadPart);
+
+        // Verify based on algorithm
+        type HashAlgorithm = {
+            #sha256;
+            // #sha384;
+            // #sha512;
+        };
+        type Verifier = (hashAlgorithm : HashAlgorithm, message : Iter.Iter<Nat8>, key : Blob, signature : Blob) -> Result.Result<Bool, Text>;
+        let (hashAlg, verifier) : (HashAlgorithm, Verifier) = switch (token.header.alg) {
+            case ("HS256") (#sha256, verifyHmacSignature);
+            // case ("HS384") verifyHmacSignature(#sha384, signingInput.vals(), key, token.signature);
+            // case ("HS512") verifyHmacSignature(#sha512, signingInput.vals(), key, token.signature);
+            case ("ES256") (#sha256, verifyEcdsaSignature);
+            // case ("ES384") (#sha384, verifyEcdsaSignature);
+            // case ("ES512") (#sha512, verifyEcdsaSignature);
+            case ("none") return #err("Algorithm 'none' is not supported for security reasons");
+            case (_) return #err("Unsupported algorithm: " # token.header.alg);
+        };
+        switch (verifier(hashAlg, message.vals(), key, token.signature)) {
+            case (#err(e)) return #err("Failed to verify signature: " # debug_show (e));
+            case (#ok(isValid)) #ok(isValid);
+        };
     };
 
     private func verifyEcdsaSignature(

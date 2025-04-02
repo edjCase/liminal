@@ -4,13 +4,26 @@ import TextX "mo:xtended-text/TextX";
 import Array "mo:new-base/Array";
 import Result "mo:new-base/Result";
 import Runtime "mo:new-base/Runtime";
+import Iter "mo:new-base/Iter";
 import IterTools "mo:itertools/Iter";
 import Parser "./Parser";
 import HttpMethod "./HttpMethod";
 import Json "mo:json";
 import Path "Path";
+import JWT "JWT";
 
 module {
+
+    public type IdentityData = {
+        #jwt : JWT.Token;
+    };
+
+    public type Identity = {
+        authType : Text;
+        data : IdentityData;
+        getId : () -> ?Text;
+        isAuthenticated : () -> Bool;
+    };
 
     public class HttpContext(r : HttpTypes.UpdateRequest) = self {
         public let request : HttpTypes.UpdateRequest = r;
@@ -18,6 +31,21 @@ module {
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 
         public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Runtime.trap("Unsupported HTTP method: " # request.method);
+
+        private var identity : ?Identity = null;
+
+        public func setIdentityJWT(jwt : JWT.Token, isValid : Bool) {
+            identity := ?{
+                authType = "JWT";
+                data = #jwt(jwt);
+                getId = func() : ?Text = jwt.payload.sub;
+                isAuthenticated = func() : Bool = isValid;
+            };
+        };
+
+        public func getIdentity() : ?Identity {
+            return identity;
+        };
 
         public func getPath() : Path.Path {
             Path.parse(getPathQueryInternal().0); // TODO cache or not?
@@ -54,6 +82,37 @@ module {
                 func(kv : (Text, Text)) : Bool = TextX.equalIgnoreCase(kv.0, key),
             ) else return null;
             ?kv.1;
+        };
+
+        public func getCookie(key : Text) : ?Text {
+            // Get the Cookie header
+            let ?cookieHeader = getHeader("Cookie") else return null;
+
+            // Split the cookie string by semicolons
+            let cookies = Text.split(cookieHeader, #text(";"));
+
+            // Find the matching cookie
+            label f for (cookie in cookies) {
+                let cookieTrimmed = Text.trim(cookie, #text(" "));
+                let parts = Text.split(cookieTrimmed, #text("=")) |> Iter.toArray(_);
+
+                if (parts.size() >= 2) {
+                    let cookieKey = parts[0];
+
+                    if (not TextX.equalIgnoreCase(cookieKey, key)) {
+                        continue f;
+                    };
+                    let partsIter = parts.vals();
+                    // Skip the first part (the key)
+                    ignore partsIter.next();
+
+                    // Handle values that might contain "=" by rejoining the remaining parts
+                    return ?Text.join("=", partsIter);
+
+                };
+            };
+
+            return null;
         };
 
         public func parseRawJsonBody() : Result.Result<Json.Json, Text> {
