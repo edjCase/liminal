@@ -11,19 +11,9 @@ import HttpMethod "./HttpMethod";
 import Json "mo:json";
 import Path "Path";
 import JWT "JWT";
+import Identity "Identity";
 
 module {
-
-    public type IdentityData = {
-        #jwt : JWT.Token;
-    };
-
-    public type Identity = {
-        authType : Text;
-        data : IdentityData;
-        getId : () -> ?Text;
-        isAuthenticated : () -> Bool;
-    };
 
     public class HttpContext(r : HttpTypes.UpdateRequest) = self {
         public let request : HttpTypes.UpdateRequest = r;
@@ -32,18 +22,21 @@ module {
 
         public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Runtime.trap("Unsupported HTTP method: " # request.method);
 
-        private var identity : ?Identity = null;
+        private var identity : ?Identity.Identity = null;
 
         public func setIdentityJWT(jwt : JWT.Token, isValid : Bool) {
+            let id = switch (JWT.getPayloadValue(jwt, "sub")) {
+                case (?#string(sub)) ?sub;
+                case (_) null;
+            };
             identity := ?{
-                authType = "JWT";
-                data = #jwt(jwt);
-                getId = func() : ?Text = jwt.payload.sub;
+                kind = #jwt(jwt);
+                getId = func() : ?Text = id;
                 isAuthenticated = func() : Bool = isValid;
             };
         };
 
-        public func getIdentity() : ?Identity {
+        public func getIdentity() : ?Identity.Identity {
             return identity;
         };
 

@@ -4,11 +4,11 @@ import Array "mo:new-base/Array";
 import Text "mo:new-base/Text";
 import Iter "mo:new-base/Iter";
 import Result "mo:new-base/Result";
-import Debug "mo:new-base/Debug";
 import Blob "mo:new-base/Blob";
 import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
+import Identity "./Identity";
 
 module {
 
@@ -16,6 +16,7 @@ module {
         pathSegments : [PathSegment];
         method : RouteMethod;
         handler : RouteHandler;
+        identityRequirement : ?Identity.IdentityRequirement;
     };
 
     public class RouteContext(
@@ -26,6 +27,8 @@ module {
         public let httpContext : HttpContext.HttpContext = httpContext_;
         public let handler : RouteHandler = handler_;
         public let params : [(Text, Text)] = params_;
+
+        public func getIdentity() : ?Identity.Identity = httpContext.getIdentity();
 
         public func getRouteParam(key : Text) : Text {
             let ?param = getRouteParamOrNull(key) else {

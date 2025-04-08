@@ -13,6 +13,7 @@ import Route "./Route";
 import IterTools "mo:itertools/Iter";
 import Json "mo:json";
 import Path "./Path";
+import Identity "Identity";
 
 module Module {
 
@@ -33,6 +34,7 @@ module Module {
     public type Config = {
         routes : [RouteConfig];
         errorSerializer : ?ErrorSerializer;
+        identityRequirement : ?Identity.IdentityRequirement;
         prefix : ?Text;
     };
 
@@ -41,6 +43,7 @@ module Module {
         #group : {
             prefix : [Route.PathSegment];
             routes : [RouteConfig];
+            identityRequirement : ?Identity.IdentityRequirement;
         };
     };
 
@@ -125,6 +128,34 @@ module Module {
     };
 
     public func route(path : Text, method : Route.RouteMethod, handler : Route.RouteHandler) : RouteConfig {
+        routeWithOptAuthorization(
+            path,
+            method,
+            handler,
+            null, // No identity requirement
+        );
+    };
+
+    public func routeWithAuthorization(
+        path : Text,
+        method : Route.RouteMethod,
+        handler : Route.RouteHandler,
+        identityRequirement : Identity.IdentityRequirement,
+    ) : RouteConfig {
+        routeWithOptAuthorization(
+            path,
+            method,
+            handler,
+            ?identityRequirement,
+        );
+    };
+
+    private func routeWithOptAuthorization(
+        path : Text,
+        method : Route.RouteMethod,
+        handler : Route.RouteHandler,
+        identityRequirement : ?Identity.IdentityRequirement,
+    ) : RouteConfig {
         let pathSegments = switch (Route.parsePathSegments(path)) {
             case (#ok(segments)) segments;
             case (#err(e)) Runtime.trap("Failed to parse path '" # path # "' into segments: " # e);
@@ -133,10 +164,35 @@ module Module {
             pathSegments = pathSegments;
             method = method;
             handler = handler;
+            identityRequirement = identityRequirement;
         });
     };
 
     public func group(prefix : Text, routes : [RouteConfig]) : RouteConfig {
+        groupWithOptAuthorization(
+            prefix,
+            routes,
+            null, // No identity requirement
+        );
+    };
+
+    public func groupWithAuthorization(
+        prefix : Text,
+        routes : [RouteConfig],
+        identityRequirement : Identity.IdentityRequirement,
+    ) : RouteConfig {
+        groupWithOptAuthorization(
+            prefix,
+            routes,
+            ?identityRequirement,
+        );
+    };
+
+    private func groupWithOptAuthorization(
+        prefix : Text,
+        routes : [RouteConfig],
+        identityRequirement : ?Identity.IdentityRequirement,
+    ) : RouteConfig {
         let pathSegments = switch (Route.parsePathSegments(prefix)) {
             case (#ok(segments)) segments;
             case (#err(e)) Runtime.trap("Failed to parse path prefix '" # prefix # "' into segments: " # e);
@@ -144,6 +200,7 @@ module Module {
         #group({
             prefix = pathSegments;
             routes = routes;
+            identityRequirement = identityRequirement;
         });
     };
 

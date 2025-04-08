@@ -18,25 +18,22 @@ module {
         locations : [JWTLocation]; // Priority order for token extraction
     };
 
-    public let defaultOptions : Options = {
-        validation = JWT.defaultValidationOptions;
-        locations = [#header("Authorization"), #cookie("jwt"), #queryString("token")];
-    };
+    public let defaultLocations : [JWTLocation] = [
+        #header("Authorization"),
+        #cookie("jwt"),
+        #queryString("token"),
+    ];
 
-    public func default(key : Blob) : App.Middleware {
-        new(defaultOptions, key);
-    };
-
-    public func new(options : Options, key : Blob) : App.Middleware {
+    public func new(options : Options) : App.Middleware {
         {
             handleQuery = ?(
                 func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                    tryParseAndSetJWT(context, options.validation, key, options.locations);
+                    tryParseAndSetJWT(context, options.validation, options.locations);
                     next();
                 }
             );
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
-                tryParseAndSetJWT(context, options.validation, key, options.locations);
+                tryParseAndSetJWT(context, options.validation, options.locations);
                 await* next();
             };
         };
@@ -45,7 +42,6 @@ module {
     private func tryParseAndSetJWT(
         context : HttpContext.HttpContext,
         validation : JWT.ValidationOptions,
-        key : Blob,
         locations : [JWTLocation],
     ) {
         // 1. Extract JWT from request
@@ -61,7 +57,7 @@ module {
         };
 
         // 3. Validate JWT
-        let isValid = switch (JWT.validate(jwt, validation, key)) {
+        let isValid = switch (JWT.validate(jwt, validation)) {
             case (#ok) true;
             case (#err(err)) {
                 Debug.print("Failed to validate JWT: " # err);

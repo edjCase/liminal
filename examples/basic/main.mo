@@ -5,6 +5,7 @@ import UserRouter "UserRouter";
 import Principal "mo:new-base/Principal";
 import Blob "mo:new-base/Blob";
 import Result "mo:new-base/Result";
+import Runtime "mo:new-base/Runtime";
 import LoggingMiddleware "LoggingMiddleware";
 import IC "mo:ic";
 import AssetsMiddleware "../../src/Middleware/Assets";
@@ -13,7 +14,10 @@ import AssetCanister "../../src/Assets/AssetCanister";
 import CORSMiddleware "../../src/Middleware/CORS";
 import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";
+import JWTMiddleware "../../src/Middleware/JWT";
 import Router "../../src/Router";
+import ECDSA "mo:ecdsa";
+import RequireAuthMiddleware "../../src/Middleware/RequireAuth";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 
@@ -45,14 +49,16 @@ shared ({ caller = initializer }) actor class Actor() = self {
     let routerConfig : RouterMiddleware.Config = {
         errorSerializer = null;
         prefix = ?"/api";
+        identityRequirement = null;
         routes = [
-            Router.group(
+            Router.groupWithAuthorization(
                 "/users",
                 [
                     Router.getQuery("/", userRouter.get),
                     Router.postUpdate("/", userRouter.create),
                     Router.getQuery("/{id}", userRouter.getById),
                 ],
+                #authenticated,
             ),
             Router.getAsyncUpdate(
                 "/hash",
@@ -92,12 +98,25 @@ shared ({ caller = initializer }) actor class Actor() = self {
             ];
         };
     };
+    let jwtKeyBytes : Blob = "";
+    let ?jwtKey = ECDSA.publicKeyFromBytes(jwtKeyBytes.vals(), #der) else Runtime.trap("Invalid public key");
 
     // Http App
     let app = Liminal.App({
         middleware = [
             LoggingMiddleware.new(),
             CORSMiddleware.default(),
+            JWTMiddleware.new({
+                locations = JWTMiddleware.defaultLocations;
+                validation = {
+                    audience = #any(["https://example.com"]);
+                    issuer = #any(["https://example.com"]);
+                    signature = #key(#ecdsa(jwtKey));
+                    notBefore = true;
+                    expiration = true;
+                };
+            }),
+            RequireAuthMiddleware.new(#authenticated),
             RouterMiddleware.new(routerConfig),
             CSPMiddleware.default(),
             AssetsMiddleware.new(assetMiddlewareConfig),
