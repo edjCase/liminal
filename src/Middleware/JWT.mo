@@ -1,4 +1,4 @@
-import JWT "../JWT";
+import JWT "mo:jwt";
 import App "../App";
 import HttpContext "../HttpContext";
 import Types "../Types";

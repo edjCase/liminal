@@ -10,7 +10,7 @@ import Parser "./Parser";
 import HttpMethod "./HttpMethod";
 import Json "mo:json";
 import Path "Path";
-import JWT "JWT";
+import JWT "mo:jwt";
 import Identity "Identity";
 
 module {
