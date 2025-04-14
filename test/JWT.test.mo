@@ -1,10 +1,8 @@
 import { test } "mo:test";
 import Runtime "mo:new-base/Runtime";
-import Blob "mo:new-base/Blob";
+import Text "mo:new-base/Text";
 import JWT "../src/JWT";
 import ECDSA "mo:ecdsa";
-import Debug "mo:base/Debug";
-import Base64 "mo:base64";
 
 type TestCase = {
     token : Text;
@@ -17,19 +15,6 @@ type TestCase = {
 test(
     "JWT",
     func() {
-        let message = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJraWQiOiJ0ZXN0LWtleS1pZC0xMjMiLCJ4NWMiOlsiTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1MVNVMUxmVkxQSENvek14SDJNbzRsZ09FZVB6Tm0wdFJnZUxlelY2ZmZBdDBndW5WVEx3N29uTFJucnEwL0l6Vzd5V1I3UWtybUJMN2pUS0VuNXUrcUtoYndLZkJzdElzK2JNWTJaa3AxOGduVHhLTHhvUzJ0RmN6R2tQTFBnaXpza3VlbU1naFJuaVdhb0xjeWVoa2QzcXFHRWx2Vy9WREw1QWFXVGcwbkxWa2pSbzl6KzQwUlF6dVZhRThBa0FGbXhaem93M3grVkpZS2RqeWtrSjBpVDl3Q1MwRFJUWHUyNjlWMjY0VmYvM2p2cmVkWmlLUmtnd2xMOXhOQXd4WEZnMHgvWEZ3MDA1VVdWUklrZGdjS1dUanBCUDJkUHdWWjRXV0MrOWFHVmQrR3luMW8wQ0xlbGY0ckVqR29YYkFBRWdBcWVHVXhyY0lsYmpYZmJjbXdJREFRQUIiXSwieDV1IjoiaHR0cHM6Ly9leGFtcGxlLmNvbS90ZXN0LWNlcnQiLCJjcml0IjpbImV4cCIsIm5iZiJdfQ.eyJzdWIiOiIxIiwibmFtZSI6Ik1lIiwiaWF0IjoxLCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXVkIjpbImh0dHBzOi8vZXhhbXBsZS5vcmciXSwiZXhwIjoyLCJuYmYiOjEuMSwianRpIjoiSlRJLTEyMyIsImN1c3RvbSI6InZhbHVlIn0";
-        let messageBytes : Blob = Blob.fromArray(Base64.Base64(#v(Base64.V2), ?true).decode(message));
-        Debug.print("Message: " # debug_show messageBytes);
-
-        let signatureBytes : Blob = "\30\45\02\21\00\f3\c1\f9\d8\2f\cc\e3\b2\eb\1b\40\11\6c\24\93\57\1e\10\ff\d7\a5\6f\c2\2c\d2\bd\16\d2\0b\d7\56\75\02\20\21\ec\ea\b0\ae\80\84\bf\6d\60\39\14\71\26\f5\d0\fc\3b\4b\f3\2c\e6\f7\28\b1\0c\ff\62\80\20\6a\30";
-        let signatureBase64 = Base64.Base64(#v(Base64.V2), ?true).encode(#bytes(Blob.toArray(signatureBytes)));
-        Debug.print("Signature: " # signatureBase64);
-
-        let publicKeyBytes : Blob = "\30\56\30\10\06\07\2a\86\48\ce\3d\02\01\06\05\2b\81\04\00\0a\03\42\00\04\2f\ba\80\9b\5a\b0\6f\71\9f\ac\50\81\8a\9d\df\60\26\a4\a9\5b\87\db\c3\70\15\ed\13\c0\05\7d\07\4c\9c\80\26\e6\34\55\09\98\33\10\f6\d7\98\86\f4\d2\73\c1\de\dc\a4\87\80\3e\b0\76\ff\67\a4\89\14\a2";
-        let ?key = ECDSA.publicKeyFromBytes(publicKeyBytes.vals(), #der) else Runtime.trap("Error creating public key");
-        Debug.print("X: " # debug_show key.x);
-        Debug.print("Y: " # debug_show key.y);
-
         let cases : [TestCase] = [
             {
                 token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30";
@@ -50,16 +35,16 @@ test(
                     signature = {
                         algorithm = "HS256";
                         value = "\28\C5\05\B0\80\D3\9C\59\B2\1B\79\CC\88\63\3A\1F\D1\4D\15\44\4E\7F\7C\21\ED\29\AA\26\9F\90\57\7D";
-                        message = "\7B\22\61\6C\67\22\3A\22\48\53\32\35\36\22\2C\22\74\79\70\22\3A\22\4A\57\54\22\7D\01\EC\89\CD\D5\88\88\E8\88\C4\C8\CC\D0\D4\D8\DC\E0\E4\C0\88\B0\89\B9\85\B5\94\88\E8\89\29\BD\A1\B8\81\11\BD\94\88\B0\89\85\91\B5\A5\B8\88\E9\D1\C9\D5\94\B0\89\A5\85\D0\88\E8\C4\D4\C4\D8\C8\CC\E4\C0\C8\C9\F4";
+                        message = "\65\79\4A\68\62\47\63\69\4F\69\4A\49\55\7A\49\31\4E\69\49\73\49\6E\52\35\63\43\49\36\49\6B\70\58\56\43\4A\39\2E\65\79\4A\7A\64\57\49\69\4F\69\49\78\4D\6A\4D\30\4E\54\59\33\4F\44\6B\77\49\69\77\69\62\6D\46\74\5A\53\49\36\49\6B\70\76\61\47\34\67\52\47\39\6C\49\69\77\69\59\57\52\74\61\57\34\69\4F\6E\52\79\64\57\55\73\49\6D\6C\68\64\43\49\36\4D\54\55\78\4E\6A\49\7A\4F\54\41\79\4D\6E\30";
                     };
                 };
             },
             {
-                token = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJraWQiOiJ0ZXN0LWtleS1pZC0xMjMiLCJ4NWMiOlsiTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1MVNVMUxmVkxQSENvek14SDJNbzRsZ09FZVB6Tm0wdFJnZUxlelY2ZmZBdDBndW5WVEx3N29uTFJucnEwL0l6Vzd5V1I3UWtybUJMN2pUS0VuNXUrcUtoYndLZkJzdElzK2JNWTJaa3AxOGduVHhLTHhvUzJ0RmN6R2tQTFBnaXpza3VlbU1naFJuaVdhb0xjeWVoa2QzcXFHRWx2Vy9WREw1QWFXVGcwbkxWa2pSbzl6KzQwUlF6dVZhRThBa0FGbXhaem93M3grVkpZS2RqeWtrSjBpVDl3Q1MwRFJUWHUyNjlWMjY0VmYvM2p2cmVkWmlLUmtnd2xMOXhOQXd4WEZnMHgvWEZ3MDA1VVdWUklrZGdjS1dUanBCUDJkUHdWWjRXV0MrOWFHVmQrR3luMW8wQ0xlbGY0ckVqR29YYkFBRWdBcWVHVXhyY0lsYmpYZmJjbXdJREFRQUIiXSwieDV1IjoiaHR0cHM6Ly9leGFtcGxlLmNvbS90ZXN0LWNlcnQiLCJjcml0IjpbImV4cCIsIm5iZiJdfQ.eyJzdWIiOiIxIiwibmFtZSI6Ik1lIiwiaWF0IjoxLCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXVkIjpbImh0dHBzOi8vZXhhbXBsZS5vcmciXSwiZXhwIjoyLCJuYmYiOjEuMSwianRpIjoiSlRJLTEyMyIsImN1c3RvbSI6InZhbHVlIn0.MEUCIQDzwfnYL8zjsusbQBFsJJNXHhD_16VvwizSvRbSC9dWdQIgIezqsK6AhL9tYDkUcSb10Pw7S_Ms5vcosQz_YoAgajA";
+                token = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InRlc3Qta2V5LWlkLTEyMyIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ4NWMiOlsiTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1MVNVMUxmVkxQSENvek14SDJNbzRsZ09FZVB6Tm0wdFJnZUxlelY2ZmZBdDBndW5WVEx3N29uTFJucnEwL0l6Vzd5V1I3UWtybUJMN2pUS0VuNXUrcUtoYndLZkJzdElzK2JNWTJaa3AxOGduVHhLTHhvUzJ0RmN6R2tQTFBnaXpza3VlbU1naFJuaVdhb0xjeWVoa2QzcXFHRWx2Vy9WREw1QWFXVGcwbkxWa2pSbzl6KzQwUlF6dVZhRThBa0FGbXhaem93M3grVkpZS2RqeWtrSjBpVDl3Q1MwRFJUWHUyNjlWMjY0VmYvM2p2cmVkWmlLUmtnd2xMOXhOQXd4WEZnMHgvWEZ3MDA1VVdWUklrZGdjS1dUanBCUDJkUHdWWjRXV0MrOWFHVmQrR3luMW8wQ0xlbGY0ckVqR29YYkFBRWdBcWVHVXhyY0lsYmpYZmJjbXdJREFRQUIiXSwieDV1IjoiaHR0cHM6Ly9leGFtcGxlLmNvbS90ZXN0LWNlcnQiLCJjcml0IjpbImV4cCIsIm5iZiJdfQ.eyJzdWIiOiIxIiwibmFtZSI6Ik1lIiwiaWF0IjoxLCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXVkIjpbImh0dHBzOi8vZXhhbXBsZS5vcmciXSwiZXhwIjoyLCJuYmYiOjEuMSwianRpIjoiSlRJLTEyMyIsImN1c3RvbSI6InZhbHVlIn0.QeNBs5B4H9tr8EWCEVW65LRNdTePuxnUoNUZg96wP5o82M6rMei4DsdKuh2oyFpFWgA8U2XRXK1oW0s68sn4Yw";
                 key = #ecdsa(
                     ECDSA.PublicKey(
-                        21_588_225_049_337_109_873_405_550_505_403_375_696_077_506_562_146_237_645_919_793_593_104_591_554_380,
-                        70_787_229_275_941_322_822_918_359_021_784_182_473_371_425_197_247_842_842_574_720_404_293_992_125_602,
+                        88_901_251_030_692_689_791_368_522_421_773_354_572_762_654_817_252_927_261_413_865_469_233_718_935_271,
+                        114_604_114_598_436_419_959_579_003_594_530_107_050_358_152_857_655_780_678_831_853_515_601_435_636_939,
                         ECDSA.prime256v1Curve(),
                     )
                 );
@@ -69,8 +54,8 @@ test(
                     header = [
                         ("alg", #string("ES256")),
                         ("typ", #string("JWT")),
-                        ("cty", #string("application/json")),
                         ("kid", #string("test-key-id-123")),
+                        ("cty", #string("application/json")),
                         ("x5c", #array([#string("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u+qKhbwKfBstIs+bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyehkd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ0iT9wCS0DRTXu269V264Vf/3jvredZiKRkgwlL9xNAwxXFg0x/XFw005UWVRIkdgcKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbcmwIDAQAB")])),
                         ("x5u", #string("https://example.com/test-cert")),
                         ("crit", #array([#string("exp"), #string("nbf")])),
@@ -88,8 +73,8 @@ test(
                     ];
                     signature = {
                         algorithm = "ES256";
-                        value = "\30\45\02\21\00\f3\c1\f9\d8\2f\cc\e3\b2\eb\1b\40\11\6c\24\93\57\1e\10\ff\d7\a5\6f\c2\2c\d2\bd\16\d2\0b\d7\56\75\02\20\21\ec\ea\b0\ae\80\84\bf\6d\60\39\14\71\26\f5\d0\fc\3b\4b\f3\2c\e6\f7\28\b1\0c\ff\62\80\20\6a\30";
-                        message = "\7B\22\61\6C\67\22\3A\22\45\53\32\35\36\22\2C\22\74\79\70\22\3A\22\4A\57\54\22\2C\22\63\74\79\22\3A\22\61\70\70\6C\69\63\61\74\69\6F\6E\2F\6A\73\6F\6E\22\2C\22\6B\69\64\22\3A\22\74\65\73\74\2D\6B\65\79\2D\69\64\2D\31\32\33\22\2C\22\78\35\63\22\3A\5B\22\4D\49\49\42\49\6A\41\4E\42\67\6B\71\68\6B\69\47\39\77\30\42\41\51\45\46\41\41\4F\43\41\51\38\41\4D\49\49\42\43\67\4B\43\41\51\45\41\75\31\53\55\31\4C\66\56\4C\50\48\43\6F\7A\4D\78\48\32\4D\6F\34\6C\67\4F\45\65\50\7A\4E\6D\30\74\52\67\65\4C\65\7A\56\36\66\66\41\74\30\67\75\6E\56\54\4C\77\37\6F\6E\4C\52\6E\72\71\30\2F\49\7A\57\37\79\57\52\37\51\6B\72\6D\42\4C\37\6A\54\4B\45\6E\35\75\2B\71\4B\68\62\77\4B\66\42\73\74\49\73\2B\62\4D\59\32\5A\6B\70\31\38\67\6E\54\78\4B\4C\78\6F\53\32\74\46\63\7A\47\6B\50\4C\50\67\69\7A\73\6B\75\65\6D\4D\67\68\52\6E\69\57\61\6F\4C\63\79\65\68\6B\64\33\71\71\47\45\6C\76\57\2F\56\44\4C\35\41\61\57\54\67\30\6E\4C\56\6B\6A\52\6F\39\7A\2B\34\30\52\51\7A\75\56\61\45\38\41\6B\41\46\6D\78\5A\7A\6F\77\33\78\2B\56\4A\59\4B\64\6A\79\6B\6B\4A\30\69\54\39\77\43\53\30\44\52\54\58\75\32\36\39\56\32\36\34\56\66\2F\33\6A\76\72\65\64\5A\69\4B\52\6B\67\77\6C\4C\39\78\4E\41\77\78\58\46\67\30\78\2F\58\46\77\30\30\35\55\57\56\52\49\6B\64\67\63\4B\57\54\6A\70\42\50\32\64\50\77\56\5A\34\57\57\43\2B\39\61\47\56\64\2B\47\79\6E\31\6F\30\43\4C\65\6C\66\34\72\45\6A\47\6F\58\62\41\41\45\67\41\71\65\47\55\78\72\63\49\6C\62\6A\58\66\62\63\6D\77\49\44\41\51\41\42\22\5D\2C\22\78\35\75\22\3A\22\68\74\74\70\73\3A\2F\2F\65\78\61\6D\70\6C\65\2E\63\6F\6D\2F\74\65\73\74\2D\63\65\72\74\22\2C\22\63\72\69\74\22\3A\5B\22\65\78\70\22\2C\22\6E\62\66\22\5D\7D\00\1E\C8\9C\DD\58\88\8E\88\8C\48\8B\08\9B\98\5B\59\48\8E\88\93\59\48\8B\08\9A\58\5D\08\8E\8C\4B\08\9A\5C\DC\C8\8E\88\9A\1D\1D\1C\1C\CE\8B\CB\D9\5E\18\5B\5C\1B\19\4B\98\DB\DB\48\8B\08\98\5D\59\08\8E\96\C8\9A\1D\1D\1C\1C\CE\8B\CB\D9\5E\18\5B\5C\1B\19\4B\9B\DC\99\C8\97\4B\08\99\5E\1C\08\8E\8C\8B\08\9B\98\99\88\8E\8C\4B\8C\4B\08\9A\9D\1A\48\8E\88\92\95\12\4B\4C\4C\8C\C8\8B\08\98\DD\5C\DD\1B\DB\48\8E\88\9D\98\5B\1D\59\48\9F";
+                        value = "\41\E3\41\B3\90\78\1F\DB\6B\F0\45\82\11\55\BA\E4\B4\4D\75\37\8F\BB\19\D4\A0\D5\19\83\DE\B0\3F\9A\3C\D8\CE\AB\31\E8\B8\0E\C7\4A\BA\1D\A8\C8\5A\45\5A\00\3C\53\65\D1\5C\AD\68\5B\4B\3A\F2\C9\F8\63";
+                        message = "\65\79\4A\68\62\47\63\69\4F\69\4A\46\55\7A\49\31\4E\69\49\73\49\6E\52\35\63\43\49\36\49\6B\70\58\56\43\49\73\49\6D\74\70\5A\43\49\36\49\6E\52\6C\63\33\51\74\61\32\56\35\4C\57\6C\6B\4C\54\45\79\4D\79\49\73\49\6D\4E\30\65\53\49\36\49\6D\46\77\63\47\78\70\59\32\46\30\61\57\39\75\4C\32\70\7A\62\32\34\69\4C\43\4A\34\4E\57\4D\69\4F\6C\73\69\54\55\6C\4A\51\6B\6C\71\51\55\35\43\5A\32\74\78\61\47\74\70\52\7A\6C\33\4D\45\4A\42\55\55\56\47\51\55\46\50\51\30\46\52\4F\45\46\4E\53\55\6C\43\51\32\64\4C\51\30\46\52\52\55\46\31\4D\56\4E\56\4D\55\78\6D\56\6B\78\51\53\45\4E\76\65\6B\31\34\53\44\4A\4E\62\7A\52\73\5A\30\39\46\5A\56\42\36\54\6D\30\77\64\46\4A\6E\5A\55\78\6C\65\6C\59\32\5A\6D\5A\42\64\44\42\6E\64\57\35\57\56\45\78\33\4E\32\39\75\54\46\4A\75\63\6E\45\77\4C\30\6C\36\56\7A\64\35\56\31\49\33\55\57\74\79\62\55\4A\4D\4E\32\70\55\53\30\56\75\4E\58\55\72\63\55\74\6F\59\6E\64\4C\5A\6B\4A\7A\64\45\6C\7A\4B\32\4A\4E\57\54\4A\61\61\33\41\78\4F\47\64\75\56\48\68\4C\54\48\68\76\55\7A\4A\30\52\6D\4E\36\52\32\74\51\54\46\42\6E\61\58\70\7A\61\33\56\6C\62\55\31\6E\61\46\4A\75\61\56\64\68\62\30\78\6A\65\57\56\6F\61\32\51\7A\63\58\46\48\52\57\78\32\56\79\39\57\52\45\77\31\51\57\46\58\56\47\63\77\62\6B\78\57\61\32\70\53\62\7A\6C\36\4B\7A\51\77\55\6C\46\36\64\56\5A\68\52\54\68\42\61\30\46\47\62\58\68\61\65\6D\39\33\4D\33\67\72\56\6B\70\5A\53\32\52\71\65\57\74\72\53\6A\42\70\56\44\6C\33\51\31\4D\77\52\46\4A\55\57\48\55\79\4E\6A\6C\57\4D\6A\59\30\56\6D\59\76\4D\32\70\32\63\6D\56\6B\57\6D\6C\4C\55\6D\74\6E\64\32\78\4D\4F\58\68\4F\51\58\64\34\57\45\5A\6E\4D\48\67\76\57\45\5A\33\4D\44\41\31\56\56\64\57\55\6B\6C\72\5A\47\64\6A\53\31\64\55\61\6E\42\43\55\44\4A\6B\55\48\64\57\57\6A\52\58\56\30\4D\72\4F\57\46\48\56\6D\51\72\52\33\6C\75\4D\57\38\77\51\30\78\6C\62\47\59\30\63\6B\56\71\52\32\39\59\59\6B\46\42\52\57\64\42\63\57\56\48\56\58\68\79\59\30\6C\73\59\6D\70\59\5A\6D\4A\6A\62\58\64\4A\52\45\46\52\51\55\49\69\58\53\77\69\65\44\56\31\49\6A\6F\69\61\48\52\30\63\48\4D\36\4C\79\39\6C\65\47\46\74\63\47\78\6C\4C\6D\4E\76\62\53\39\30\5A\58\4E\30\4C\57\4E\6C\63\6E\51\69\4C\43\4A\6A\63\6D\6C\30\49\6A\70\62\49\6D\56\34\63\43\49\73\49\6D\35\69\5A\69\4A\64\66\51\2E\65\79\4A\7A\64\57\49\69\4F\69\49\78\49\69\77\69\62\6D\46\74\5A\53\49\36\49\6B\31\6C\49\69\77\69\61\57\46\30\49\6A\6F\78\4C\43\4A\70\63\33\4D\69\4F\69\4A\6F\64\48\52\77\63\7A\6F\76\4C\32\56\34\59\57\31\77\62\47\55\75\59\32\39\74\49\69\77\69\59\58\56\6B\49\6A\70\62\49\6D\68\30\64\48\42\7A\4F\69\38\76\5A\58\68\68\62\58\42\73\5A\53\35\76\63\6D\63\69\58\53\77\69\5A\58\68\77\49\6A\6F\79\4C\43\4A\75\59\6D\59\69\4F\6A\45\75\4D\53\77\69\61\6E\52\70\49\6A\6F\69\53\6C\52\4A\4C\54\45\79\4D\79\49\73\49\6D\4E\31\63\33\52\76\62\53\49\36\49\6E\5A\68\62\48\56\6C\49\6E\30";
                     };
                 };
             },
@@ -113,13 +98,13 @@ test(
                                     case (null) #skip;
                                     case (?issuer) #one(issuer);
                                 };
-                                expiration = true;
-                                notBefore = true;
+                                expiration = false;
+                                notBefore = false;
                                 signature = #key(testCase.key);
                             },
                         )
                     ) {
-                        case (#err(err)) Runtime.trap("Error validating token: " # err);
+                        case (#err(err)) Runtime.trap("Error validating token\nToken\n" # token # "\nError\n" # err);
                         case (#ok(_)) {
                             // Token is valid
                         };

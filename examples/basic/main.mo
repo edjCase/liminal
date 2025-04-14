@@ -99,7 +99,10 @@ shared ({ caller = initializer }) actor class Actor() = self {
         };
     };
     let jwtKeyBytes : Blob = "";
-    let ?jwtKey = ECDSA.publicKeyFromBytes(jwtKeyBytes.vals(), #der) else Runtime.trap("Invalid public key");
+    let jwtKey = switch (ECDSA.publicKeyFromBytes(jwtKeyBytes.vals(), #spki)) {
+        case (#err(e)) Runtime.trap("Failed to decode public key: " # e);
+        case (#ok(key)) key;
+    };
 
     // Http App
     let app = Liminal.App({

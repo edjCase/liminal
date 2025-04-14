@@ -6,9 +6,8 @@ import Nat "mo:new-base/Nat";
 import Array "mo:new-base/Array";
 import Float "mo:new-base/Float";
 import Time "mo:new-base/Time";
-import Debug "mo:new-base/Debug";
 import Json "mo:json";
-import Base64 "mo:base64";
+import BaseX "mo:base-x-encoder";
 import HMAC "mo:hmac";
 import ECDSA "mo:ecdsa";
 import Sha256 "mo:sha2/Sha256";
@@ -382,10 +381,12 @@ module {
         if (parts.size() != 3) {
             return #err("Invalid JWT format - expected 3 parts, found " # Nat.toText(parts.size()));
         };
-        let base64Engine = Base64.Base64(#v(Base64.V2), ?true);
-        // TODO handle error from engine
-        let headerJson = switch (parseJsonObj(base64Engine.decode(parts[0]), "header")) {
-            case (#err(e)) return #err("Unable to decode header: " # debug_show (e));
+        let headerBytes = switch (BaseX.fromBase64(parts[0])) {
+            case (#err(e)) return #err("Failed to decode JWT header base64 value '" # parts[0] # "'. Error: " # e);
+            case (#ok(headerBytes)) headerBytes;
+        };
+        let headerJson = switch (decodeJsonObjBytes(headerBytes, "header")) {
+            case (#err(e)) return #err("Unable to decode JWT header: " # debug_show (e));
             case (#ok(headerJson)) headerJson;
         };
         let signatureAlgorithm = switch (getValue(headerJson, "alg")) {
@@ -394,17 +395,21 @@ module {
             case (_) return #err("Invalid JWT: 'alg' must be a string");
         };
 
-        // TODO handle error from engine
-        let payloadJson = switch (parseJsonObj(base64Engine.decode(parts[1]), "payload")) {
-            case (#err(e)) return #err("Unable to decode payload: " # debug_show (e));
+        let payloadBytes = switch (BaseX.fromBase64(parts[1])) {
+            case (#err(e)) return #err("Failed to decode JWT payload base64 value '" # parts[1] # "'. Error: " # e);
+            case (#ok(payloadBytes)) payloadBytes;
+        };
+        let payloadJson = switch (decodeJsonObjBytes(payloadBytes, "payload")) {
+            case (#err(e)) return #err("Unable to decode JWT payload: " # debug_show (e));
             case (#ok(payloadJson)) payloadJson;
         };
 
-        // Decode base64url signature to bytes
-        let signatureBytes = Blob.fromArray(base64Engine.decode(parts[2])); // TODO handle error from engine
-        let messageBytes = Blob.fromArray(base64Engine.decode(parts[0] # "." # parts[1])); // TODO handle error from engine
+        let signatureBytes = switch (BaseX.fromBase64(parts[2])) {
+            case (#err(e)) return #err("Failed to decode JWT signature base64 value '" # parts[0] # "'. Error: " # e);
+            case (#ok(signatureBytes)) Blob.fromArray(signatureBytes);
+        };
 
-        Debug.print("Message: " # debug_show (messageBytes));
+        let messageBytes = Text.encodeUtf8(parts[0] # "." # parts[1]);
 
         #ok({
             header = headerJson;
@@ -504,12 +509,12 @@ module {
         publicKey : ECDSA.PublicKey,
         signature : Blob,
     ) : Bool {
-        let ?sig = ECDSA.signatureFromBytes(signature.vals(), publicKey.curve, #raw) else return false;
+        let #ok(sig) = ECDSA.signatureFromBytes(signature.vals(), publicKey.curve, #raw) else return false;
         let hash = switch (hashAlgorithm) {
             case (#sha256) Sha256.fromIter(#sha256, message);
             case (#sha224) Sha256.fromIter(#sha224, message);
         };
-        publicKey.verify(hash.vals(), sig);
+        publicKey.verifyHashed(hash.vals(), sig);
     };
 
     private func verifyHmacSignature(
@@ -527,7 +532,7 @@ module {
         Blob.equal(hmac, signature);
     };
 
-    private func parseJsonObj(
+    private func decodeJsonObjBytes(
         jsonBytes : [Nat8],
         label_ : Text,
     ) : Result.Result<[(Text, Json.Json)], Text> {
