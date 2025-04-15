@@ -5,7 +5,6 @@ import UserRouter "UserRouter";
 import Principal "mo:new-base/Principal";
 import Blob "mo:new-base/Blob";
 import Result "mo:new-base/Result";
-import Runtime "mo:new-base/Runtime";
 import LoggingMiddleware "LoggingMiddleware";
 import IC "mo:ic";
 import AssetsMiddleware "../../src/Middleware/Assets";
@@ -16,7 +15,6 @@ import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
 import Router "../../src/Router";
-import ECDSA "mo:ecdsa";
 import RequireAuthMiddleware "../../src/Middleware/RequireAuth";
 
 shared ({ caller = initializer }) actor class Actor() = self {
@@ -98,27 +96,22 @@ shared ({ caller = initializer }) actor class Actor() = self {
             ];
         };
     };
-    let jwtKeyBytes : Blob = "";
-    let jwtKey = switch (ECDSA.publicKeyFromBytes(jwtKeyBytes.vals(), #spki)) {
-        case (#err(e)) Runtime.trap("Failed to decode public key: " # e);
-        case (#ok(key)) key;
-    };
 
     // Http App
     let app = Liminal.App({
         middleware = [
-            LoggingMiddleware.new(),
             CORSMiddleware.default(),
             JWTMiddleware.new({
                 locations = JWTMiddleware.defaultLocations;
                 validation = {
-                    audience = #any(["https://example.com"]);
-                    issuer = #any(["https://example.com"]);
-                    signature = #key(#ecdsa(jwtKey));
-                    notBefore = true;
-                    expiration = true;
+                    audience = #skip;
+                    issuer = #skip;
+                    signature = #skip;
+                    notBefore = false;
+                    expiration = false;
                 };
             }),
+            LoggingMiddleware.new(),
             RequireAuthMiddleware.new(#authenticated),
             RouterMiddleware.new(routerConfig),
             CSPMiddleware.default(),

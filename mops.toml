@@ -16,13 +16,7 @@ certified-assets = "0.5.1"
 ic-assets = "0.1.0"
 asn1 = "2.0.2"
 json = "1.0.1"
-jwt = "https://github.com/edjCase/motoko_jwt"
-
-# jwt, remove
-base-x-encoder = "0.0.1"
-hmac = "0.0.1"
-ecdsa = "5.0.1"
-sha2 = "0.1.0"
+jwt = "0.0.1"
 
 [dev-dependencies]
 test = "2.1.1"

@@ -20,6 +20,11 @@ module {
         func logRequest(kind : { #query_; #update }, context : HttpContext.HttpContext) {
             let prefix = getPrefix(kind);
             Debug.print(prefix # "HTTP Request: " # HttpMethod.toText(context.method) # " " # Path.toText(context.getPath()));
+            switch (context.getIdentity()) {
+                case (?identity) Debug.print("Identity:  " # debug_show ({ kind = identity.kind; id = identity.getId(); isAuthenticated = identity.isAuthenticated() }));
+                case (null) Debug.print("Identity: null");
+            }
+
         };
 
         func logResponse(kind : { #query_; #update }, responseOrNull : ?Types.HttpResponse) {
