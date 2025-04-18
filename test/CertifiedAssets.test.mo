@@ -1,11 +1,11 @@
 // import { test = testAsync; suite = suiteAsync } "mo:test/async";
 // import Types "../src/Types";
-// import Pipeline "../src/Pipeline";
 // import Blob "mo:new-base/Blob";
-// import Debug "mo:new-base/Debug";
+// import Runtime "mo:new-base/Runtime";
 // import CertifiedAssets "mo:certified-assets";
-// import CertAssetsMiddleware "../src/CertifiedAssets";
+// import CertAssetsMiddleware "../src/Middleware/CertifiedAssets";
 // import HttpContext "../src/HttpContext";
+// import App "../src/App";
 
 // func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
 //     for ((k, v) in headers.vals()) {
@@ -14,7 +14,7 @@
 //     null;
 // };
 
-// func createMockRequest(url : Text) : (HttpContext.HttpContext, Pipeline.NextAsync) {
+// func createMockRequest(url : Text) : (HttpContext.HttpContext, App.NextAsync) {
 //     let httpContext = HttpContext.HttpContext({
 //         method = "GET";
 //         url = url;
@@ -41,13 +41,13 @@
 //             "adds certification headers to response",
 //             func() : async () {
 //                 let cert_store = CertifiedAssets.init_stable_store();
-//                 let certs = CertifiedAssets.CertifiedAssets(?cert_store);
+//                 let certs = CertifiedAssets.CertifiedAssets(cert_store);
 
 //                 // Certify an endpoint
 //                 let endpoint = CertifiedAssets.Endpoint("/test", ?"test data").status(200);
 //                 certs.certify(endpoint);
 
-//                 let middleware = CertAssetsMiddleware.createMiddleware({
+//                 let middleware = CertAssetsMiddleware.new({
 //                     assets = certs;
 //                     fallbackPath = null;
 //                 });
@@ -64,13 +64,13 @@
 //             "uses fallback when configured",
 //             func() : async () {
 //                 let cert_store = CertifiedAssets.init_stable_store();
-//                 let certs = CertifiedAssets.CertifiedAssets(?cert_store);
+//                 let certs = CertifiedAssets.CertifiedAssets(cert_store);
 
 //                 // Certify a fallback endpoint
-//                 let fallback = CertifiedAssets.Endpoint("/", ?"fallback data").status(200).is_fallback(true);
+//                 let fallback = CertifiedAssets.Endpoint("/", ?"fallback data").status(200).is_fallback_path(true);
 //                 certs.certify(fallback);
 
-//                 let middleware = CertAssetsMiddleware.createMiddleware({
+//                 let middleware = CertAssetsMiddleware.new({
 //                     assets = certs;
 //                     fallbackPath = ?"/";
 //                 });
@@ -87,9 +87,9 @@
 //             "preserves response when certification fails",
 //             func() : async () {
 //                 let cert_store = CertifiedAssets.init_stable_store();
-//                 let certs = CertifiedAssets.CertifiedAssets(?cert_store);
+//                 let certs = CertifiedAssets.CertifiedAssets(cert_store);
 
-//                 let middleware = CertAssetsMiddleware.createMiddleware({
+//                 let middleware = CertAssetsMiddleware.new({
 //                     assets = certs;
 //                     fallbackPath = null;
 //                 });
@@ -107,9 +107,9 @@
 //             "handles null response from next",
 //             func() : async () {
 //                 let cert_store = CertifiedAssets.init_stable_store();
-//                 let certs = CertifiedAssets.CertifiedAssets(?cert_store);
+//                 let certs = CertifiedAssets.CertifiedAssets(cert_store);
 
-//                 let middleware = CertAssetsMiddleware.createMiddleware({
+//                 let middleware = CertAssetsMiddleware.new({
 //                     assets = certs;
 //                     fallbackPath = null;
 //                 });

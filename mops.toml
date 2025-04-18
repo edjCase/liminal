@@ -16,7 +16,7 @@ certified-assets = "0.5.1"
 ic-assets = "0.1.0"
 asn1 = "2.0.2"
 json = "1.0.1"
-jwt = "0.0.1"
+jwt = "0.2.0"
 
 [dev-dependencies]
 test = "2.1.1"
