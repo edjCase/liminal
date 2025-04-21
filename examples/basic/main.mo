@@ -15,7 +15,6 @@ import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
 import Router "../../src/Router";
-import RequireAuthMiddleware "../../src/Middleware/RequireAuth";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 
@@ -45,7 +44,6 @@ shared ({ caller = initializer }) actor class Actor() = self {
     };
 
     let routerConfig : RouterMiddleware.Config = {
-        errorSerializer = null;
         prefix = ?"/api";
         identityRequirement = null;
         routes = [
@@ -60,7 +58,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
             ),
             Router.getAsyncUpdate(
                 "/hash",
-                func(_ : Route.RouteContext) : async* Route.RouteResult {
+                func(routeContext : Route.RouteContext) : async* Liminal.HttpResponse {
                     let ic = actor ("aaaaa-aa") : IC.Service;
                     let result = await ic.canister_info({
                         canister_id = Principal.fromActor(self);
@@ -70,7 +68,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
                         case (null) #null_;
                         case (?hash) #string(debug_show (Blob.toArray(hash)));
                     };
-                    #ok(#json(#object_([("hash", hashJson)])));
+                    routeContext.buildResponse(#ok, #json(#object_([("hash", hashJson)])));
                 },
             ),
         ];
@@ -112,7 +110,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
                 };
             }),
             LoggingMiddleware.new(),
-            RequireAuthMiddleware.new(#authenticated),
+            // RequireAuthMiddleware.new(#authenticated),
             RouterMiddleware.new(routerConfig),
             CSPMiddleware.default(),
             AssetsMiddleware.new(assetMiddlewareConfig),

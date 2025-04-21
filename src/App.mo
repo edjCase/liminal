@@ -39,13 +39,19 @@ module {
     public func defaultJsonErrorSerializer(
         error : HttpContext.HttpError
     ) : HttpContext.ErrorSerializerResponse {
-        let statusCode = HttpContext.getStatusCodeNat(error.statusCode);
         let jsonBody : Json.Json = switch (error.data) {
-            case (#message(message)) #object_([
-                ("status", #number(#int(statusCode))),
-                ("error", #string(debug_show (error.statusCode))),
-                ("message", #string(message)),
-            ]);
+            case (#none) return {
+                headers = [];
+                body = null;
+            };
+            case (#message(message)) {
+                let statusCodeText = HttpContext.getStatusCodeLabel(error.statusCode);
+                #object_([
+                    ("status", #number(#int(error.statusCode))),
+                    ("error", #string(statusCodeText)),
+                    ("message", #string(message)),
+                ]);
+            };
             case (#rfc9457(rfc)) {
                 let fields = Buffer.Buffer<(Text, Json.Json)>(10);
                 let addIfNotNull = func(
@@ -58,7 +64,7 @@ module {
                     };
                 };
                 fields.add(("type", #string(rfc.type_)));
-                fields.add(("status", #number(#int(statusCode))));
+                fields.add(("status", #number(#int(error.statusCode))));
                 addIfNotNull("title", rfc.title);
                 addIfNotNull("detail", rfc.detail);
                 addIfNotNull("instance", rfc.instance);

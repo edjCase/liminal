@@ -3,37 +3,25 @@ import Text "mo:new-base/Text";
 import Array "mo:new-base/Array";
 import Iter "mo:new-base/Iter";
 import List "mo:new-base/List";
-import Error "mo:new-base/Error";
-import Option "mo:new-base/Option";
 import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
-import HttpMethod "./HttpMethod";
 import Route "./Route";
 import IterTools "mo:itertools/Iter";
-import Json "mo:json";
 import Path "./Path";
 import Identity "Identity";
 
 module Module {
-
-    public type Error = {
-        statusCode : Nat;
-        message : ?Text;
-    };
 
     public type SerializedError = {
         body : Blob;
         headers : [(Text, Text)];
     };
 
-    public type ErrorSerializer = (Error -> SerializedError);
-
     public type ResponseHeader = (Text, Text);
 
     public type Config = {
         routes : [RouteConfig];
-        errorSerializer : ?ErrorSerializer;
         identityRequirement : ?Identity.IdentityRequirement;
         prefix : ?Text;
     };
@@ -47,19 +35,28 @@ module Module {
         };
     };
 
+    public type AsyncRouteResult = {
+        #response : Types.HttpResponse;
+        #noMatch;
+    };
+
+    public type SyncRouteResult = AsyncRouteResult or {
+        #upgrade;
+    };
+
     public func get(path : Text, handler : Route.RouteHandler) : RouteConfig {
         route(path, #get, handler);
     };
 
-    public func getQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func getQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #get, #syncQuery(handler));
     };
 
-    public func getUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func getUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #get, #syncUpdate(handler));
     };
 
-    public func getAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+    public func getAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #get, #asyncUpdate(handler));
     };
 
@@ -67,15 +64,15 @@ module Module {
         route(path, #post, handler);
     };
 
-    public func postQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func postQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #post, #syncQuery(handler));
     };
 
-    public func postUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func postUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #post, #syncUpdate(handler));
     };
 
-    public func postAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+    public func postAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #post, #asyncUpdate(handler));
     };
 
@@ -83,15 +80,15 @@ module Module {
         route(path, #put, handler);
     };
 
-    public func putQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func putQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncQuery(handler));
     };
 
-    public func putUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func putUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncUpdate(handler));
     };
 
-    public func putAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+    public func putAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #put, #asyncUpdate(handler));
     };
 
@@ -99,15 +96,15 @@ module Module {
         route(path, #patch, handler);
     };
 
-    public func patchQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func patchQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncQuery(handler));
     };
 
-    public func patchUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func patchUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncUpdate(handler));
     };
 
-    public func patchAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+    public func patchAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #patch, #asyncUpdate(handler));
     };
 
@@ -115,15 +112,15 @@ module Module {
         route(path, #delete, handler);
     };
 
-    public func deleteQuery(path : Text, handler : Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func deleteQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncQuery(handler));
     };
 
-    public func deleteUpdate(path : Text, handler : <system> Route.RouteContext -> Route.RouteResult) : RouteConfig {
+    public func deleteUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncUpdate(handler));
     };
 
-    public func deleteAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Route.RouteResult) : RouteConfig {
+    public func deleteAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #delete, #asyncUpdate(handler));
     };
 
@@ -243,27 +240,26 @@ module Module {
             config.routes,
             func(routeConfig : RouteConfig) : Iter.Iter<Route.Route> = buildRoutesFromConfig(routeConfig, prefix),
         );
-        let errorSerializer = Option.get<ErrorSerializer>(config.errorSerializer, defaultErrorSerializer);
 
-        public func route(httpContext : HttpContext.HttpContext) : ?Types.HttpResponse {
-            let ?routeContext = findRoute(httpContext) else return null;
+        public func route(httpContext : HttpContext.HttpContext) : SyncRouteResult {
+            let ?routeContext = findRoute(httpContext) else return #noMatch;
 
-            let result = switch (routeContext.handler) {
+            let response = switch (routeContext.handler) {
                 case (#syncQuery(handler)) handler(routeContext);
-                case (#syncUpdate(_)) return null; // Skip sync handlers that restrict to only updates, only handle in routeAsync
-                case (#asyncUpdate(_)) return null; // Skip async handlers, only handle in routeAsync
+                case (#syncUpdate(_)) return #upgrade; // Skip sync handlers that restrict to only updates, only handle in routeAsync
+                case (#asyncUpdate(_)) return #upgrade; // Skip async handlers, only handle in routeAsync
             };
-            handleResult(result);
+            #response(response);
         };
 
-        public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* ?Types.HttpResponse {
-            let ?routeContext = findRoute(httpContext) else return null;
-            let result = switch (routeContext.handler) {
-                case (#syncQuery(handler)) handler(routeContext);
+        public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* AsyncRouteResult {
+            let ?routeContext = findRoute(httpContext) else return #noMatch;
+            let response = switch (routeContext.handler) {
+                case (#syncQuery(_)) return #noMatch; // Upgraded already, so skip query handlers
                 case (#syncUpdate(handler)) handler<system>(routeContext);
                 case (#asyncUpdate(handler)) await* handler(routeContext);
             };
-            handleResult(result);
+            #response(response);
         };
 
         private func findRoute(
@@ -281,73 +277,6 @@ module Module {
 
             };
             null;
-        };
-
-        private func handleResult(
-            result : Route.RouteResult
-        ) : ?Types.HttpResponse {
-
-            func serializeError(statusCode : Nat, msg : ?Text) : Types.HttpResponse {
-                let error = errorSerializer({
-                    message = msg;
-                    statusCode = statusCode;
-                });
-                {
-                    statusCode = statusCode;
-                    headers = error.headers;
-                    body = ?error.body;
-                };
-            };
-            let response : Types.HttpResponse = switch (result) {
-                case (#raw(raw)) raw;
-                case (#ok(ok)) serializeReponseBody(200, ok);
-                case (#created(created)) serializeReponseBody(201, created);
-                case (#noContent) ({
-                    statusCode = 204;
-                    headers = [];
-                    body = null;
-                });
-                case (#notFound(notFound)) serializeError(404, notFound);
-                case (#badRequest(msg)) serializeError(400, ?msg);
-                case (#unauthorized(msg)) serializeError(401, ?msg);
-                case (#forbidden(msg)) serializeError(403, ?msg);
-                case (#methodNotAllowed(allowedMethods)) {
-                    let allowedMethodsText = allowedMethods.vals()
-                    |> Iter.map(_, func(m : Route.RouteMethod) : Text = HttpMethod.toText(m))
-                    |> Text.join(", ", _);
-                    let msg = "Method not allowed. Allowed methods: " # allowedMethodsText;
-                    serializeError(405, ?msg);
-                };
-                case (#unprocessableEntity(msg)) serializeError(422, ?msg);
-                case (#internalServerError(msg)) serializeError(500, ?msg);
-                case (#serviceUnavailable(msg)) serializeError(503, ?msg);
-            };
-            ?response;
-        };
-
-        private func serializeReponseBody(statusCode : Nat, body : Route.ResponseBody) : Types.HttpResponse {
-            switch (body) {
-                case (#custom(custom)) ({
-                    statusCode = statusCode;
-                    headers = custom.headers;
-                    body = ?custom.body;
-                });
-                case (#json(json)) ({
-                    statusCode = statusCode;
-                    headers = [("content-type", "application/json")];
-                    body = Json.stringify(json, null) |> ?Text.encodeUtf8(_);
-                });
-                case (#text(text)) ({
-                    statusCode = statusCode;
-                    headers = [("content-type", "text/plain")];
-                    body = ?Text.encodeUtf8(text);
-                });
-                case (#empty) ({
-                    statusCode = statusCode;
-                    headers = [];
-                    body = null;
-                });
-            };
         };
 
         private func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
@@ -376,68 +305,6 @@ module Module {
             };
         };
 
-    };
-
-    private func defaultErrorSerializer(error : Error) : SerializedError {
-        let errorType = switch (error.statusCode) {
-            // 4xx Client Errors
-            case (400) "Bad Request";
-            case (401) "Unauthorized";
-            case (402) "Payment Required";
-            case (403) "Forbidden";
-            case (404) "Not Found";
-            case (405) "Method Not Allowed";
-            case (406) "Not Acceptable";
-            case (407) "Proxy Authentication Required";
-            case (408) "Request Timeout";
-            case (409) "Conflict";
-            case (410) "Gone";
-            case (411) "Length Required";
-            case (412) "Precondition Failed";
-            case (413) "Payload Too Large";
-            case (414) "URI Too Long";
-            case (415) "Unsupported Media Type";
-            case (416) "Range Not Satisfiable";
-            case (417) "Expectation Failed";
-            case (418) "I'm a teapot";
-            case (421) "Misdirected Request";
-            case (422) "Unprocessable Entity";
-            case (423) "Locked";
-            case (424) "Failed Dependency";
-            case (425) "Too Early";
-            case (426) "Upgrade Required";
-            case (428) "Precondition Required";
-            case (429) "Too Many Requests";
-            case (431) "Request Header Fields Too Large";
-            case (451) "Unavailable For Legal Reasons";
-
-            // 5xx Server Errors
-            case (500) "Internal Server Error";
-            case (501) "Not Implemented";
-            case (502) "Bad Gateway";
-            case (503) "Service Unavailable";
-            case (504) "Gateway Timeout";
-            case (505) "HTTP Version Not Supported";
-            case (506) "Variant Also Negotiates";
-            case (507) "Insufficient Storage";
-            case (508) "Loop Detected";
-            case (510) "Not Extended";
-            case (511) "Network Authentication Required";
-
-            case (_) "Unknown Error"; // Default case for unknown status codes
-        };
-
-        let body = #object_([
-            ("error", #string(errorType)),
-            ("message", #string(Option.get(error.message, ""))),
-            ("status", #number(#int(error.statusCode))),
-        ])
-        |> Json.stringify(_, null)
-        |> Text.encodeUtf8(_);
-        {
-            body = body;
-            headers = [("content-type", "application/json")];
-        };
     };
 
 };

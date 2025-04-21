@@ -132,10 +132,10 @@ module {
         let encodingTypes = switch (parseEncodingTypes(httpContext.getHeader("Accept-Encoding"))) {
             case (#ok(encodings)) encodings;
             case (#err(err)) {
-                return ?httpContext.buildErrorResponse({
-                    statusCode = #notAcceptable;
-                    data = #message("Invalid Accept-Encoding header: " # err);
-                });
+                return ?httpContext.buildErrorResponse(
+                    #notAcceptable,
+                    #message("Invalid Accept-Encoding header: " # err),
+                );
             };
         };
 

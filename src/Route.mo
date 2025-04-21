@@ -4,13 +4,25 @@ import Array "mo:new-base/Array";
 import Text "mo:new-base/Text";
 import Iter "mo:new-base/Iter";
 import Result "mo:new-base/Result";
-import Blob "mo:new-base/Blob";
 import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
 import Identity "./Identity";
 
 module {
+
+    public type HttpResponse = Types.HttpResponse;
+
+    public type HttpErrorDataKind = HttpContext.HttpErrorDataKind;
+
+    public type HttpStatusCode = HttpContext.HttpStatusCode;
+    public type HttpStatusCodeOrCustom = HttpContext.HttpStatusCodeOrCustom;
+    public type SuccessHttpStatusCode = HttpContext.SuccessHttpStatusCode;
+    public type SuccessHttpStatusCodeOrCustom = HttpContext.SuccessHttpStatusCodeOrCustom;
+    public type ErrorHttpStatusCode = HttpContext.ErrorHttpStatusCode;
+    public type ErrorHttpStatusCodeOrCustom = HttpContext.ErrorHttpStatusCodeOrCustom;
+    public type RedirectionHttpStatusCode = HttpContext.RedirectionHttpStatusCode;
+    public type RedirectionHttpStatusCodeOrCustom = HttpContext.RedirectionHttpStatusCodeOrCustom;
 
     public type Route = {
         pathSegments : [PathSegment];
@@ -55,48 +67,26 @@ module {
 
         public func parseJsonBody<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> = httpContext.parseJsonBody(f);
 
+        public func buildResponse(statusCode : HttpStatusCodeOrCustom, body : ResponseBody) : HttpResponse {
+            httpContext.buildResponse(statusCode, body);
+        };
+
+        public func buildErrorResponse(statusCode : ErrorHttpStatusCodeOrCustom, data : HttpErrorDataKind) : HttpResponse {
+            httpContext.buildErrorResponse(statusCode, data);
+        };
     };
 
-    public type ResponseBody = {
-        #empty;
-        #custom : {
-            headers : [(Text, Text)];
-            body : Blob;
-        };
-        #json : Json.Json;
-        #text : Text;
-    };
+    public type ResponseBody = HttpContext.ResponseBody;
 
     public type ValidationError = {
         field : Text;
         message : Text;
     };
 
-    public type RouteResult = {
-        #raw : Types.HttpResponse;
-
-        // 2xx: Success
-        #ok : ResponseBody;
-        #created : ResponseBody;
-        #noContent;
-
-        // 4xx: Client Errors
-        #badRequest : Text;
-        #unauthorized : Text;
-        #forbidden : Text;
-        #notFound : ?Text;
-        #methodNotAllowed : [RouteMethod]; // Allowed methods
-        #unprocessableEntity : Text;
-
-        // 5xx: Server Errors
-        #internalServerError : Text;
-        #serviceUnavailable : Text;
-    };
-
     public type RouteHandler = {
-        #syncQuery : RouteContext -> RouteResult;
-        #syncUpdate : <system>(RouteContext) -> RouteResult;
-        #asyncUpdate : RouteContext -> async* RouteResult;
+        #syncQuery : RouteContext -> HttpResponse;
+        #syncUpdate : <system>(RouteContext) -> HttpResponse;
+        #asyncUpdate : RouteContext -> async* HttpResponse;
     };
 
     public type PathSegment = {

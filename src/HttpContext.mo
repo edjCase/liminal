@@ -12,11 +12,44 @@ import HttpMethod "./HttpMethod";
 import Json "mo:json";
 import Path "Path";
 import JWT "mo:jwt";
+import Nat "mo:base/Nat";
 import Identity "Identity";
 import Types "./Types";
 
 module {
-    public type ErrorStatusCode = {
+    public type SuccessHttpStatusCode = {
+        #ok; // 200
+        #created; // 201
+        #accepted; // 202
+        #nonAuthoritativeInformation; // 203
+        #noContent; // 204
+        #resetContent; // 205
+        #partialContent; // 206
+        #multiStatus; // 207
+        #alreadyReported; // 208
+        #imUsed; // 226
+    };
+
+    public type SuccessHttpStatusCodeOrCustom = SuccessHttpStatusCode or {
+        #custom : Nat;
+    };
+
+    public type RedirectionHttpStatusCode = {
+        #multipleChoices; // 300
+        #movedPermanently; // 301
+        #found; // 302
+        #seeOther; // 303
+        #notModified; // 304
+        #useProxy; // 305
+        #temporaryRedirect; // 307
+        #permanentRedirect; // 308
+    };
+
+    public type RedirectionHttpStatusCodeOrCustom = RedirectionHttpStatusCode or {
+        #custom : Nat;
+    };
+
+    public type ErrorHttpStatusCode = {
         // 4xx Client Errors
         #badRequest; // 400
         #unauthorized; // 401
@@ -60,9 +93,16 @@ module {
         #loopDetected; // 508
         #notExtended; // 510
         #networkAuthenticationRequired; // 511
+    };
 
-        // Custom/Additional
-        #custom : Nat; // For any non-standard error code
+    public type ErrorHttpStatusCodeOrCustom = ErrorHttpStatusCode or {
+        #custom : Nat;
+    };
+
+    public type HttpStatusCode = SuccessHttpStatusCode or RedirectionHttpStatusCode or ErrorHttpStatusCode;
+
+    public type HttpStatusCodeOrCustom = HttpStatusCode or {
+        #custom : Nat;
     };
 
     public type ProblemDetail = {
@@ -95,18 +135,29 @@ module {
     };
 
     public type HttpErrorDataKind = {
+        #none;
         #message : Text;
         #rfc9457 : ProblemDetail;
-    };
-
-    public type HttpError = {
-        statusCode : ErrorStatusCode;
-        data : HttpErrorDataKind;
     };
 
     public type ErrorSerializerResponse = {
         headers : [(Text, Text)];
         body : ?Blob;
+    };
+
+    public type ResponseBody = {
+        #empty;
+        #custom : {
+            headers : [(Text, Text)];
+            body : Blob;
+        };
+        #json : Json.Json;
+        #text : Text;
+    };
+
+    public type HttpError = {
+        statusCode : Nat;
+        data : HttpErrorDataKind;
     };
 
     public type Options = {
@@ -221,63 +272,162 @@ module {
             };
         };
 
-        public func buildErrorResponse(error : HttpError) : Types.HttpResponse {
-            let { headers; body } = options.errorSerializer(error);
-            let statusCode = getStatusCodeNat(error.statusCode);
+        public func buildResponse<T>(statusCode : HttpStatusCodeOrCustom, value : ResponseBody) : Types.HttpResponse {
+            let statusCodeNat = getStatusCodeNat(statusCode);
+            serializeReponseBody(statusCodeNat, value);
+        };
+
+        public func buildErrorResponse(statusCode : ErrorHttpStatusCodeOrCustom, data : HttpErrorDataKind) : Types.HttpResponse {
+            let statusCodeNat = getStatusCodeNat(statusCode);
+            let { headers; body } = options.errorSerializer({
+                statusCode = statusCodeNat;
+                data = data;
+            });
             {
-                statusCode = statusCode;
+                statusCode = statusCodeNat;
                 headers = headers;
                 body = body;
             };
         };
     };
 
-    public func getStatusCodeNat(code : ErrorStatusCode) : Nat {
-        switch (code) {
-            case (#badRequest) 400;
-            case (#unauthorized) 401;
-            case (#paymentRequired) 402;
-            case (#forbidden) 403;
-            case (#notFound) 404;
-            case (#methodNotAllowed) 405;
-            case (#notAcceptable) 406;
-            case (#proxyAuthenticationRequired) 407;
-            case (#requestTimeout) 408;
-            case (#conflict) 409;
-            case (#gone) 410;
-            case (#lengthRequired) 411;
-            case (#preconditionFailed) 412;
-            case (#payloadTooLarge) 413;
-            case (#uriTooLong) 414;
-            case (#unsupportedMediaType) 415;
-            case (#rangeNotSatisfiable) 416;
-            case (#expectationFailed) 417;
-            case (#imATeapot) 418;
-            case (#misdirectedRequest) 421;
-            case (#unprocessableContent) 422;
-            case (#locked) 423;
-            case (#failedDependency) 424;
-            case (#tooEarly) 425;
-            case (#upgradeRequired) 426;
-            case (#preconditionRequired) 428;
-            case (#tooManyRequests) 429;
-            case (#requestHeaderFieldsTooLarge) 431;
-            case (#unavailableForLegalReasons) 451;
-
-            case (#internalServerError) 500;
-            case (#notImplemented) 501;
-            case (#badGateway) 502;
-            case (#serviceUnavailable) 503;
-            case (#gatewayTimeout) 504;
-            case (#httpVersionNotSupported) 505;
-            case (#variantAlsoNegotiates) 506;
-            case (#insufficientStorage) 507;
-            case (#loopDetected) 508;
-            case (#notExtended) 510;
-            case (#networkAuthenticationRequired) 511;
-
-            case (#custom(code)) code;
+    private func serializeReponseBody(statusCode : Nat, body : ResponseBody) : Types.HttpResponse {
+        switch (body) {
+            case (#custom(custom)) ({
+                statusCode = statusCode;
+                headers = custom.headers;
+                body = ?custom.body;
+            });
+            case (#json(json)) ({
+                statusCode = statusCode;
+                headers = [("content-type", "application/json")];
+                body = Json.stringify(json, null) |> ?Text.encodeUtf8(_);
+            });
+            case (#text(text)) ({
+                statusCode = statusCode;
+                headers = [("content-type", "text/plain")];
+                body = ?Text.encodeUtf8(text);
+            });
+            case (#empty) ({
+                statusCode = statusCode;
+                headers = [];
+                body = null;
+            });
         };
+    };
+
+    public func getStatusCodeNat(code : HttpStatusCodeOrCustom) : Nat = switch (code) {
+        case (#ok) 200;
+        case (#created) 201;
+        case (#accepted) 202;
+        case (#nonAuthoritativeInformation) 203;
+        case (#noContent) 204;
+        case (#resetContent) 205;
+        case (#partialContent) 206;
+        case (#multiStatus) 207;
+        case (#alreadyReported) 208;
+        case (#imUsed) 226;
+
+        case (#multipleChoices) 300;
+        case (#movedPermanently) 301;
+        case (#found) 302;
+        case (#seeOther) 303;
+        case (#notModified) 304;
+        case (#useProxy) 305;
+        case (#temporaryRedirect) 307;
+        case (#permanentRedirect) 308;
+
+        case (#badRequest) 400;
+        case (#unauthorized) 401;
+        case (#paymentRequired) 402;
+        case (#forbidden) 403;
+        case (#notFound) 404;
+        case (#methodNotAllowed) 405;
+        case (#notAcceptable) 406;
+        case (#proxyAuthenticationRequired) 407;
+        case (#requestTimeout) 408;
+        case (#conflict) 409;
+        case (#gone) 410;
+        case (#lengthRequired) 411;
+        case (#preconditionFailed) 412;
+        case (#payloadTooLarge) 413;
+        case (#uriTooLong) 414;
+        case (#unsupportedMediaType) 415;
+        case (#rangeNotSatisfiable) 416;
+        case (#expectationFailed) 417;
+        case (#imATeapot) 418;
+        case (#misdirectedRequest) 421;
+        case (#unprocessableContent) 422;
+        case (#locked) 423;
+        case (#failedDependency) 424;
+        case (#tooEarly) 425;
+        case (#upgradeRequired) 426;
+        case (#preconditionRequired) 428;
+        case (#tooManyRequests) 429;
+        case (#requestHeaderFieldsTooLarge) 431;
+        case (#unavailableForLegalReasons) 451;
+
+        case (#internalServerError) 500;
+        case (#notImplemented) 501;
+        case (#badGateway) 502;
+        case (#serviceUnavailable) 503;
+        case (#gatewayTimeout) 504;
+        case (#httpVersionNotSupported) 505;
+        case (#variantAlsoNegotiates) 506;
+        case (#insufficientStorage) 507;
+        case (#loopDetected) 508;
+        case (#notExtended) 510;
+        case (#networkAuthenticationRequired) 511;
+
+        case (#custom(code)) code;
+    };
+
+    public func getStatusCodeLabel(code : Nat) : Text = switch (code) {
+        // 4xx Client Errors
+        case (400) "Bad Request";
+        case (401) "Unauthorized";
+        case (402) "Payment Required";
+        case (403) "Forbidden";
+        case (404) "Not Found";
+        case (405) "Method Not Allowed";
+        case (406) "Not Acceptable";
+        case (407) "Proxy Authentication Required";
+        case (408) "Request Timeout";
+        case (409) "Conflict";
+        case (410) "Gone";
+        case (411) "Length Required";
+        case (412) "Precondition Failed";
+        case (413) "Payload Too Large";
+        case (414) "URI Too Long";
+        case (415) "Unsupported Media Type";
+        case (416) "Range Not Satisfiable";
+        case (417) "Expectation Failed";
+        case (418) "I'm a teapot";
+        case (421) "Misdirected Request";
+        case (422) "Unprocessable Entity";
+        case (423) "Locked";
+        case (424) "Failed Dependency";
+        case (425) "Too Early";
+        case (426) "Upgrade Required";
+        case (428) "Precondition Required";
+        case (429) "Too Many Requests";
+        case (431) "Request Header Fields Too Large";
+        case (451) "Unavailable For Legal Reasons";
+
+        // 5xx Server Errors
+        case (500) "Internal Server Error";
+        case (501) "Not Implemented";
+        case (502) "Bad Gateway";
+        case (503) "Service Unavailable";
+        case (504) "Gateway Timeout";
+        case (505) "HTTP Version Not Supported";
+        case (506) "Variant Also Negotiates";
+        case (507) "Insufficient Storage";
+        case (508) "Loop Detected";
+        case (510) "Not Extended";
+        case (511) "Network Authentication Required";
+
+        case (_) "Unknown Error"; // Default case for unknown status codes
     };
 
 };

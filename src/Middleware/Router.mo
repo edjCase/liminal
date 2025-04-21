@@ -11,14 +11,15 @@ module Module {
         {
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (router.route(httpContext)) {
-                    case (?response) #response(response);
-                    case (null) next();
+                    case (#response(response)) #response(response);
+                    case (#upgrade) #upgrade;
+                    case (#noMatch) next();
                 };
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 switch (await* router.routeAsync(httpContext)) {
-                    case (?response) #response(response);
-                    case (null) await* next();
+                    case (#response(response)) #response(response);
+                    case (#noMatch) await* next();
                 };
             };
         };
