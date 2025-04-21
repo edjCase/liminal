@@ -20,4 +20,8 @@ module {
 
     public type App = AppModule.App;
     public func App(data : AppModule.Data) : App = AppModule.App(data);
+
+    public func defaultJsonErrorSerializer(
+        error : HttpContext.HttpError
+    ) : HttpContext.ErrorSerializerResponse = AppModule.defaultJsonErrorSerializer(error);
 };

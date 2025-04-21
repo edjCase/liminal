@@ -1,5 +1,4 @@
 import HttpContext "../../src/HttpContext";
-import Types "../../src/Types";
 import HttpMethod "../../src/HttpMethod";
 import Nat "mo:new-base/Nat";
 import Debug "mo:new-base/Debug";
@@ -27,28 +26,27 @@ module {
 
         };
 
-        func logResponse(kind : { #query_; #update }, responseOrNull : ?Types.HttpResponse) {
+        func logResponse(kind : { #query_; #update }, result : App.QueryResult) {
             let prefix = getPrefix(kind);
-            let responseText = switch (responseOrNull) {
-                case (?response) Nat.toText(response.statusCode);
-                case (null) "null";
+            let responseText = switch (result) {
+                case (#response(response)) Nat.toText(response.statusCode);
+                case (#upgrade) "Upgrading...";
+                case (#stream(_)) "Streaming...";
             };
             Debug.print(prefix # "HTTP Response: " # responseText);
         };
         {
-            handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                    logRequest(#query_, context);
-                    let responseOrNull = next();
-                    logResponse(#query_, responseOrNull);
-                    responseOrNull;
-                }
-            );
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
+            handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
+                logRequest(#query_, context);
+                let result = next();
+                logResponse(#query_, result);
+                result;
+            };
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 logRequest(#update, context);
-                let responseOrNull = await* next();
-                logResponse(#update, responseOrNull);
-                responseOrNull;
+                let result = await* next();
+                logResponse(#update, result);
+                result;
             };
         };
     };

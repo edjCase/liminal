@@ -2,41 +2,106 @@ import Types "./Types";
 import Blob "mo:new-base/Blob";
 import Nat16 "mo:new-base/Nat16";
 import Option "mo:new-base/Option";
+import Text "mo:new-base/Text";
+import Nat "mo:new-base/Nat";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
+import Json "mo:json";
+import Buffer "mo:base/Buffer";
 
 module {
-    public type Next = () -> ?Types.HttpResponse;
-    public type NextAsync = () -> async* ?Types.HttpResponse;
+    public type Next = () -> QueryResult;
+    public type NextAsync = () -> async* UpdateResult;
+
+    public type UpdateResult = {
+        #stream : Types.StreamingStrategy;
+        #response : Types.HttpResponse;
+    };
+
+    public type QueryResult = UpdateResult or {
+        #upgrade;
+    };
+
+    public type QueryFunc = (HttpContext.HttpContext, Next) -> QueryResult;
+
+    public type UpdateFunc = (HttpContext.HttpContext, NextAsync) -> async* UpdateResult;
 
     public type Middleware = {
-        handleQuery : ?((HttpContext.HttpContext, Next) -> ?Types.HttpResponse);
-        handleUpdate : (HttpContext.HttpContext, NextAsync) -> async* ?Types.HttpResponse;
+        handleQuery : QueryFunc;
+        handleUpdate : UpdateFunc;
     };
 
     public type Data = {
         middleware : [Middleware];
+        errorSerializer : HttpContext.HttpError -> HttpContext.ErrorSerializerResponse;
+    };
+
+    public func defaultJsonErrorSerializer(
+        error : HttpContext.HttpError
+    ) : HttpContext.ErrorSerializerResponse {
+        let statusCode = HttpContext.getStatusCodeNat(error.statusCode);
+        let jsonBody : Json.Json = switch (error.data) {
+            case (#message(message)) #object_([
+                ("status", #number(#int(statusCode))),
+                ("error", #string(debug_show (error.statusCode))),
+                ("message", #string(message)),
+            ]);
+            case (#rfc9457(rfc)) {
+                let fields = Buffer.Buffer<(Text, Json.Json)>(10);
+                let addIfNotNull = func(
+                    key : Text,
+                    value : ?Text,
+                ) {
+                    switch (value) {
+                        case (?v) fields.add((key, #string(v)));
+                        case (null) ();
+                    };
+                };
+                fields.add(("type", #string(rfc.type_)));
+                fields.add(("status", #number(#int(statusCode))));
+                addIfNotNull("title", rfc.title);
+                addIfNotNull("detail", rfc.detail);
+                addIfNotNull("instance", rfc.instance);
+
+                for (extension in rfc.extensions.vals()) {
+                    fields.add((extension.name, mapExtensionToJson(extension.value)));
+                };
+
+                #object_(Buffer.toArray(fields));
+            };
+        };
+        let body = Text.encodeUtf8(Json.stringify(jsonBody, null));
+        {
+            headers = [
+                ("Content-Type", "application/json"),
+                ("Content-Length", Nat.toText(body.size())),
+            ];
+            body = ?body;
+        };
     };
 
     public class App(data : Data) = self {
 
         public func http_request(req : HttpTypes.QueryRequest) : HttpTypes.QueryResponse {
-            let httpContext = HttpContext.HttpContext(req);
+            let httpContext = HttpContext.HttpContext(
+                req,
+                {
+                    errorSerializer = data.errorSerializer;
+                },
+            );
 
-            func handle(middleware : Middleware, next : Next) : ?Types.HttpResponse {
+            func handle(middleware : Middleware, next : Next) : QueryResult {
                 // Only run if the middleware has a handleQuery function
                 // Otherwise, skip to the next middleware
-                switch (middleware.handleQuery) {
-                    case (?handleQuery) handleQuery(httpContext, next);
-                    case (null) next();
-                };
+                middleware.handleQuery(httpContext, next);
             };
 
             // Helper function to create the middleware chain
             func createNext(index : Nat) : Next {
-                func() : ?Types.HttpResponse {
+                func() : QueryResult {
                     if (index >= data.middleware.size()) {
-                        return null;
+                        // If no middleware handled the request, return not found
+                        return #response(getNotFoundResponse());
                     };
 
                     let middleware = data.middleware[index];
@@ -45,73 +110,144 @@ module {
                 };
             };
 
-            let response = if (data.middleware.size() < 1) {
-                notFoundResponse();
-            } else {
-                // Start the middleware chain with the first middleware
-                let middleware = data.middleware[0];
-                let next = createNext(1);
-                let responseOrNull = handle(middleware, next);
-
-                let ?response = responseOrNull else return {
-                    // Upgrade to update request if nothing is handled by the query middleware
-                    status_code = 200;
-                    headers = [];
-                    body = Blob.fromArray([]);
-                    streaming_strategy = null;
-                    upgrade = ?true;
-                };
-                response;
+            if (data.middleware.size() < 1) {
+                return getHttpNotFoundResponse();
             };
-            {
-                status_code = Nat16.fromNat(response.statusCode);
-                headers = response.headers;
-                body = Option.get(response.body, Blob.fromArray([]));
-                streaming_strategy = null;
-                upgrade = null;
+            // Start the middleware chain with the first middleware
+            let middleware = data.middleware[0];
+            let next = createNext(1);
+            switch (handle(middleware, next)) {
+                case (#upgrade) {
+                    // Upgrade to update request if nothing is handled by the query middleware
+                    {
+                        status_code = 200;
+                        headers = [];
+                        body = Blob.fromArray([]);
+                        streaming_strategy = null;
+                        upgrade = ?true;
+                    };
+                };
+                case (#response(response)) {
+                    // Return the response from the middleware
+                    {
+                        status_code = Nat16.fromNat(response.statusCode);
+                        headers = response.headers;
+                        body = Option.get(response.body, Blob.fromArray([]));
+                        streaming_strategy = null;
+                        upgrade = null;
+                    };
+                };
+                case (#stream(stream)) {
+                    // Return the streaming strategy from the middleware
+                    let streamingStrategy = mapStreamingStrategy(stream);
+                    {
+                        status_code = 200;
+                        headers = [];
+                        body = Blob.fromArray([]);
+                        streaming_strategy = ?streamingStrategy;
+                        upgrade = null;
+                    };
+                };
             };
         };
 
         public func http_request_update(req : HttpTypes.UpdateRequest) : async* HttpTypes.UpdateResponse {
-            let httpContext = HttpContext.HttpContext(req);
+            let httpContext = HttpContext.HttpContext(
+                req,
+                {
+                    errorSerializer = data.errorSerializer;
+                },
+            );
+
+            func callMiddlewareUpdate(middleware : Middleware, next : NextAsync) : async* UpdateResult {
+                // Only run if the middleware has a handleUpdate function
+                // Otherwise, skip to the next middleware
+                await* middleware.handleUpdate(httpContext, next);
+            };
 
             // Helper function to create the middleware chain
             func createNext(index : Nat) : NextAsync {
-                func() : async* ?Types.HttpResponse {
+                func() : async* UpdateResult {
                     if (index >= data.middleware.size()) {
-                        return null;
+                        return #response(getNotFoundResponse());
                     };
 
                     let middleware = data.middleware[index];
                     let next = createNext(index + 1);
-                    await* middleware.handleUpdate(httpContext, next);
+                    await* callMiddlewareUpdate(middleware, next);
                 };
             };
 
-            let response = if (data.middleware.size() < 1) {
-                notFoundResponse();
-            } else {
-                // Start the middleware chain with the first middleware
-                let middleware = data.middleware[0];
-                let next = createNext(1);
-                let responseOrNull = await* middleware.handleUpdate(httpContext, next);
-
-                Option.get(responseOrNull, notFoundResponse());
+            if (data.middleware.size() < 1) {
+                return getHttpNotFoundResponse();
             };
-
-            {
-                status_code = Nat16.fromNat(response.statusCode);
-                headers = response.headers;
-                body = Option.get(response.body, Blob.fromArray([]));
-                streaming_strategy = null;
+            // Start the middleware chain with the first middleware
+            let middleware = data.middleware[0];
+            let next = createNext(1);
+            switch (await* callMiddlewareUpdate(middleware, next)) {
+                case (#response(response)) ({
+                    status_code = Nat16.fromNat(response.statusCode);
+                    headers = response.headers;
+                    body = Option.get(response.body, Blob.fromArray([]));
+                    streaming_strategy = null;
+                });
+                case (#stream(stream)) {
+                    let streamingStrategy = mapStreamingStrategy(stream);
+                    {
+                        status_code = 200;
+                        headers = [];
+                        body = Blob.fromArray([]);
+                        streaming_strategy = ?streamingStrategy;
+                    };
+                };
             };
         };
 
-        private func notFoundResponse() : Types.HttpResponse {
+        private func mapStreamingStrategy(streamingStrategy : Types.StreamingStrategy) : HttpTypes.StreamingStrategy {
+            switch (streamingStrategy) {
+                case (#callback(callback)) #Callback(callback);
+            };
+        };
+
+        private func getNotFoundResponse() : Types.HttpResponse {
             {
                 statusCode = 404;
                 headers = [];
                 body = null;
+            };
+        };
+
+        private func getHttpNotFoundResponse() : HttpTypes.QueryResponse {
+            {
+                status_code = 404;
+                headers = [];
+                body = Blob.fromArray([]);
+                streaming_strategy = null;
+                upgrade = null;
+            };
+        };
+    };
+
+    private func mapExtensionToJson(
+        value : HttpContext.ExtensionValue
+    ) : Json.Json {
+        switch (value) {
+            case (#text(v)) #string(v);
+            case (#number(v)) #number(#int(v));
+            case (#boolean(v)) #bool(v);
+            case (#array(v)) {
+                let jsonArray = Buffer.Buffer<Json.Json>(v.size());
+                for (innerExtension in v.vals()) {
+                    jsonArray.add(mapExtensionToJson(innerExtension));
+                };
+                #array(Buffer.toArray(jsonArray));
+            };
+            case (#object_(v)) {
+                let jsonObject = Buffer.Buffer<(Text, Json.Json)>(v.size());
+                for ((innerName, innerValue) in v.vals()) {
+                    jsonObject.add((innerName, mapExtensionToJson(innerValue)));
+                };
+                #object_(Buffer.toArray(jsonObject));
             };
         };
     };

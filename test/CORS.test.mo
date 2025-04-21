@@ -13,6 +13,16 @@ func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
     null;
 };
 
+func dummyErrorSerialzer(
+    error : HttpContext.HttpError
+) : HttpContext.ErrorSerializerResponse {
+    // Dummy error serializer for testing
+    return {
+        headers = [];
+        body = null;
+    };
+};
+
 await suiteAsync(
     "CORS Middleware Tests",
     func() : async () {
@@ -22,12 +32,17 @@ await suiteAsync(
             func() : async () {
 
                 // Test with allowed origin
-                let context = HttpContext.HttpContext({
-                    method = HttpMethod.toText(#get);
-                    url = "/test";
-                    headers = [("Origin", "http://allowed-domain.com")];
-                    body = Blob.fromArray([]);
-                });
+                let context = HttpContext.HttpContext(
+                    {
+                        method = HttpMethod.toText(#get);
+                        url = "/test";
+                        headers = [("Origin", "http://allowed-domain.com")];
+                        body = Blob.fromArray([]);
+                    },
+                    {
+                        errorSerializer = dummyErrorSerialzer;
+                    },
+                );
                 let response1 = CORS.handlePreflight(
                     context,
                     {
@@ -43,12 +58,17 @@ await suiteAsync(
                 };
 
                 // Test with different origin - should return response without CORS headers
-                let context2 = HttpContext.HttpContext({
-                    method = HttpMethod.toText(#get);
-                    url = "/test";
-                    headers = [("Origin", "http://disallowed-domain.com")];
-                    body = Blob.fromArray([]);
-                });
+                let context2 = HttpContext.HttpContext(
+                    {
+                        method = HttpMethod.toText(#get);
+                        url = "/test";
+                        headers = [("Origin", "http://disallowed-domain.com")];
+                        body = Blob.fromArray([]);
+                    },
+                    {
+                        errorSerializer = dummyErrorSerialzer;
+                    },
+                );
                 let response2 = CORS.handlePreflight(
                     context2,
                     {
@@ -70,16 +90,21 @@ await suiteAsync(
             func() : async () {
 
                 // Test OPTIONS request
-                let context = HttpContext.HttpContext({
-                    method = HttpMethod.toText(#options);
-                    url = "/test";
-                    headers = [
-                        ("Origin", "http://example.com"),
-                        ("Access-Control-Request-Method", "GET"),
-                        ("Access-Control-Request-Headers", "X-Custom-Header"),
-                    ];
-                    body = Blob.fromArray([]);
-                });
+                let context = HttpContext.HttpContext(
+                    {
+                        method = HttpMethod.toText(#options);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "http://example.com"),
+                            ("Access-Control-Request-Method", "GET"),
+                            ("Access-Control-Request-Headers", "X-Custom-Header"),
+                        ];
+                        body = Blob.fromArray([]);
+                    },
+                    {
+                        errorSerializer = dummyErrorSerialzer;
+                    },
+                );
                 let response = CORS.handlePreflight(
                     context,
                     {
@@ -106,14 +131,19 @@ await suiteAsync(
             "credentials handling",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#get);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#get);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with
                         allowCredentials = true;
@@ -136,14 +166,19 @@ await suiteAsync(
             "exposed headers",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#get);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#get);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with
                         exposeHeaders = ["Content-Length", "X-Custom-Response"];
@@ -164,12 +199,17 @@ await suiteAsync(
             "no origin header",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#get);
-                        url = "/test";
-                        headers = [];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#get);
+                            url = "/test";
+                            headers = [];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 // Test request with no origin header
@@ -186,15 +226,20 @@ await suiteAsync(
             "preflight request disallowed method",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "PUT") // Requesting PUT method
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "PUT") // Requesting PUT method
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with allowMethods = [#get, #post] // #put is not allowed
                     },
@@ -214,16 +259,21 @@ await suiteAsync(
             "preflight request disallowed header",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "GET"), // Need valid method first
-                            ("Access-Control-Request-Headers", "X-Custom-Header") // Requesting X-Custom-Header
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "GET"), // Need valid method first
+                                ("Access-Control-Request-Headers", "X-Custom-Header") // Requesting X-Custom-Header
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with allowHeaders = ["Content-Type"] // "X-Custom-Header" is not allowed
                     },
@@ -243,16 +293,21 @@ await suiteAsync(
             "preflight request with multiple request headers",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "GET"),
-                            ("Access-Control-Request-Headers", "Content-Type, Authorization"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "GET"),
+                                ("Access-Control-Request-Headers", "Content-Type, Authorization"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with allowHeaders = ["Content-Type", "Authorization"]
                     },
@@ -272,16 +327,21 @@ await suiteAsync(
             "preflight request with case-insensitive header matching",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "GET"),
-                            ("Access-Control-Request-Headers", "content-type") // lowercase
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "GET"),
+                                ("Access-Control-Request-Headers", "content-type") // lowercase
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with allowHeaders = ["Content-Type"]
                     },
@@ -301,15 +361,20 @@ await suiteAsync(
             "options request with no request method (not preflight)",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            // No Access-Control-Request-Method header
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                // No Access-Control-Request-Method header
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 switch (response) {
@@ -326,14 +391,19 @@ await suiteAsync(
             "wildcard origin with credentials",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#get);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#get);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with
                         allowCredentials = true;
@@ -356,15 +426,20 @@ await suiteAsync(
             "preflight request with invalid method format",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "INVALID_METHOD"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "INVALID_METHOD"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 switch (response) {
@@ -381,15 +456,20 @@ await suiteAsync(
             "preflight request with invalid origin format",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "invalid-origin"),
-                            ("Access-Control-Request-Method", "GET"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "invalid-origin"),
+                                ("Access-Control-Request-Method", "GET"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 switch (response) {
@@ -407,16 +487,21 @@ await suiteAsync(
             "preflight request with invalid headers format",
             func() : async () {
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "GET"),
-                            ("Access-Control-Request-Headers", ",,invalid,,"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "GET"),
+                                ("Access-Control-Request-Headers", ",,invalid,,"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 switch (response) {
@@ -434,15 +519,20 @@ await suiteAsync(
             func() : async () {
                 // GET is a simple method, should not require preflight
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#get);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Content-Type", "text/plain"), // Simple header value
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#get);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Content-Type", "text/plain"), // Simple header value
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     CORS.defaultOptions,
                 );
                 switch (response) {
@@ -459,16 +549,21 @@ await suiteAsync(
             func() : async () {
                 // Preflight should be required for non-simple Content-Type
                 let response = CORS.handlePreflight(
-                    HttpContext.HttpContext({
-                        method = HttpMethod.toText(#options);
-                        url = "/test";
-                        headers = [
-                            ("Origin", "http://example.com"),
-                            ("Access-Control-Request-Method", "POST"),
-                            ("Access-Control-Request-Headers", "Content-Type"),
-                        ];
-                        body = Blob.fromArray([]);
-                    }),
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "POST"),
+                                ("Access-Control-Request-Headers", "Content-Type"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                        },
+                    ),
                     {
                         CORS.defaultOptions with
                         allowHeaders = ["Content-Type"];
@@ -487,14 +582,19 @@ await suiteAsync(
         await testAsync(
             "exposed headers filtering",
             func() : async () {
-                let context = HttpContext.HttpContext({
-                    method = HttpMethod.toText(#get);
-                    url = "/test";
-                    headers = [
-                        ("Origin", "http://example.com"),
-                    ];
-                    body = Blob.fromArray([]);
-                });
+                let context = HttpContext.HttpContext(
+                    {
+                        method = HttpMethod.toText(#get);
+                        url = "/test";
+                        headers = [
+                            ("Origin", "http://example.com"),
+                        ];
+                        body = Blob.fromArray([]);
+                    },
+                    {
+                        errorSerializer = dummyErrorSerialzer;
+                    },
+                );
 
                 // Test with limited exposed headers
                 let response = CORS.handlePreflight(

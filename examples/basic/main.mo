@@ -117,6 +117,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
             CSPMiddleware.default(),
             AssetsMiddleware.new(assetMiddlewareConfig),
         ];
+        errorSerializer = Liminal.defaultJsonErrorSerializer;
     });
 
     // Http server methods

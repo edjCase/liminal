@@ -17,23 +17,32 @@ module {
 
     public func new(options : Options) : App.Middleware {
         {
-            handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                    switch (CORS.handlePreflight(context, options)) {
-                        case (#complete(response)) return ?response;
-                        case (#next({ corsHeaders })) {
-                            let ?response = next() else return null; // TODO should this be a 404 with the headers?;
-                            ?addHeadersToResponse(response, corsHeaders);
+            handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
+                switch (CORS.handlePreflight(context, options)) {
+                    case (#complete(response)) return #response(response);
+                    case (#next({ corsHeaders })) {
+                        switch (next()) {
+                            case (#response(response)) {
+                                let updatedResponse = addHeadersToResponse(response, corsHeaders);
+                                #response(updatedResponse);
+                            };
+                            case (#upgrade) #upgrade;
+                            case (#stream(stream)) #stream(stream);
                         };
                     };
-                }
-            );
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
+                };
+            };
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 switch (CORS.handlePreflight(context, options)) {
-                    case (#complete(response)) return ?response;
+                    case (#complete(response)) return #response(response);
                     case (#next({ corsHeaders })) {
-                        let ?response = await* next() else return null; // TODO should this be a 404 with the headers?;
-                        ?addHeadersToResponse(response, corsHeaders);
+                        switch (await* next()) {
+                            case (#response(response)) {
+                                let updatedResponse = addHeadersToResponse(response, corsHeaders);
+                                #response(updatedResponse);
+                            };
+                            case (#stream(stream)) #stream(stream);
+                        };
                     };
                 };
             };

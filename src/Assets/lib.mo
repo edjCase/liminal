@@ -132,12 +132,10 @@ module {
         let encodingTypes = switch (parseEncodingTypes(httpContext.getHeader("Accept-Encoding"))) {
             case (#ok(encodings)) encodings;
             case (#err(err)) {
-                Debug.print("Error parsing Accept-Encoding header: " # err);
-                return ?{
-                    statusCode = 406; // Not Acceptable
-                    headers = [];
-                    body = null;
-                };
+                return ?httpContext.buildErrorResponse({
+                    statusCode = #notAcceptable;
+                    data = #message("Invalid Accept-Encoding header: " # err);
+                });
             };
         };
 
@@ -151,11 +149,7 @@ module {
 
         let assetData = switch (options.store.get({ key = assetPath; accept_encodings = acceptEncodings })) {
             case (#ok(ok)) ok;
-            case (#err(_)) return ?{
-                statusCode = 404; // TODO better error handling?
-                headers = [];
-                body = null;
-            };
+            case (#err(_)) return null;
         };
 
         // if (assetData.total_length > 1_572_864) {

@@ -26,23 +26,21 @@ module {
             null;
         };
         {
-            handleQuery = ?(
-                func(
-                    httpContext : HttpContext.HttpContext,
-                    next : App.Next,
-                ) : ?Types.HttpResponse {
-                    switch (checkRequirement(httpContext)) {
-                        case (?response) ?response;
-                        case (null) next();
-                    };
-                }
-            );
+            handleQuery = func(
+                httpContext : HttpContext.HttpContext,
+                next : App.Next,
+            ) : App.QueryResult {
+                switch (checkRequirement(httpContext)) {
+                    case (?response) #response(response);
+                    case (null) next();
+                };
+            };
             handleUpdate = func(
                 httpContext : HttpContext.HttpContext,
                 next : App.NextAsync,
-            ) : async* ?Types.HttpResponse {
+            ) : async* App.UpdateResult {
                 switch (checkRequirement(httpContext)) {
-                    case (?response) return ?response;
+                    case (?response) #response(response);
                     case (null) await* next();
                 };
             };

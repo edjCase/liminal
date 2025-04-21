@@ -1,21 +1,30 @@
 import CertifiedAssets "../CertifiedAssets";
 import App "../App";
 import HttpContext "../HttpContext";
-import Types "../Types";
 
 module {
 
     public func new(options : CertifiedAssets.Options) : App.Middleware {
         {
-            handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                    let ?response = next() else return null;
-                    ?CertifiedAssets.handleResponse(context, response, options);
-                }
-            );
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
-                let ?response = await* next() else return null;
-                ?CertifiedAssets.handleResponse(context, response, options);
+            handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
+
+                switch (next()) {
+                    case (#response(response)) {
+                        let updatedResponse = CertifiedAssets.handleResponse(context, response, options);
+                        #response(updatedResponse);
+                    };
+                    case (#upgrade) #upgrade;
+                    case (#stream(stream)) #stream(stream);
+                };
+            };
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+                switch (await* next()) {
+                    case (#response(response)) {
+                        let updatedResponse = CertifiedAssets.handleResponse(context, response, options);
+                        #response(updatedResponse);
+                    };
+                    case (#stream(stream)) #stream(stream);
+                };
             };
         };
     };

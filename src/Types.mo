@@ -18,4 +18,23 @@ module {
         headers : [Header];
         body : ?Blob;
     };
+
+    public type StreamingToken = Blob;
+
+    public type CallbackStreamingStrategy = {
+        callback : StreamingCallback;
+        token : StreamingToken;
+    };
+
+    public type StreamingStrategy = {
+        #callback : CallbackStreamingStrategy;
+    };
+
+    public type StreamingCallback = shared query (Blob) -> async ?StreamingCallbackResponse;
+
+    public type StreamingCallbackResponse = {
+        body : Blob;
+        token : ?StreamingToken;
+    };
+
 };

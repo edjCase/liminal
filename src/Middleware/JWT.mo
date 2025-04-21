@@ -1,7 +1,6 @@
 import JWT "mo:jwt";
 import App "../App";
 import HttpContext "../HttpContext";
-import Types "../Types";
 import Debug "mo:new-base/Debug";
 import Text "mo:new-base/Text";
 
@@ -26,13 +25,11 @@ module {
 
     public func new(options : Options) : App.Middleware {
         {
-            handleQuery = ?(
-                func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                    tryParseAndSetJWT(context, options.validation, options.locations);
-                    next();
-                }
-            );
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
+            handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
+                tryParseAndSetJWT(context, options.validation, options.locations);
+                next();
+            };
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 tryParseAndSetJWT(context, options.validation, options.locations);
                 await* next();
             };
