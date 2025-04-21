@@ -164,8 +164,13 @@ module {
         errorSerializer : HttpError -> ErrorSerializerResponse;
     };
 
-    public class HttpContext(r : HttpTypes.UpdateRequest, options : Options) = self {
+    public class HttpContext(
+        r : HttpTypes.UpdateRequest,
+        certificate_version : ?Nat16,
+        options : Options,
+    ) = self {
         public let request : HttpTypes.UpdateRequest = r;
+        public let certificateVersion : ?Nat16 = certificate_version;
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 

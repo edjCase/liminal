@@ -13,10 +13,17 @@ module {
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 switch (Assets.serve(httpContext, options)) {
-                    case (null) await* next();
-                    case (?response) #response(response);
+                    case (#noMatch) await* next();
+                    case (#stream(stream)) #stream(stream);
+                    case (#response(response)) #response(response);
                 };
             };
+        };
+    };
+
+    public func streamingCallbackHandler(options : Config) : Blob -> ?App.StreamingCallbackResponse {
+        func(token : Blob) : ?App.StreamingCallbackResponse {
+            Assets.streamingCallbackHandler(token, options);
         };
     };
 };

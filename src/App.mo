@@ -26,6 +26,11 @@ module {
 
     public type UpdateFunc = (HttpContext.HttpContext, NextAsync) -> async* UpdateResult;
 
+    public type StreamingCallbackResponse = {
+        body : Blob;
+        token : ?Blob;
+    };
+
     public type Middleware = {
         handleQuery : QueryFunc;
         handleUpdate : UpdateFunc;

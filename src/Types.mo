@@ -1,4 +1,5 @@
 import Text "mo:new-base/Text";
+import Blob "mo:base/Blob";
 import HttpMethod "HttpMethod";
 
 module {
@@ -30,7 +31,7 @@ module {
         #callback : CallbackStreamingStrategy;
     };
 
-    public type StreamingCallback = shared query (Blob) -> async ?StreamingCallbackResponse;
+    public type StreamingCallback = shared query (StreamingToken) -> async ?StreamingCallbackResponse;
 
     public type StreamingCallbackResponse = {
         body : Blob;

@@ -12,11 +12,13 @@ import Int "mo:new-base/Int";
 import Order "mo:new-base/Order";
 import Nat8 "mo:new-base/Nat8";
 import Runtime "mo:new-base/Runtime";
+import Nat16 "mo:new-base/Nat16";
 import Glob "mo:glob";
 import NatX "mo:xtended-numbers/NatX";
 import Asset "Asset";
 import Assets "mo:ic-assets";
 import Path "../Path";
+import HttpMethod "../HttpMethod";
 
 module {
     public type Seconds = Nat;
@@ -26,6 +28,11 @@ module {
         cache : CacheOptions;
         store : Assets.Assets;
         indexAssetPath : ?Text;
+    };
+
+    public type StreamingStrategy = {
+        #none;
+        #callback : shared query (Blob) -> async ?Types.StreamingCallbackResponse;
     };
 
     public type CacheOptions = {
@@ -52,6 +59,72 @@ module {
         #revalidate : {
             maxAge : Seconds;
             staleWhileRevalidate : Seconds;
+        };
+    };
+
+    type StreamingToken = {
+
+    };
+
+    public func streamingCallbackHandler(token : Blob, options : Config) : ?Types.StreamingCallbackResponse {
+        let ?streamingToken : ?Assets.StreamingToken = from_candid (token) else return null;
+        let response : Assets.StreamingCallbackResponse = options.store.http_request_streaming_callback(streamingToken);
+        ?{
+            body = response.body;
+            token = switch (response.token) {
+                case (?token) ?to_candid (token);
+                case (null) null;
+            };
+        };
+    };
+
+    public func serve(
+        httpContext : HttpContext.HttpContext,
+        options : Config,
+    ) : {
+        #response : Types.HttpResponse;
+        #stream : Types.StreamingStrategy;
+        #noMatch;
+    } {
+
+        let requestPath = httpContext.getPath();
+
+        let ?remainingPath = switch (options.prefix) {
+            case (?prefix) Path.match(Path.parse(prefix), requestPath);
+            case (null) ?requestPath;
+        } else return #noMatch;
+
+        var assetPath = Path.toText(remainingPath);
+        switch (options.indexAssetPath) {
+            case (?indexAssetPath) {
+                if (remainingPath.size() == 0) {
+                    // Override asset path with index asset
+                    assetPath := indexAssetPath;
+                };
+            };
+            case (null) {};
+        };
+        let request = {
+            httpContext.request with url = assetPath;
+            certificate_version = httpContext.certificateVersion;
+        };
+        switch (options.store.http_request(request)) {
+            case (#err(e)) return #noMatch; // TODO handle error
+            case (#ok(response)) {
+                switch (response.streaming_strategy) {
+                    case (null) ();
+                    case (?streamingStrategy) switch (streamingStrategy) {
+                        case (#Callback(callback)) {
+                            return #stream(#callback({ callback = callback.callback; token = to_candid (response.streaming_strategy) }));
+                        };
+                    };
+                };
+                #response({
+                    statusCode = Nat16.toNat(response.status_code);
+                    headers = response.headers;
+                    body = ?response.body;
+                });
+            };
         };
     };
 
@@ -104,117 +177,6 @@ module {
                 "max-age=" # Nat.toText(maxAge) #
                 ", stale-while-revalidate=" # Nat.toText(staleWhileRevalidate);
             };
-        };
-    };
-
-    public func serve(
-        httpContext : HttpContext.HttpContext,
-        options : Config,
-    ) : ?Types.HttpResponse {
-
-        let requestPath = httpContext.getPath();
-
-        let ?remainingPath = switch (options.prefix) {
-            case (?prefix) Path.match(Path.parse(prefix), requestPath);
-            case (null) ?requestPath;
-        } else return null;
-
-        var assetPath = Path.toText(remainingPath);
-        switch (options.indexAssetPath) {
-            case (?indexAssetPath) {
-                if (remainingPath.size() == 0) {
-                    // Override asset path with index asset
-                    assetPath := indexAssetPath;
-                };
-            };
-            case (null) {};
-        };
-        let encodingTypes = switch (parseEncodingTypes(httpContext.getHeader("Accept-Encoding"))) {
-            case (#ok(encodings)) encodings;
-            case (#err(err)) {
-                return ?httpContext.buildErrorResponse(
-                    #notAcceptable,
-                    #message("Invalid Accept-Encoding header: " # err),
-                );
-            };
-        };
-
-        let acceptEncodings : [Text] = encodingTypes.vals()
-        |> Iter.sort(_, func(a : Asset.EncodingWithWeight, b : Asset.EncodingWithWeight) : Order.Order = Nat.compare(b.weight, a.weight))
-        |> Iter.map(
-            _,
-            func(e : Asset.EncodingWithWeight) : Text = Asset.encodingToText(e.encoding),
-        )
-        |> Iter.toArray(_);
-
-        let assetData = switch (options.store.get({ key = assetPath; accept_encodings = acceptEncodings })) {
-            case (#ok(ok)) ok;
-            case (#err(_)) return null;
-        };
-
-        // if (assetData.total_length > 1_572_864) {
-        //     // TODO Stream
-        //     return null;
-        // };
-
-        let httpAsset : HttpAsset = {
-            path = assetPath;
-            bytes = assetData.content;
-            contentType = assetData.content_type;
-            contentEncoding = assetData.content_encoding;
-            size = assetData.total_length;
-            etag = switch (assetData.sha256) {
-                case (?hash) blobToHex(hash);
-                case (null) Runtime.trap("SHA256 hash not found for asset: " # assetPath); // Even though it's optional, it should always be present
-            };
-        };
-
-        // Get cache control for this asset
-        let cacheRule = Array.find(
-            options.cache.rules,
-            // TODO optimize/cache
-            func(rule : CacheRule) : Bool = Glob.match(assetPath, rule.pattern),
-        );
-        let cacheControl = switch (cacheRule) {
-            case (?rule) rule.cache;
-            case (null) options.cache.default;
-        };
-
-        // Check if resource has been modified
-        if (not isResourceModified(httpContext, httpAsset)) {
-            return ?{
-                statusCode = 304; // Not Modified
-                headers = [
-                    ("ETag", httpAsset.etag),
-                    ("Cache-Control", formatCacheControl(cacheControl)),
-                ];
-                body = null;
-            };
-        };
-
-        // Handle Range header if present
-        switch (httpContext.getHeader("Range")) {
-            // TODO: Implement range requests
-            case (?_) return ?{
-                statusCode = 501;
-                headers = [
-                    ("Accept-Ranges", "none"),
-                ];
-                body = ?Text.encodeUtf8("Range requests are not yet implemented");
-            };
-            case null {};
-        };
-
-        ?{
-            statusCode = 200;
-            headers = [
-                ("Content-Type", httpAsset.contentType),
-                ("Content-Length", Nat.toText(httpAsset.size)),
-                ("Content-Encoding", httpAsset.contentEncoding),
-                ("Cache-Control", formatCacheControl(cacheControl)),
-                ("ETag", httpAsset.etag),
-            ];
-            body = ?httpAsset.bytes;
         };
     };
 
