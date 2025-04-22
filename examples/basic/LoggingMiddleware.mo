@@ -1,6 +1,5 @@
 import HttpContext "../../src/HttpContext";
 import HttpMethod "../../src/HttpMethod";
-import Nat "mo:new-base/Nat";
 import Debug "mo:new-base/Debug";
 import Path "../../src/Path";
 import App "../../src/App";
@@ -29,9 +28,23 @@ module {
         func logResponse(kind : { #query_; #update }, result : App.QueryResult) {
             let prefix = getPrefix(kind);
             let responseText = switch (result) {
-                case (#response(response)) Nat.toText(response.statusCode);
+                case (#response(response)) debug_show {
+                    statusCode = response.statusCode;
+                    headers = response.headers;
+                };
                 case (#upgrade) "Upgrading...";
-                case (#stream(_)) "Streaming...";
+                case (#stream(stream)) "Streaming... " # (
+                    switch (stream) {
+                        case (#callback(callback)) "Callback..." # debug_show (
+                            from_candid (callback.token) : ?{
+                                key : Text;
+                                sha256 : ?Blob;
+                                content_encoding : Text;
+                                index : Nat;
+                            }
+                        );
+                    }
+                );
             };
             Debug.print(prefix # "HTTP Response: " # responseText);
         };

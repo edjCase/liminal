@@ -96,6 +96,7 @@ module {
         public func http_request(req : HttpTypes.QueryRequest) : HttpTypes.QueryResponse {
             let httpContext = HttpContext.HttpContext(
                 req,
+                req.certificate_version,
                 {
                     errorSerializer = data.errorSerializer;
                 },
@@ -165,6 +166,7 @@ module {
         public func http_request_update(req : HttpTypes.UpdateRequest) : async* HttpTypes.UpdateResponse {
             let httpContext = HttpContext.HttpContext(
                 req,
+                null,
                 {
                     errorSerializer = data.errorSerializer;
                 },

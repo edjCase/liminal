@@ -9,7 +9,11 @@ module {
     public func new(options : Config) : App.Middleware {
         {
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
-                next(); // TODO
+                switch (Assets.serve(httpContext, options)) {
+                    case (#noMatch) next();
+                    case (#stream(stream)) #stream(stream);
+                    case (#response(response)) #response(response);
+                };
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
                 switch (Assets.serve(httpContext, options)) {
@@ -18,12 +22,6 @@ module {
                     case (#response(response)) #response(response);
                 };
             };
-        };
-    };
-
-    public func streamingCallbackHandler(options : Config) : Blob -> ?App.StreamingCallbackResponse {
-        func(token : Blob) : ?App.StreamingCallbackResponse {
-            Assets.streamingCallbackHandler(token, options);
         };
     };
 };

@@ -31,7 +31,7 @@ module {
         #callback : CallbackStreamingStrategy;
     };
 
-    public type StreamingCallback = shared query (StreamingToken) -> async ?StreamingCallbackResponse;
+    public type StreamingCallback = shared query (StreamingToken) -> async StreamingCallbackResponse;
 
     public type StreamingCallbackResponse = {
         body : Blob;

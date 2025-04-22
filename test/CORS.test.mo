@@ -39,6 +39,7 @@ await suiteAsync(
                         headers = [("Origin", "http://allowed-domain.com")];
                         body = Blob.fromArray([]);
                     },
+                    null,
                     {
                         errorSerializer = dummyErrorSerialzer;
                     },
@@ -65,6 +66,7 @@ await suiteAsync(
                         headers = [("Origin", "http://disallowed-domain.com")];
                         body = Blob.fromArray([]);
                     },
+                    null,
                     {
                         errorSerializer = dummyErrorSerialzer;
                     },
@@ -101,6 +103,7 @@ await suiteAsync(
                         ];
                         body = Blob.fromArray([]);
                     },
+                    null,
                     {
                         errorSerializer = dummyErrorSerialzer;
                     },
@@ -140,6 +143,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -175,6 +179,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -206,6 +211,7 @@ await suiteAsync(
                             headers = [];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -236,6 +242,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -270,6 +277,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -304,6 +312,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -338,6 +347,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -371,6 +381,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -400,6 +411,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -436,6 +448,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -466,6 +479,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -498,6 +512,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -529,6 +544,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -560,6 +576,7 @@ await suiteAsync(
                             ];
                             body = Blob.fromArray([]);
                         },
+                        null,
                         {
                             errorSerializer = dummyErrorSerialzer;
                         },
@@ -591,6 +608,7 @@ await suiteAsync(
                         ];
                         body = Blob.fromArray([]);
                     },
+                    null,
                     {
                         errorSerializer = dummyErrorSerialzer;
                     },
