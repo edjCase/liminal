@@ -11,25 +11,23 @@ import Buffer "mo:base/Buffer";
 
 module {
     public type Next = () -> QueryResult;
-    public type NextAsync = () -> async* UpdateResult;
+    public type NextAsync = () -> async* Types.HttpResponse;
+
+    public type HttpResponse = Types.HttpResponse;
 
     public type StreamResult = {
         kind : Types.StreamingStrategy;
         response : Types.HttpResponse;
     };
 
-    public type UpdateResult = {
-        #stream : StreamResult;
+    public type QueryResult = {
         #response : Types.HttpResponse;
-    };
-
-    public type QueryResult = UpdateResult or {
         #upgrade;
     };
 
     public type QueryFunc = (HttpContext.HttpContext, Next) -> QueryResult;
 
-    public type UpdateFunc = (HttpContext.HttpContext, NextAsync) -> async* UpdateResult;
+    public type UpdateFunc = (HttpContext.HttpContext, NextAsync) -> async* Types.HttpResponse;
 
     public type StreamingCallbackResponse = {
         body : Blob;
@@ -151,12 +149,6 @@ module {
                         upgrade = null;
                     };
                 };
-                case (#stream(stream)) {
-                    {
-                        mapStreamResponse(stream) with
-                        upgrade = null;
-                    };
-                };
             };
         };
 
@@ -169,7 +161,7 @@ module {
                 },
             );
 
-            func callMiddlewareUpdate(middleware : Middleware, next : NextAsync) : async* UpdateResult {
+            func callMiddlewareUpdate(middleware : Middleware, next : NextAsync) : async* HttpResponse {
                 // Only run if the middleware has a handleUpdate function
                 // Otherwise, skip to the next middleware
                 await* middleware.handleUpdate(httpContext, next);
@@ -177,9 +169,9 @@ module {
 
             // Helper function to create the middleware chain
             func createNext(index : Nat) : NextAsync {
-                func() : async* UpdateResult {
+                func() : async* HttpResponse {
                     if (index >= data.middleware.size()) {
-                        return #response(getNotFoundResponse());
+                        return getNotFoundResponse();
                     };
 
                     let middleware = data.middleware[index];
@@ -194,24 +186,19 @@ module {
             // Start the middleware chain with the first middleware
             let middleware = data.middleware[0];
             let next = createNext(1);
-            switch (await* callMiddlewareUpdate(middleware, next)) {
-                case (#response(response)) mapResponse(response);
-                case (#stream(stream)) mapStreamResponse(stream);
-            };
+            let response = await* callMiddlewareUpdate(middleware, next);
+            mapResponse(response);
         };
-        private func mapStreamResponse(stream : StreamResult) : HttpTypes.UpdateResponse {
-            let streamingStrategy = mapStreamingStrategy(stream.kind);
-            {
-                mapResponse(stream.response) with
-                streaming_strategy = ?streamingStrategy;
-            };
-        };
+
         private func mapResponse(response : Types.HttpResponse) : HttpTypes.UpdateResponse {
             {
                 status_code = Nat16.fromNat(response.statusCode);
                 headers = response.headers;
                 body = Option.get(response.body, Blob.fromArray([]));
-                streaming_strategy = null;
+                streaming_strategy = switch (response.streamingStrategy) {
+                    case (null) null;
+                    case (?streamingStrategy) ?mapStreamingStrategy(streamingStrategy);
+                };
             };
         };
 
@@ -226,6 +213,7 @@ module {
                 statusCode = 404;
                 headers = [];
                 body = null;
+                streamingStrategy = null;
             };
         };
 

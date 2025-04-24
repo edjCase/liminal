@@ -27,22 +27,17 @@ module {
                                 #response(updatedResponse);
                             };
                             case (#upgrade) #upgrade;
-                            case (#stream(stream)) #stream(stream);
                         };
                     };
                 };
             };
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 switch (CORS.handlePreflight(context, options)) {
-                    case (#complete(response)) return #response(response);
+                    case (#complete(response)) return response;
                     case (#next({ corsHeaders })) {
-                        switch (await* next()) {
-                            case (#response(response)) {
-                                let updatedResponse = addHeadersToResponse(response, corsHeaders);
-                                #response(updatedResponse);
-                            };
-                            case (#stream(stream)) #stream(stream);
-                        };
+                        let response = await* next();
+                        let updatedResponse = addHeadersToResponse(response, corsHeaders);
+                        updatedResponse;
                     };
                 };
             };

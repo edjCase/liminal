@@ -18,6 +18,7 @@ module {
         statusCode : HttpStatusCode;
         headers : [Header];
         body : ?Blob;
+        streamingStrategy : ?StreamingStrategy;
     };
 
     public type StreamingToken = Blob;

@@ -80,6 +80,7 @@ module {
                         statusCode = 200;
                         headers = [];
                         body = null;
+                        streamingStrategy = null;
                     });
                 };
                 case (?requestMethodHeader) {
@@ -91,6 +92,7 @@ module {
                                 statusCode = 200;
                                 headers = [];
                                 body = null;
+                                streamingStrategy = null;
                             });
                         };
                         case (?requestMethod) {
@@ -101,6 +103,7 @@ module {
                                     statusCode = 200;
                                     headers = [];
                                     body = null;
+                                    streamingStrategy = null;
                                 });
                             };
 
@@ -128,6 +131,7 @@ module {
                                                 statusCode = 200;
                                                 headers = [];
                                                 body = null;
+                                                streamingStrategy = null;
                                             });
                                         };
                                         case (?requestedHeaders) {
@@ -138,6 +142,7 @@ module {
                                                     statusCode = 200;
                                                     headers = [];
                                                     body = null;
+                                                    streamingStrategy = null;
                                                 });
                                             };
 
@@ -168,6 +173,7 @@ module {
                 statusCode = 200; // OK is standard for OPTIONS preflight response
                 headers = List.toArray(corsHeaders);
                 body = null;
+                streamingStrategy = null;
             });
         };
 

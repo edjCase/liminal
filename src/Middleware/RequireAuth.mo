@@ -38,7 +38,7 @@ module {
             handleUpdate = func(
                 httpContext : HttpContext.HttpContext,
                 next : App.NextAsync,
-            ) : async* App.UpdateResult {
+            ) : async* App.HttpResponse {
                 switch (checkRequirement(httpContext)) {
                     case (?response) #response(response);
                     case (null) await* next();

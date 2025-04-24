@@ -160,8 +160,10 @@ module {
         data : HttpErrorDataKind;
     };
 
+    public type ErrorSerializer = HttpError -> ErrorSerializerResponse;
+
     public type Options = {
-        errorSerializer : HttpError -> ErrorSerializerResponse;
+        errorSerializer : ErrorSerializer;
     };
 
     public class HttpContext(
@@ -171,6 +173,7 @@ module {
     ) = self {
         public let request : HttpTypes.UpdateRequest = r;
         public let certificateVersion : ?Nat16 = certificate_version;
+        public let errorSerializer : ErrorSerializer = options.errorSerializer;
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 
@@ -292,6 +295,7 @@ module {
                 statusCode = statusCodeNat;
                 headers = headers;
                 body = body;
+                streamingStrategy = null;
             };
         };
     };
@@ -302,21 +306,25 @@ module {
                 statusCode = statusCode;
                 headers = custom.headers;
                 body = ?custom.body;
+                streamingStrategy = null;
             });
             case (#json(json)) ({
                 statusCode = statusCode;
                 headers = [("content-type", "application/json")];
                 body = Json.stringify(json, null) |> ?Text.encodeUtf8(_);
+                streamingStrategy = null;
             });
             case (#text(text)) ({
                 statusCode = statusCode;
                 headers = [("content-type", "text/plain")];
                 body = ?Text.encodeUtf8(text);
+                streamingStrategy = null;
             });
             case (#empty) ({
                 statusCode = statusCode;
                 headers = [];
                 body = null;
+                streamingStrategy = null;
             });
         };
     };

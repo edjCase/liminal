@@ -20,17 +20,12 @@ module {
                         #response(updatedResponse);
                     };
                     case (#upgrade) #upgrade;
-                    case (#stream(stream)) #stream(stream);
                 };
             };
-            handleUpdate = func(_ : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
-                switch (await* next()) {
-                    case (#response(response)) {
-                        let updatedResponse = CSP.addHeadersToResponse(response, options);
-                        #response(updatedResponse);
-                    };
-                    case (#stream(stream)) #stream(stream);
-                };
+            handleUpdate = func(_ : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
+                let response = await* next();
+                let updatedResponse = CSP.addHeadersToResponse(response, options);
+                updatedResponse;
             };
         };
     };

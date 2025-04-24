@@ -29,7 +29,7 @@ module {
                 tryParseAndSetJWT(context, options.validation, options.locations);
                 next();
             };
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 tryParseAndSetJWT(context, options.validation, options.locations);
                 await* next();
             };

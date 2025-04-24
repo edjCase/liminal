@@ -10,7 +10,7 @@ import LoggingMiddleware "LoggingMiddleware";
 import IC "mo:ic";
 import AssetsMiddleware "../../src/Middleware/Assets";
 import HttpAssets "mo:http-assets";
-import AssetCanister "../../src/Assets/AssetCanister";
+import AssetCanister "../../src/AssetCanister";
 import CORSMiddleware "../../src/Middleware/CORS";
 import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";

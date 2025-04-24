@@ -1,5 +1,5 @@
-import HttpContext "../HttpContext";
-import Types "../Types";
+import HttpContext "./HttpContext";
+import Types "./Types";
 import Nat "mo:new-base/Nat";
 import Blob "mo:new-base/Blob";
 import Nat16 "mo:new-base/Nat16";
@@ -28,7 +28,6 @@ module {
         options : Config,
     ) : {
         #response : Types.HttpResponse;
-        #stream : StreamResult;
         #noMatch;
     } {
 
@@ -46,13 +45,11 @@ module {
                     case (null) ();
                     case (?streamingStrategy) switch (streamingStrategy) {
                         case (#Callback(callback)) {
-                            return #stream({
-                                kind = #callback(callback);
-                                response = {
-                                    statusCode = Nat16.toNat(response.status_code);
-                                    headers = response.headers;
-                                    body = ?response.body;
-                                };
+                            return #response({
+                                statusCode = Nat16.toNat(response.status_code);
+                                headers = response.headers;
+                                body = ?response.body;
+                                streamingStrategy = ?#callback(callback);
                             });
                         };
                     };
@@ -61,6 +58,7 @@ module {
                     statusCode = Nat16.toNat(response.status_code);
                     headers = response.headers;
                     body = ?response.body;
+                    streamingStrategy = null;
                 });
             };
         };

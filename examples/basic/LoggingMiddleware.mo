@@ -28,23 +28,28 @@ module {
         func logResponse(kind : { #query_; #update }, result : App.QueryResult) {
             let prefix = getPrefix(kind);
             let responseText = switch (result) {
-                case (#response(response)) debug_show {
-                    statusCode = response.statusCode;
-                    headers = response.headers;
-                };
-                case (#upgrade) "Upgrading...";
-                case (#stream(stream)) "Streaming... " # (
-                    switch (stream.kind) {
-                        case (#callback(callback)) "Callback..." # debug_show (
-                            from_candid (callback.token) : ?{
-                                key : Text;
-                                sha256 : ?Blob;
-                                content_encoding : Text;
-                                index : Nat;
+                case (#response(response)) {
+                    let message = debug_show {
+                        statusCode = response.statusCode;
+                        headers = response.headers;
+                    };
+                    switch (response.streamingStrategy) {
+                        case (null) message;
+                        case (?ss) message # "\nStreaming... " # (
+                            switch (ss) {
+                                case (#callback(callback)) "Callback..." # debug_show (
+                                    from_candid (callback.token) : ?{
+                                        key : Text;
+                                        sha256 : ?Blob;
+                                        content_encoding : Text;
+                                        index : Nat;
+                                    }
+                                );
                             }
                         );
-                    }
-                );
+                    };
+                };
+                case (#upgrade) "Upgrading...";
             };
             Debug.print(prefix # "HTTP Response: " # responseText);
         };
@@ -55,10 +60,10 @@ module {
                 logResponse(#query_, result);
                 result;
             };
-            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+            handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 logRequest(#update, context);
                 let result = await* next();
-                logResponse(#update, result);
+                logResponse(#update, #response(result));
                 result;
             };
         };

@@ -11,11 +11,10 @@ module {
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (Assets.serve(httpContext, options)) {
                     case (#noMatch) next();
-                    case (#stream(stream)) #stream(stream);
                     case (#response(response)) #response(response);
                 };
             };
-            handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+            handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 // Only works with query, but possible could add support for update. TODO?
                 await* next();
             };

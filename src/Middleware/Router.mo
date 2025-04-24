@@ -16,9 +16,9 @@ module Module {
                     case (#noMatch) next();
                 };
             };
-            handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
+            handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 switch (await* router.routeAsync(httpContext)) {
-                    case (#response(response)) #response(response);
+                    case (#response(response)) response;
                     case (#noMatch) await* next();
                 };
             };
