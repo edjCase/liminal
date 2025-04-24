@@ -163,7 +163,7 @@ public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
     let result = context.parseJsonBody<CreateRequest>(deserializeCreateRequest);
 
     // Return a response
-    #ok(#json(#object_([("id", #number(#int(id)))]))
+    #ok(#json(#object_([("id", #number(#int(id)))])))
 }
 ```
 

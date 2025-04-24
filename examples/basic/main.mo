@@ -6,8 +6,6 @@ import Principal "mo:new-base/Principal";
 import Blob "mo:new-base/Blob";
 import Result "mo:new-base/Result";
 import Error "mo:new-base/Error";
-import Debug "mo:new-base/Debug";
-import Runtime "mo:new-base/Runtime";
 import LoggingMiddleware "LoggingMiddleware";
 import IC "mo:ic";
 import AssetsMiddleware "../../src/Middleware/Assets";
@@ -84,24 +82,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
     };
 
     let assetMiddlewareConfig : AssetsMiddleware.Config = {
-        prefix = null;
         store = assetStore;
-        indexAssetPath = ?"/index.html";
-        cache = {
-            default = #public_({
-                immutable = false;
-                maxAge = 3600;
-            });
-            rules = [
-                {
-                    pattern = "/index.html";
-                    cache = #public_({
-                        immutable = true;
-                        maxAge = 3600;
-                    });
-                },
-            ];
-        };
     };
 
     // Http App
@@ -133,27 +114,16 @@ shared ({ caller = initializer }) actor class Actor() = self {
         app.http_request(request);
     };
 
-    public func http_request_update(req : Liminal.RawUpdateHttpRequest) : async Liminal.RawUpdateHttpResponse {
-        await* app.http_request_update(req);
+    public func http_request_update(request : Liminal.RawUpdateHttpRequest) : async Liminal.RawUpdateHttpResponse {
+        await* app.http_request_update(request);
     };
 
     // Asset canister methods
 
     public query func http_request_streaming_callback(token : HttpAssets.StreamingToken) : async HttpAssets.StreamingCallbackResponse {
-        Debug.print("http_request_streaming_callback - start");
         switch (assetStore.http_request_streaming_callback(token)) {
             case (#err(e)) throw Error.reject(e);
-            case (#ok(response)) {
-                Debug.print("http_request_streaming_callback - complete");
-                switch (response) {
-                    case (null) Runtime.trap("null response");
-                    case (?response) {
-                        Debug.print("response body size: " # debug_show response.body.size());
-                        Debug.print("response token: " # debug_show (response.token));
-                        response;
-                    };
-                };
-            };
+            case (#ok(response)) response;
         };
     };
 

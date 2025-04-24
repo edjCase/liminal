@@ -34,7 +34,7 @@ module {
                 };
                 case (#upgrade) "Upgrading...";
                 case (#stream(stream)) "Streaming... " # (
-                    switch (stream) {
+                    switch (stream.kind) {
                         case (#callback(callback)) "Callback..." # debug_show (
                             from_candid (callback.token) : ?{
                                 key : Text;

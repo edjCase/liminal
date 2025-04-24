@@ -13,8 +13,13 @@ module {
     public type Next = () -> QueryResult;
     public type NextAsync = () -> async* UpdateResult;
 
+    public type StreamResult = {
+        kind : Types.StreamingStrategy;
+        response : Types.HttpResponse;
+    };
+
     public type UpdateResult = {
-        #stream : Types.StreamingStrategy;
+        #stream : StreamResult;
         #response : Types.HttpResponse;
     };
 
@@ -142,21 +147,13 @@ module {
                 case (#response(response)) {
                     // Return the response from the middleware
                     {
-                        status_code = Nat16.fromNat(response.statusCode);
-                        headers = response.headers;
-                        body = Option.get(response.body, Blob.fromArray([]));
-                        streaming_strategy = null;
+                        mapResponse(response) with
                         upgrade = null;
                     };
                 };
                 case (#stream(stream)) {
-                    // Return the streaming strategy from the middleware
-                    let streamingStrategy = mapStreamingStrategy(stream);
                     {
-                        status_code = 200;
-                        headers = [];
-                        body = Blob.fromArray([]);
-                        streaming_strategy = ?streamingStrategy;
+                        mapStreamResponse(stream) with
                         upgrade = null;
                     };
                 };
@@ -198,21 +195,23 @@ module {
             let middleware = data.middleware[0];
             let next = createNext(1);
             switch (await* callMiddlewareUpdate(middleware, next)) {
-                case (#response(response)) ({
-                    status_code = Nat16.fromNat(response.statusCode);
-                    headers = response.headers;
-                    body = Option.get(response.body, Blob.fromArray([]));
-                    streaming_strategy = null;
-                });
-                case (#stream(stream)) {
-                    let streamingStrategy = mapStreamingStrategy(stream);
-                    {
-                        status_code = 200;
-                        headers = [];
-                        body = Blob.fromArray([]);
-                        streaming_strategy = ?streamingStrategy;
-                    };
-                };
+                case (#response(response)) mapResponse(response);
+                case (#stream(stream)) mapStreamResponse(stream);
+            };
+        };
+        private func mapStreamResponse(stream : StreamResult) : HttpTypes.UpdateResponse {
+            let streamingStrategy = mapStreamingStrategy(stream.kind);
+            {
+                mapResponse(stream.response) with
+                streaming_strategy = ?streamingStrategy;
+            };
+        };
+        private func mapResponse(response : Types.HttpResponse) : HttpTypes.UpdateResponse {
+            {
+                status_code = Nat16.fromNat(response.statusCode);
+                headers = response.headers;
+                body = Option.get(response.body, Blob.fromArray([]));
+                streaming_strategy = null;
             };
         };
 

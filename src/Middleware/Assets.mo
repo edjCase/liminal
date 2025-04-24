@@ -16,11 +16,8 @@ module {
                 };
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.UpdateResult {
-                switch (Assets.serve(httpContext, options)) {
-                    case (#noMatch) await* next();
-                    case (#stream(stream)) #stream(stream);
-                    case (#response(response)) #response(response);
-                };
+                // Only works with query, but possible could add support for update. TODO?
+                await* next();
             };
         };
     };
