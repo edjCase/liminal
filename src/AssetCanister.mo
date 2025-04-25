@@ -147,24 +147,6 @@ module {
             };
         };
 
-        public func authorize(caller : Principal, principal : Principal) : async* () {
-            switch (await* assets.authorize(caller, principal)) {
-                case (#ok(_)) return;
-                case (#err(err)) Runtime.trap(err);
-            };
-        };
-
-        public func deauthorize(caller : Principal, principal : Principal) : async* () {
-            switch (await* assets.deauthorize(caller, principal)) {
-                case (#ok(_)) return;
-                case (#err(err)) Runtime.trap(err);
-            };
-        };
-
-        public func list_authorized() : ([Principal]) {
-            assets.list_authorized();
-        };
-
         public func list_permitted(args : HttpAssets.ListPermitted) : ([Principal]) {
             assets.list_permitted(args);
         };

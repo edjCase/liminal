@@ -6,7 +6,6 @@ import Iter "mo:new-base/Iter";
 import Int "mo:new-base/Int";
 import Option "mo:new-base/Option";
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
 import HttpContext "HttpContext";
 import App "App";
 

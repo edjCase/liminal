@@ -15,6 +15,7 @@ import CORSMiddleware "../../src/Middleware/CORS";
 import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
+import CompressionMiddleware "../../src/Middleware/Compression";
 import Router "../../src/Router";
 
 shared ({ caller = initializer }) actor class Actor() = self {
@@ -88,6 +89,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
     // Http App
     let app = Liminal.App({
         middleware = [
+            CompressionMiddleware.default(),
             CORSMiddleware.default(),
             JWTMiddleware.new({
                 locations = JWTMiddleware.defaultLocations;
@@ -211,18 +213,6 @@ shared ({ caller = initializer }) actor class Actor() = self {
 
     public shared ({ caller }) func delete_batch(args : HttpAssets.DeleteBatchArguments) : async () {
         assetCanister.delete_batch(caller, args);
-    };
-
-    public shared ({ caller }) func authorize(principal : Principal) : async () {
-        await* assetCanister.authorize(caller, principal);
-    };
-
-    public shared ({ caller }) func deauthorize(principal : Principal) : async () {
-        await* assetCanister.deauthorize(caller, principal);
-    };
-
-    public shared func list_authorized() : async ([Principal]) {
-        assetCanister.list_authorized();
     };
 
     public shared func list_permitted(args : HttpAssets.ListPermitted) : async ([Principal]) {
