@@ -1,4 +1,4 @@
-import { test = testAsync; suite = suiteAsync } "mo:test/async";
+import { test; suite } "mo:test";
 import Blob "mo:new-base/Blob";
 import Runtime "mo:new-base/Runtime";
 import HttpMethod "../src/HttpMethod";
@@ -14,7 +14,7 @@ func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
 };
 
 func dummyErrorSerialzer(
-    error : HttpContext.HttpError
+    _ : HttpContext.HttpError
 ) : HttpContext.ErrorSerializerResponse {
     // Dummy error serializer for testing
     return {
@@ -23,13 +23,13 @@ func dummyErrorSerialzer(
     };
 };
 
-await suiteAsync(
+suite(
     "CORS Middleware Tests",
-    func() : async () {
+    func() : () {
 
-        await testAsync(
+        test(
             "custom origin handling",
-            func() : async () {
+            func() : () {
 
                 // Test with allowed origin
                 let context = HttpContext.HttpContext(
@@ -87,9 +87,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request handling",
-            func() : async () {
+            func() : () {
 
                 // Test OPTIONS request
                 let context = HttpContext.HttpContext(
@@ -130,9 +130,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "credentials handling",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -166,9 +166,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "exposed headers",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -200,9 +200,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "no origin header",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -228,9 +228,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request disallowed method",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -262,9 +262,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request disallowed header",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -297,9 +297,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request with multiple request headers",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -332,9 +332,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request with case-insensitive header matching",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -367,9 +367,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "options request with no request method (not preflight)",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -398,9 +398,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "wildcard origin with credentials",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -434,9 +434,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request with invalid method format",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -465,9 +465,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request with invalid origin format",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -497,9 +497,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "preflight request with invalid headers format",
-            func() : async () {
+            func() : () {
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
                         {
@@ -529,9 +529,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "simple method test",
-            func() : async () {
+            func() : () {
                 // GET is a simple method, should not require preflight
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
@@ -560,9 +560,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "content-type with non-simple value",
-            func() : async () {
+            func() : () {
                 // Preflight should be required for non-simple Content-Type
                 let response = CORS.handlePreflight(
                     HttpContext.HttpContext(
@@ -596,9 +596,9 @@ await suiteAsync(
         );
 
         // Add a new test to verify exposure of only allowed headers to client
-        await testAsync(
+        test(
             "exposed headers filtering",
-            func() : async () {
+            func() : () {
                 let context = HttpContext.HttpContext(
                     {
                         method = HttpMethod.toText(#get);

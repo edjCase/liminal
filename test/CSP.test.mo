@@ -1,21 +1,21 @@
-import { test = testAsync; suite = suiteAsync } "mo:test/async";
+import { test; suite } "mo:test";
 import CSP "../src/CSP";
 
-await suiteAsync(
+suite(
     "CSP Middleware Tests",
-    func() : async () {
-        await testAsync(
+    func() : () {
+        test(
             "default options",
-            func() : async () {
+            func() : () {
                 let cspHeader = CSP.buildHeaderValue(CSP.defaultOptions);
 
                 assert (cspHeader == "default-src 'self';script-src 'self';connect-src 'self' http://localhost:* https://icp0.io https://*.icp0.io https://icp-api.io;img-src 'self' data:;style-src * 'unsafe-inline';style-src-elem * 'unsafe-inline';font-src *;object-src 'none';base-uri 'self';frame-ancestors 'none';form-action 'self';upgrade-insecure-requests");
             },
         );
 
-        await testAsync(
+        test(
             "custom script-src directive",
-            func() : async () {
+            func() : () {
                 let cspHeader = CSP.buildHeaderValue({
                     CSP.defaultOptions with
                     scriptSrc = ["'self'", "'unsafe-inline'", "https://trusted-scripts.com"];
@@ -25,9 +25,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "empty directives",
-            func() : async () {
+            func() : () {
                 let cspHeader = CSP.buildHeaderValue({
                     CSP.defaultOptions with
                     scriptSrc = [];
@@ -38,9 +38,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "multiple content sources",
-            func() : async () {
+            func() : () {
                 let cspHeader = CSP.buildHeaderValue({
                     CSP.defaultOptions with
                     connectSrc = ["'self'", "https://api1.example.com", "https://api2.example.com"];
@@ -51,9 +51,9 @@ await suiteAsync(
             },
         );
 
-        await testAsync(
+        test(
             "all directives test",
-            func() : async () {
+            func() : () {
                 let cspHeader = CSP.buildHeaderValue({
                     defaultSrc = ["'self'"];
                     scriptSrc = ["'self'"];

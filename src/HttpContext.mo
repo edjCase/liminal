@@ -193,6 +193,10 @@ module {
             };
         };
 
+        public func setIdentity(identity_ : Identity.Identity) {
+            identity := ?identity_;
+        };
+
         public func getIdentity() : ?Identity.Identity {
             return identity;
         };
