@@ -16,6 +16,10 @@ Key features:
 - 🔒 **CORS Support**: Configurable Cross-Origin Resource Sharing
 - 🔐 **CSP Support**: Content Security Policy configuration
 - 📦 **Asset Canister Integration**: Simplified interface with Internet Computer's certified assets
+- 🔑 **JWT Authentication**: Built-in JWT parsing and validation
+- 🚀 **Compression**: Automatic response compression for performance
+- ⏱️ **Rate Limiting**: Protect your APIs from abuse
+- 🛡️ **Authentication**: Configurable authentication requirements
 
 ## Package
 
@@ -76,6 +80,87 @@ actor {
 }
 ```
 
+## More Complete Example
+
+Here's a more comprehensive example demonstrating multiple middleware components:
+
+```motoko
+import Liminal "mo:liminal";
+import Route "mo:liminal/Route";
+import Router "mo:liminal/Router";
+import RouterMiddleware "mo:liminal/Middleware/Router";
+import CORSMiddleware "mo:liminal/Middleware/CORS";
+import JWTMiddleware "mo:liminal/Middleware/JWT";
+import CompressionMiddleware "mo:liminal/Middleware/Compression";
+import CSPMiddleware "mo:liminal/Middleware/CSP";
+import LoggingMiddleware "mo:liminal/Middleware/Logging";
+import AssetsMiddleware "mo:liminal/Middleware/Assets";
+
+actor {
+    // Define your routes
+    let routerConfig = {
+        errorSerializer = null;
+        prefix = ?"/api";
+        routes = [
+            Router.getQuery(
+                "/public",
+                func(context : Route.RouteContext) : Route.HttpResponse {
+                    context.buildResponse(#ok, #text("Public endpoint"))
+                }
+            ),
+            Router.groupWithAuthorization(
+                "/secure",
+                [
+                    Router.getQuery(
+                        "/profile",
+                        func(context : Route.RouteContext) : Route.HttpResponse {
+                            context.buildResponse(#ok, #text("Secure profile endpoint"))
+                        }
+                    )
+                ],
+                #authenticated
+            )
+        ]
+    };
+
+    // Create the HTTP App with middleware
+    let app = Liminal.App({
+        middleware = [
+            // Order matters - middleware are executed in this order for requests
+            // and in reverse order for responses
+            CompressionMiddleware.default(),
+            CORSMiddleware.default(),
+            JWTMiddleware.new({
+                locations = JWTMiddleware.defaultLocations;
+                validation = {
+                    audience = #skip;
+                    issuer = #skip;
+                    signature = #skip;
+                    notBefore = false;
+                    expiration = false;
+                };
+            }),
+            LoggingMiddleware.new(),
+            RouterMiddleware.new(routerConfig),
+            CSPMiddleware.default(),
+            AssetsMiddleware.new({
+                store = assetStore;
+            }),
+        ];
+        errorSerializer = Liminal.defaultJsonErrorSerializer;
+    });
+
+    // Expose standard HTTP interface
+    public query func http_request(request : Liminal.RawQueryHttpRequest) : async Liminal.RawQueryHttpResponse {
+        app.http_request(request)
+    };
+
+    public func http_request_update(request : Liminal.RawUpdateHttpRequest) : async Liminal.RawUpdateHttpResponse {
+        await* app.http_request_update(request)
+    };
+}
+```
+
 ## Core Concepts
 
 ### Middleware
@@ -91,15 +176,13 @@ Middleware are components that process HTTP requests and responses in a pipeline
 // Example of a simple logging middleware
 public func createLoggingMiddleware() : App.Middleware {
     {
-        handleQuery = ?(
-            func(context : HttpContext.HttpContext, next : App.Next) : ?Types.HttpResponse {
-                Debug.print("Query: " # HttpMethod.toText(context.method) # " " # context.request.url);
-                let response = next();
-                Debug.print("Response: " # debug_show(Option.map(response, func(r) = r.statusCode)));
-                response
-            }
-        );
-        handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* ?Types.HttpResponse {
+        handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
+            Debug.print("Query: " # HttpMethod.toText(context.method) # " " # context.request.url);
+            let response = next();
+            Debug.print("Response: " # debug_show(Option.map(response, func(r) = r.statusCode)));
+            response
+        };
+        handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
             Debug.print("Update: " # HttpMethod.toText(context.method) # " " # context.request.url);
             let response = await* next();
             Debug.print("Response: " # debug_show(Option.map(response, func(r) = r.statusCode)));
@@ -117,6 +200,7 @@ The routing system supports:
 - Nested routes with prefixes
 - HTTP method-specific handlers
 - Synchronous and asynchronous handlers
+- Authorization controls
 
 ```motoko
 // Route configuration example
@@ -131,7 +215,7 @@ let routerConfig = {
                 Router.getQuery("/", getAllUsers), // GET + query call -> getAllUsers
                 Router.postUpdate("/", createUser), // POST + update call -> createUser
                 Router.getQuery("/{id}", getUserById), // GET + query call -> getUserById
-                Router.putUpdateAsync("/{id}", updateUser), // GET + update call (using async method) -> updateUser
+                Router.putUpdateAsync("/{id}", updateUser), // PUT + update call (using async method) -> updateUser
                 Router.deleteUpdate("/{id}", deleteUser) // DELETE + update call -> deleteUser
             ]
         )
@@ -147,6 +231,7 @@ The `HttpContext` provides access to request details:
 - Headers
 - Request body (with JSON parsing helpers)
 - HTTP method
+- Identity (for authentication)
 
 ```motoko
 public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
@@ -158,6 +243,9 @@ public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
 
     // Access headers
     let authorization = context.getHeader("Authorization");
+
+    // Get authenticated identity
+    let identity = context.getIdentity();
 
     // Parse JSON body
     let result = context.parseJsonBody<CreateRequest>(deserializeCreateRequest);
@@ -195,6 +283,86 @@ CORSMiddleware.new({
 })
 ```
 
+### JWT
+
+Handles JSON Web Token authentication and parsing.
+
+```motoko
+JWTMiddleware.new({
+    locations = [#header("Authorization"), #cookie("jwt"), #queryString("token")];
+    validation = {
+        audience = #skip;
+        issuer = #skip;
+        signature = #skip;
+        notBefore = false;
+        expiration = false;
+    };
+})
+
+// Or use default settings
+JWTMiddleware.new({
+    locations = JWTMiddleware.defaultLocations;
+    validation = {
+        audience = #skip;
+        issuer = #skip;
+        signature = #skip;
+        notBefore = false;
+        expiration = false;
+    };
+})
+```
+
+### Compression
+
+Automatically compresses HTTP responses for better performance.
+
+```motoko
+CompressionMiddleware.default()
+
+// Or with custom options
+CompressionMiddleware.new({
+    minSize = 1024; // Minimum size in bytes to apply compression
+    mimeTypes = [
+        "text/",
+        "application/javascript",
+        "application/json",
+        "application/xml"
+    ];
+    skipCompressionIf = null;
+})
+```
+
+### Rate Limiter
+
+Protects your API from abuse by limiting request rates.
+
+```motoko
+RateLimiterMiddleware.new({
+    limit = 100; // Maximum requests per window
+    windowSeconds = 60; // Time window in seconds
+    includeResponseHeaders = true;
+    limitExceededMessage = ?"Rate limit exceeded. Try again later.";
+    keyExtractor = #ip; // Use client IP as the rate limit key
+    skipIf = null;
+})
+```
+
+### Require Authentication
+
+Enforces authentication requirements for specific routes.
+
+```motoko
+RequireAuthMiddleware.new(#authenticated)
+
+// Or with a custom validation function
+RequireAuthMiddleware.new(#custom(func(identity : Identity) : Bool {
+    // Custom validation logic
+    let ?id = identity.getId() else return false;
+    // Check roles, permissions, etc.
+    return true;
+}))
+```
+
 ### Assets
 
 Serves static files with configurable caching.
@@ -227,7 +395,10 @@ AssetsMiddleware.new({
 Configures security policies for your application.
 
 ```motoko
-CSP.new({
+CSPMiddleware.default()
+
+// Or with custom options
+CSPMiddleware.new({
     defaultSrc = ["'self'"];
     scriptSrc = ["'self'", "https://trusted-scripts.com"];
     connectSrc = ["'self'", "https://api.example.com"];

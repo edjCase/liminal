@@ -1,4 +1,4 @@
-import { test; suite } "mo:test/async";
+import { test; suite } "mo:test";
 import Blob "mo:new-base/Blob";
 import Nat "mo:new-base/Nat";
 import Text "mo:new-base/Text";
@@ -73,13 +73,13 @@ func createTestIdentity(id : Text, isAuth : Bool) : Identity.Identity {
     };
 };
 
-await suite(
+suite(
     "Rate Limit Middleware Tests",
-    func() : async () {
+    func() {
 
-        await test(
+        test(
             "key extraction - IP address",
-            func() : async () {
+            func() {
                 let config : RateLimiterMiddleware.Config = {
                     limit = 5;
                     windowSeconds = 60;
@@ -110,9 +110,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "key extraction - identity or IP",
-            func() : async () {
+            func() {
                 let config : RateLimiterMiddleware.Config = {
                     limit = 5;
                     windowSeconds = 60;
@@ -150,9 +150,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "key extraction - custom function",
-            func() : async () {
+            func() {
                 // Custom function that uses the URL path as key
                 let customKeyExtractor = func(ctx : HttpContext.HttpContext) : Text {
                     let url = ctx.request.url;
@@ -195,9 +195,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "skip rate limiting function",
-            func() : async () {
+            func() {
                 // Skip rate limiting for requests with a specific header
                 let skipFunction = func(ctx : HttpContext.HttpContext) : Bool {
                     switch (ctx.getHeader("X-Skip-Rate-Limit")) {
@@ -246,9 +246,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "rate limit exceeded",
-            func() : async () {
+            func() {
                 let config : RateLimiterMiddleware.Config = {
                     limit = 2; // Low limit to easily test exceeding
                     windowSeconds = 60;
@@ -287,9 +287,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "response headers configuration",
-            func() : async () {
+            func() {
                 // Test with headers disabled
                 let config1 : RateLimiterMiddleware.Config = {
                     limit = 3;
@@ -330,9 +330,9 @@ await suite(
             },
         );
 
-        await test(
+        test(
             "custom error message",
-            func() : async () {
+            func() {
                 // Config with custom message
                 let config1 : RateLimiterMiddleware.Config = {
                     limit = 1;

@@ -1,6 +1,8 @@
 import HttpContext "../../src/HttpContext";
 import HttpMethod "../../src/HttpMethod";
 import Debug "mo:new-base/Debug";
+import Iter "mo:new-base/Iter";
+import Text "mo:base/Text";
 import Path "../../src/Path";
 import App "../../src/App";
 
@@ -29,9 +31,22 @@ module {
             let prefix = getPrefix(kind);
             let responseText = switch (result) {
                 case (#response(response)) {
+                    let trimmedHeaders = response.headers.vals()
+                    |> Iter.filter(
+                        _,
+                        func((header, _) : (Text, Text)) : Bool {
+                            switch (header) {
+                                case ("ic-certificate") false;
+                                case ("ic-certificateexpression") false;
+                                case ("Content-Security-Policy") false;
+                                case (_) true;
+                            };
+                        },
+                    )
+                    |> Iter.toArray(_);
                     let message = debug_show {
                         statusCode = response.statusCode;
-                        headers = response.headers;
+                        headers = trimmedHeaders;
                     };
                     switch (response.streamingStrategy) {
                         case (null) message;
