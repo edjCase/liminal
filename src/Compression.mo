@@ -121,9 +121,9 @@ module {
         for (disallowedEncoding in acceptedEncodings.disallowedEncodings.vals()) {
             if (disallowedEncoding == #identity) {
                 // If identity encoding is not allowed, return an error
-                return context.buildErrorResponse(
+                return context.buildResponse(
                     #notAcceptable,
-                    #message("No suitable encoding found for " # encodingsHeader # " in Accept-Encoding header"),
+                    #error(#message("No suitable encoding found for " # encodingsHeader # " in Accept-Encoding header")),
                 );
             };
         };

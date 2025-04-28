@@ -147,14 +147,15 @@ module {
         body : ?Blob;
     };
 
-    public type ResponseBody = {
+    public type ResponseKind = {
         #empty;
         #custom : {
             headers : [(Text, Text)];
             body : Blob;
         };
-        #candid : CandidValue;
+        #content : CandidValue;
         #text : Text;
+        #error : HttpErrorDataKind;
     };
 
     public type HttpError = {
@@ -305,46 +306,25 @@ module {
             };
         };
 
-        public func buildResponse<T>(statusCode : HttpStatusCodeOrCustom, value : ResponseBody) : Types.HttpResponse {
+        public func buildResponse(statusCode : HttpStatusCodeOrCustom, value : ResponseKind) : Types.HttpResponse {
             let statusCodeNat = getStatusCodeNat(statusCode);
-            serializeReponseBody(statusCodeNat, value);
-        };
-
-        public func buildErrorResponse(statusCode : ErrorHttpStatusCodeOrCustom, data : HttpErrorDataKind) : Types.HttpResponse {
-            let statusCodeNat = getStatusCodeNat(statusCode);
-            let { headers; body } = options.errorSerializer({
-                statusCode = statusCodeNat;
-                data = data;
-            });
-            {
-                statusCode = statusCodeNat;
-                headers = headers;
-                body = body;
-                streamingStrategy = null;
-            };
-        };
-
-        private func serializeReponseBody(
-            statusCode : Nat,
-            body : ResponseBody,
-        ) : Types.HttpResponse {
-            switch (body) {
+            switch (value) {
                 case (#custom(custom)) ({
-                    statusCode = statusCode;
+                    statusCode = statusCodeNat;
                     headers = custom.headers;
                     body = ?custom.body;
                     streamingStrategy = null;
                 });
-                case (#candid(candid)) {
+                case (#content(candid)) {
                     let contentPreference = getContentPreference();
                     let ?{ body; contentType } = candidRepresentationNegotiator(candid, contentPreference) else {
-                        return buildErrorResponse(
+                        return buildResponse(
                             #unsupportedMediaType,
-                            #message("Unsupported content types: " # debug_show getHeader("Accept")),
+                            #error(#message("Unsupported content types: " # debug_show getHeader("Accept"))),
                         );
                     };
                     {
-                        statusCode = statusCode;
+                        statusCode = statusCodeNat;
                         headers = [
                             ("content-type", contentType),
                             ("content-length", Nat.toText(Blob.size(body))),
@@ -354,19 +334,32 @@ module {
                     };
                 };
                 case (#text(text)) ({
-                    statusCode = statusCode;
+                    statusCode = statusCodeNat;
                     headers = [("content-type", "text/plain")];
                     body = ?Text.encodeUtf8(text);
                     streamingStrategy = null;
                 });
                 case (#empty) ({
-                    statusCode = statusCode;
+                    statusCode = statusCodeNat;
                     headers = [];
                     body = null;
                     streamingStrategy = null;
                 });
+                case (#error(error)) {
+                    let { headers; body } = options.errorSerializer({
+                        statusCode = statusCodeNat;
+                        data = error;
+                    });
+                    {
+                        statusCode = statusCodeNat;
+                        headers = headers;
+                        body = body;
+                        streamingStrategy = null;
+                    };
+                };
             };
         };
+
     };
 
     public func getStatusCodeNat(code : HttpStatusCodeOrCustom) : Nat = switch (code) {

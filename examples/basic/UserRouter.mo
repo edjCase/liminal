@@ -14,26 +14,26 @@ module {
 
         public func get(routeContext : Route.RouteContext) : Route.HttpResponse {
             let users = userHandler.get();
-            routeContext.buildResponse(#ok, #candid(toCandid(to_candid (users))));
+            routeContext.buildResponse(#ok, #content(toCandid(to_candid (users))));
         };
 
         public func getById(routeContext : Route.RouteContext) : Route.HttpResponse {
             let idText = routeContext.getRouteParam("id");
-            let ?id = Nat.fromText(idText) else return routeContext.buildErrorResponse(#badRequest, #message("Invalid id '" # idText # "', must be a positive integer"));
+            let ?id = Nat.fromText(idText) else return routeContext.buildResponse(#badRequest, #error(#message("Invalid id '" # idText # "', must be a positive integer")));
 
-            let ?user = userHandler.getById(id) else return routeContext.buildErrorResponse(#notFound, #none);
-            routeContext.buildResponse(#ok, #candid(toCandid(to_candid (user))));
+            let ?user = userHandler.getById(id) else return routeContext.buildResponse(#notFound, #error(#none));
+            routeContext.buildResponse(#ok, #content(toCandid(to_candid (user))));
         };
 
         public func create<system>(routeContext : Route.RouteContext) : Route.HttpResponse {
             let createUserRequest : UserHandler.CreateUserRequest = switch (routeContext.parseJsonBody<UserHandler.CreateUserRequest>(Serializer.deserializeCreateUserRequest)) {
-                case (#err(e)) return routeContext.buildErrorResponse(#badRequest, #message("Failed to parse Json. Error: " # e));
+                case (#err(e)) return routeContext.buildResponse(#badRequest, #error(#message("Failed to parse Json. Error: " # e)));
                 case (#ok(req)) req;
             };
 
             let newUser = userHandler.create(createUserRequest);
 
-            routeContext.buildResponse(#created, #candid(toCandid(to_candid (newUser))));
+            routeContext.buildResponse(#created, #content(toCandid(to_candid (newUser))));
         };
 
         func toCandid(value : Blob) : Serde.Candid.Candid {

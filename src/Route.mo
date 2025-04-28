@@ -67,16 +67,12 @@ module {
 
         public func parseJsonBody<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> = httpContext.parseJsonBody(f);
 
-        public func buildResponse(statusCode : HttpStatusCodeOrCustom, body : ResponseBody) : HttpResponse {
+        public func buildResponse(statusCode : HttpStatusCodeOrCustom, body : ResponseKind) : HttpResponse {
             httpContext.buildResponse(statusCode, body);
-        };
-
-        public func buildErrorResponse(statusCode : ErrorHttpStatusCodeOrCustom, data : HttpErrorDataKind) : HttpResponse {
-            httpContext.buildErrorResponse(statusCode, data);
         };
     };
 
-    public type ResponseBody = HttpContext.ResponseBody;
+    public type ResponseKind = HttpContext.ResponseKind;
 
     public type ValidationError = {
         field : Text;
