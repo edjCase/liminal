@@ -20,6 +20,7 @@ Key features:
 - 🚀 **Compression**: Automatic response compression for performance
 - ⏱️ **Rate Limiting**: Protect your APIs from abuse
 - 🛡️ **Authentication**: Configurable authentication requirements
+- 🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
 
 ## Package
 
@@ -45,14 +46,14 @@ import CORSMiddleware "mo:liminal/Middleware/CORS";
 actor {
     // Define your routes
     let routerConfig = {
-        errorSerializer = null;
         prefix = ?"/api";
+        identityRequirement = null;
         routes = [
             Router.getQuery(
                 "/hello/{name}",
-                func(context : Route.RouteContext) : Route.RouteResult {
+                func(context : Route.RouteContext) : Route.HttpResponse {
                     let name = context.getRouteParam("name");
-                    #ok(#text("Hello, " # name # "!"))
+                    context.buildResponse(#ok, #text("Hello, " # name # "!"));
                 }
             )
         ]
@@ -67,6 +68,8 @@ actor {
             CORSMiddleware.default(),
             RouterMiddleware.new(routerConfig),
         ];
+        errorSerializer = Liminal.defaultJsonErrorSerializer;
+        candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     });
 
     // Expose standard HTTP interface
@@ -99,8 +102,8 @@ import AssetsMiddleware "mo:liminal/Middleware/Assets";
 actor {
     // Define your routes
     let routerConfig = {
-        errorSerializer = null;
         prefix = ?"/api";
+        identityRequirement = null;
         routes = [
             Router.getQuery(
                 "/public",
@@ -122,6 +125,11 @@ actor {
             )
         ]
     };
+
+    // Initialize asset store
+    stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
+    assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
+    var assetStore = HttpAssets.Assets(assetStableData);
 
     // Create the HTTP App with middleware
     let app = Liminal.App({
@@ -148,6 +156,7 @@ actor {
             }),
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
+        candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     });
 
     // Expose standard HTTP interface
@@ -205,8 +214,8 @@ The routing system supports:
 ```motoko
 // Route configuration example
 let routerConfig = {
-    errorSerializer = null;
     prefix = ?"/api"; // All routes with have prefix `/api`
+    identityRequirement = null; // Default identity requirement for all routes
     routes = [
         // Group adds a prefix to all nested routes of `/users`
         Router.group(
@@ -234,7 +243,7 @@ The `HttpContext` provides access to request details:
 - Identity (for authentication)
 
 ```motoko
-public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
+public func handleRequest(context : Route.RouteContext) : Route.HttpResponse {
     // Access route parameters
     let id = context.getRouteParam("id");
 
@@ -251,9 +260,20 @@ public func handleRequest(context : Route.RouteContext) : Route.RouteResult {
     let result = context.parseJsonBody<CreateRequest>(deserializeCreateRequest);
 
     // Return a response
-    #ok(#json(#object_([("id", #number(#int(id)))])))
+    context.buildResponse(#ok, #content(#Record([("id", #number(#int(id)))])));
 }
 ```
+
+### Content Negotiation
+
+The framework includes built-in content negotiation that converts Candid data to various formats based on the client's Accept header:
+
+```motoko
+// Return data using automatic content negotiation
+context.buildResponse(#ok, #content(myCandidData))
+```
+
+The `#content` response kind takes a Candid representation of your data and uses the client's Accept header to determine the appropriate format (JSON, CBOR, Candid, or XML). This works around Motoko's lack of reflection by using Candid as the common intermediate format - Motoko's `to_candid` converts your types to Candid, which is then converted to the requested format.
 
 ## Built-in Middleware
 
@@ -400,7 +420,7 @@ CSPMiddleware.default()
 // Or with custom options
 CSPMiddleware.new({
     defaultSrc = ["'self'"];
-    scriptSrc = ["'self'", "https://trusted-scripts.com"];
+    scriptSrc = ["'self'", "'unsafe-inline'", "https://trusted-scripts.com"];
     connectSrc = ["'self'", "https://api.example.com"];
     // Additional CSP directives...
 })
@@ -412,8 +432,9 @@ Liminal provides a wrapper around the Internet Computer's asset canister functio
 
 ```motoko
 // Initialize asset store
-stable var assetStableData = Assets.init_stable_store(canisterId, initializer);
-var assetStore = Assets.Assets(assetStableData);
+stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
+assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
+var assetStore = HttpAssets.Assets(assetStableData);
 var assetCanister = AssetCanister.AssetCanister(assetStore);
 
 ...
@@ -438,11 +459,12 @@ public shared query func get(args : Assets.GetArgs) : async Assets.EncodedAsset 
 
 ## Error Handling
 
-Custom error handling can be configured via the router's `errorSerializer`:
+Custom error handling can be configured via the app's `errorSerializer`:
 
 ```motoko
-let routerConfig = {
-    errorSerializer = ?(func(error : Router.Error) : Router.SerializedError {
+let app = Liminal.App({
+    middleware = [ /* ... */ ];
+    errorSerializer = func(error : HttpContext.HttpError) : HttpContext.ErrorSerializerResponse {
         let body = #object_([
             ("error", #string("Custom Error")),
             ("code", #number(#int(error.statusCode))),
@@ -453,13 +475,15 @@ let routerConfig = {
         |> Text.encodeUtf8(_);
 
         {
-            body = body;
+            body = ?body;
             headers = [("content-type", "application/json")];
         };
-    });
-    // Rest of router config...
-};
+    };
+    candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+});
 ```
+
+The `candidRepresentationNegotiator` handles the conversion of Candid values to different representations based on the client's Accept header. The default implementation supports converting to JSON, CBOR, Candid, and XML formats.
 
 ## Testing
 

@@ -1,8 +1,8 @@
 [package]
-name = "http"
+name = "liminal"
 version = "0.0.1"
-description = "A collection of HTTP tools to make http requests easy to use"
-repository = "https://github.com/edjcase/motoko_http"
+description = "An HTTP framework that make http processing easier, utilizing middleware pipelines"
+repository = "https://github.com/edjcase/liminal"
 keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
 license = "MIT"
 
