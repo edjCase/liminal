@@ -15,6 +15,8 @@ import JWT "mo:jwt";
 import Nat "mo:base/Nat";
 import Identity "Identity";
 import Types "./Types";
+import ContentNegotiation "ContentNegotiation";
+import Serde "mo:serde";
 
 module {
     public type SuccessHttpStatusCode = {
@@ -151,7 +153,7 @@ module {
             headers : [(Text, Text)];
             body : Blob;
         };
-        #json : Json.Json;
+        #candid : CandidValue;
         #text : Text;
     };
 
@@ -162,8 +164,18 @@ module {
 
     public type ErrorSerializer = HttpError -> ErrorSerializerResponse;
 
+    public type CandidNegotiatedContent = {
+        body : Blob;
+        contentType : Text;
+    };
+
+    public type CandidValue = Serde.Candid;
+
+    public type CandidRepresentationNegotiator = (CandidValue, ContentNegotiation.ContentPreference) -> ?CandidNegotiatedContent;
+
     public type Options = {
         errorSerializer : ErrorSerializer;
+        candidRepresentationNegotiator : CandidRepresentationNegotiator;
     };
 
     public class HttpContext(
@@ -174,6 +186,7 @@ module {
         public let request : HttpTypes.UpdateRequest = r;
         public let certificateVersion : ?Nat16 = certificate_version;
         public let errorSerializer : ErrorSerializer = options.errorSerializer;
+        public let candidRepresentationNegotiator : CandidRepresentationNegotiator = options.candidRepresentationNegotiator;
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 
@@ -269,6 +282,14 @@ module {
             return null;
         };
 
+        public func getContentPreference() : ContentNegotiation.ContentPreference {
+            let ?acceptHeader = getHeader("Accept") else return {
+                requestedTypes = [];
+                disallowedTypes = [];
+            };
+            ContentNegotiation.parseContentTypes(acceptHeader);
+        };
+
         public func parseRawJsonBody() : Result.Result<Json.Json, Text> {
             let ?jsonText = Text.decodeUtf8(request.body) else return #err("Body is not valid UTF-8");
             switch (Json.parse(jsonText)) {
@@ -302,34 +323,49 @@ module {
                 streamingStrategy = null;
             };
         };
-    };
 
-    private func serializeReponseBody(statusCode : Nat, body : ResponseBody) : Types.HttpResponse {
-        switch (body) {
-            case (#custom(custom)) ({
-                statusCode = statusCode;
-                headers = custom.headers;
-                body = ?custom.body;
-                streamingStrategy = null;
-            });
-            case (#json(json)) ({
-                statusCode = statusCode;
-                headers = [("content-type", "application/json")];
-                body = Json.stringify(json, null) |> ?Text.encodeUtf8(_);
-                streamingStrategy = null;
-            });
-            case (#text(text)) ({
-                statusCode = statusCode;
-                headers = [("content-type", "text/plain")];
-                body = ?Text.encodeUtf8(text);
-                streamingStrategy = null;
-            });
-            case (#empty) ({
-                statusCode = statusCode;
-                headers = [];
-                body = null;
-                streamingStrategy = null;
-            });
+        private func serializeReponseBody(
+            statusCode : Nat,
+            body : ResponseBody,
+        ) : Types.HttpResponse {
+            switch (body) {
+                case (#custom(custom)) ({
+                    statusCode = statusCode;
+                    headers = custom.headers;
+                    body = ?custom.body;
+                    streamingStrategy = null;
+                });
+                case (#candid(candid)) {
+                    let contentPreference = getContentPreference();
+                    let ?{ body; contentType } = candidRepresentationNegotiator(candid, contentPreference) else {
+                        return buildErrorResponse(
+                            #unsupportedMediaType,
+                            #message("Unsupported content types: " # debug_show getHeader("Accept")),
+                        );
+                    };
+                    {
+                        statusCode = statusCode;
+                        headers = [
+                            ("content-type", contentType),
+                            ("content-length", Nat.toText(Blob.size(body))),
+                        ];
+                        body = ?body;
+                        streamingStrategy = null;
+                    };
+                };
+                case (#text(text)) ({
+                    statusCode = statusCode;
+                    headers = [("content-type", "text/plain")];
+                    body = ?Text.encodeUtf8(text);
+                    streamingStrategy = null;
+                });
+                case (#empty) ({
+                    statusCode = statusCode;
+                    headers = [];
+                    body = null;
+                    streamingStrategy = null;
+                });
+            };
         };
     };
 

@@ -4,6 +4,8 @@ import Runtime "mo:new-base/Runtime";
 import HttpMethod "../src/HttpMethod";
 import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";
+import ContentNegotiation "../src/ContentNegotiation";
+import Serde "mo:serde";
 
 // Helper function to find header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -20,6 +22,17 @@ func dummyErrorSerialzer(
     return {
         headers = [];
         body = null;
+    };
+};
+
+func dummyCandidRepresentationNegotiator(
+    candid : Serde.Candid.Candid,
+    _ : ContentNegotiation.ContentPreference,
+) : ?HttpContext.CandidNegotiatedContent {
+    // Dummy Candid representation negotiator for testing
+    return ?{
+        body = to_candid (candid);
+        contentType = "application/octet-stream";
     };
 };
 
@@ -42,6 +55,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
+
+                        candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                     },
                 );
                 let response1 = CORS.handlePreflight(
@@ -69,6 +84,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
+
+                        candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                     },
                 );
                 let response2 = CORS.handlePreflight(
@@ -106,6 +123,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
+
+                        candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                     },
                 );
                 let response = CORS.handlePreflight(
@@ -146,6 +165,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -182,6 +203,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -214,6 +237,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -245,6 +270,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -280,6 +307,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -315,6 +344,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -350,6 +381,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -384,6 +417,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -414,6 +449,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -451,6 +488,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -482,6 +521,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -515,6 +556,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -547,6 +590,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     CORS.defaultOptions,
@@ -579,6 +624,7 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                         },
                     ),
                     {
@@ -611,6 +657,7 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
+                        candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
                     },
                 );
 

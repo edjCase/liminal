@@ -11,11 +11,8 @@ import List "mo:new-base/List";
 import TextX "mo:xtended-text/TextX";
 import Nat "mo:new-base/Nat";
 import Iter "mo:new-base/Iter";
-import Int "mo:new-base/Int";
-import Order "mo:new-base/Order";
-import Runtime "mo:new-base/Runtime";
 import App "App";
-import NatX "mo:xtended-numbers/NatX";
+import ContentNegotiation "ContentNegotiation";
 
 module {
 
@@ -33,6 +30,14 @@ module {
 
     // Skip function determines if a request should skip compression
     public type SkipFunction = HttpContext.HttpContext -> Bool;
+
+    public type Encoding = {
+        #gzip;
+        #deflate;
+        #br;
+        #compress;
+        #zstd;
+    };
 
     public func compressResponse(
         context : HttpContext.HttpContext,
@@ -62,7 +67,7 @@ module {
             // No Accept-Encoding header, so return the original response
             return response;
         };
-        let acceptedEncodings = parseEncodingTypes(encodingsHeader);
+        let acceptedEncodings = ContentNegotiation.parseEncodingTypes(encodingsHeader);
 
         // Skip if custom skip function is provided and returns true
         switch (config.skipCompressionIf) {
@@ -76,7 +81,7 @@ module {
 
         // Try to compress with the first compatible encoding
         label f for (requestedEncoding in acceptedEncodings.requestedEncodings.vals()) {
-            let outputCompressedEncoding = switch (requestedEncoding) {
+            let encoding : Encoding = switch (requestedEncoding) {
                 case (#identity) return response;
                 case (#gzip) #gzip;
                 case (#deflate) #deflate;
@@ -108,7 +113,7 @@ module {
             let ?compressedResponse = tryCompress(
                 response,
                 body,
-                outputCompressedEncoding,
+                encoding,
             ) else continue f;
             return compressedResponse;
         };
@@ -130,7 +135,7 @@ module {
     private func tryCompress(
         response : App.HttpResponse,
         body : Blob,
-        encoding : OutputCompressedEncoding,
+        encoding : Encoding,
     ) : ?App.HttpResponse {
         let bytes = Blob.toArray(body);
         let ?compressedBody = compressWithEncoding(encoding, bytes) else return null;
@@ -165,7 +170,7 @@ module {
     };
 
     // Convert encoding enum to text
-    private func encodingToText(encoding : OutputCompressedEncoding) : Text {
+    private func encodingToText(encoding : Encoding) : Text {
         switch (encoding) {
             case (#gzip) "gzip";
             case (#deflate) "deflate";
@@ -176,7 +181,7 @@ module {
     };
 
     // Compress with specified encoding
-    private func compressWithEncoding(encoding : OutputCompressedEncoding, data : [Nat8]) : ?Blob {
+    private func compressWithEncoding(encoding : Encoding, data : [Nat8]) : ?Blob {
         switch (encoding) {
             case (#gzip) {
                 let encoder = Gzip.EncoderBuilder().build();
@@ -213,156 +218,6 @@ module {
         };
 
         return Blob.fromArray(Buffer.toArray(buffer));
-    };
-
-    type OutputCompressedEncoding = {
-        #gzip;
-        #deflate;
-        #br;
-        #compress;
-        #zstd;
-    };
-    type RequestedEncoding = OutputCompressedEncoding or {
-        #identity;
-        #wildcard;
-    };
-
-    private func parseEncodingTypes(headerText : Text) : {
-        requestedEncodings : [RequestedEncoding];
-        disallowedEncodings : [RequestedEncoding];
-    } {
-        // Split by comma and trim each entry
-        let entries = headerText
-        |> Text.split(_, #char(','))
-        |> Iter.toArray(_);
-
-        type EncodingWithWeight = {
-            encoding : RequestedEncoding;
-            weight : Nat; // 0-1000
-        };
-        let encodings = List.empty<EncodingWithWeight>();
-        label f for (entry in entries.vals()) {
-            // Remove quality parameter if present
-            let parts = Text.split(entry, #char(';'));
-            let ?encodingText = parts.next() else Runtime.trap("Invalid Accept-Encoding header: " # headerText);
-            let ?encoding = encodingFromText(encodingText) else {
-                continue f;
-            };
-            let weight : Nat = switch (parts.next()) {
-                case (null) 1000;
-                case (?weightText) {
-                    let parts = Text.split(weightText, #char('='));
-                    let ?q : ?Nat = do ? {
-                        let q = parts.next()!;
-                        if (q != "q") {
-                            null!;
-                        } else {
-                            let qValue = parts.next()!;
-                            parseQuality(qValue)!;
-                        };
-                    } else continue f;
-
-                    q;
-                };
-            };
-            List.add(
-                encodings,
-                {
-                    encoding = encoding;
-                    weight;
-                },
-            );
-        };
-        let orderedEncodings = List.values(encodings)
-        |> Iter.sort<EncodingWithWeight>(
-            _,
-            func(a : EncodingWithWeight, b : EncodingWithWeight) : Order.Order = Nat.compare(b.weight, a.weight),
-        );
-
-        let requestedEncodings = List.empty<RequestedEncoding>();
-        let disallowedEncodings = List.empty<RequestedEncoding>();
-        label f for (encoding in orderedEncodings) {
-            if (encoding.weight == 0) {
-                List.add(disallowedEncodings, encoding.encoding);
-            } else {
-                List.add(requestedEncodings, encoding.encoding);
-            };
-        };
-        {
-            requestedEncodings = List.toArray(requestedEncodings);
-            disallowedEncodings = List.toArray(disallowedEncodings);
-        }
-
-    };
-
-    func encodingFromText(encoding : Text) : ?RequestedEncoding {
-        let normalizedEncoding = encoding
-        |> Text.trim(_, #char(' '))
-        |> Text.toLower(_);
-        let encodingVariant = switch (normalizedEncoding) {
-            case ("identity") #identity;
-            case ("gzip") #gzip;
-            case ("deflate") #deflate;
-            case ("br") #br;
-            case ("compress") #compress;
-            case ("zstd") #zstd;
-            case ("*") #wildcard;
-            case (_) {
-                return null;
-            };
-        };
-        ?encodingVariant;
-    };
-
-    // Returns integer value between 0 and 1000, where 1000 is the highest quality
-    private func parseQuality(text : Text) : ?Nat {
-        let trimmed = Text.trim(text, #char(' '));
-
-        // Handle empty string
-        if (Text.size(trimmed) == 0) {
-            return null;
-        };
-
-        // Split on decimal point
-        let parts = Text.split(trimmed, #char('.'));
-        let ?intPartText = parts.next() else return null; // Invalid format - no integer part
-        let decimalPartTextOrNull = parts.next();
-        let null = parts.next() else return null; // Invalid format - too many decimal points
-
-        // Parse integer part
-        switch (intPartText) {
-            case ("" or "0") (); // Continue to decimal part
-            case ("1") return ?1000; // Can't be higher than 1000, so just return early
-            case (_) return null; // Has to be 0 or 1 or empty string
-        };
-
-        // If no decimal part, return early
-        switch (decimalPartTextOrNull) {
-            case (null or ?"" or ?"0") return ?0; // 0.0 or 0
-            case (?decimalPartText) {
-                let precision = Text.size(decimalPartText);
-
-                // Convert decimal part to integer
-                let decimalNat = switch (NatX.fromText(decimalPartText)) {
-                    case (null) return null;
-                    case (?val) val;
-                };
-                // Max precision is 3
-                let precisionDiff : Int = 3 - precision;
-                let value : Nat = if (precisionDiff == 0) {
-                    // No change needed
-                    decimalNat;
-                } else if (precisionDiff > 0) {
-                    // Add trailing zeros
-                    decimalNat * Int.abs(Int.pow(10, precisionDiff));
-                } else {
-                    // Remove trailing values
-                    decimalNat / Int.abs(Int.pow(10, Int.abs(precisionDiff)));
-                };
-                ?value;
-            };
-        };
-
     };
 
     // Check if a response already has compression

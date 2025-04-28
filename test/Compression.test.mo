@@ -10,6 +10,7 @@ import Compression "../src/Compression";
 import HttpContext "../src/HttpContext";
 import HttpMethod "../src/HttpMethod";
 import App "../src/App";
+import ContentNegotiation "../src/ContentNegotiation";
 
 // Helper function to get header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -40,6 +41,12 @@ func createContext(
                 return {
                     headers = [("Content-Type", "text/plain")];
                     body = body;
+                };
+            };
+            candidRepresentationNegotiator = func(candid : HttpContext.CandidValue, contentPreference : ContentNegotiation.ContentPreference) : ?HttpContext.CandidNegotiatedContent {
+                ?{
+                    body = to_candid (candid);
+                    contentType = "application/octet-stream";
                 };
             };
         },

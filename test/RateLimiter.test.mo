@@ -8,6 +8,7 @@ import HttpContext "../src/HttpContext";
 import HttpMethod "../src/HttpMethod";
 import Identity "../src/Identity";
 import RateLimiter "../src/RateLimiter";
+import ContentNegotiation "../src/ContentNegotiation";
 
 // Helper function to find header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -39,6 +40,15 @@ func createContext(
                 return {
                     headers = [("Content-Type", "text/plain")];
                     body = body;
+                };
+            };
+            candidRepresentationNegotiator = func(
+                candid : HttpContext.CandidValue,
+                _ : ContentNegotiation.ContentPreference,
+            ) : ?HttpContext.CandidNegotiatedContent {
+                ?{
+                    body = to_candid (candid);
+                    contentType = "application/octet-stream";
                 };
             };
         },

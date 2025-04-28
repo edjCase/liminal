@@ -3,6 +3,7 @@ import Types "./Types";
 import HttpTypes "./HttpTypes";
 import HttpContext "./HttpContext";
 import AppModule "./App";
+import CandidRepresentationNegotation "./CandidRepresentationNegotiation";
 
 module {
     public type Router = RouterModule.Router;
@@ -21,7 +22,7 @@ module {
     public type App = AppModule.App;
     public func App(data : AppModule.Data) : App = AppModule.App(data);
 
-    public func defaultJsonErrorSerializer(
-        error : HttpContext.HttpError
-    ) : HttpContext.ErrorSerializerResponse = AppModule.defaultJsonErrorSerializer(error);
+    public let defaultJsonErrorSerializer : HttpContext.ErrorSerializer = AppModule.defaultJsonErrorSerializer;
+
+    public let defaultCandidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator = CandidRepresentationNegotation.defaultNegotiator;
 };

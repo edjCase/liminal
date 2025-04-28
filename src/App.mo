@@ -8,12 +8,20 @@ import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
 import Json "mo:json";
 import Buffer "mo:base/Buffer";
+import ContentNegotiation "ContentNegotiation";
+import MimeType "MimeType";
+import Serde "mo:serde";
 
 module {
     public type Next = () -> QueryResult;
     public type NextAsync = () -> async* Types.HttpResponse;
 
     public type HttpResponse = Types.HttpResponse;
+
+    public type MimeType = MimeType.MimeType;
+    public type ContentPreference = ContentNegotiation.ContentPreference;
+
+    public type Candid = Serde.Candid;
 
     public type StreamResult = {
         kind : Types.StreamingStrategy;
@@ -41,57 +49,8 @@ module {
 
     public type Data = {
         middleware : [Middleware];
-        errorSerializer : HttpContext.HttpError -> HttpContext.ErrorSerializerResponse;
-    };
-
-    public func defaultJsonErrorSerializer(
-        error : HttpContext.HttpError
-    ) : HttpContext.ErrorSerializerResponse {
-        let jsonBody : Json.Json = switch (error.data) {
-            case (#none) return {
-                headers = [];
-                body = null;
-            };
-            case (#message(message)) {
-                let statusCodeText = HttpContext.getStatusCodeLabel(error.statusCode);
-                #object_([
-                    ("status", #number(#int(error.statusCode))),
-                    ("error", #string(statusCodeText)),
-                    ("message", #string(message)),
-                ]);
-            };
-            case (#rfc9457(rfc)) {
-                let fields = Buffer.Buffer<(Text, Json.Json)>(10);
-                let addIfNotNull = func(
-                    key : Text,
-                    value : ?Text,
-                ) {
-                    switch (value) {
-                        case (?v) fields.add((key, #string(v)));
-                        case (null) ();
-                    };
-                };
-                fields.add(("type", #string(rfc.type_)));
-                fields.add(("status", #number(#int(error.statusCode))));
-                addIfNotNull("title", rfc.title);
-                addIfNotNull("detail", rfc.detail);
-                addIfNotNull("instance", rfc.instance);
-
-                for (extension in rfc.extensions.vals()) {
-                    fields.add((extension.name, mapExtensionToJson(extension.value)));
-                };
-
-                #object_(Buffer.toArray(fields));
-            };
-        };
-        let body = Text.encodeUtf8(Json.stringify(jsonBody, null));
-        {
-            headers = [
-                ("Content-Type", "application/json"),
-                ("Content-Length", Nat.toText(body.size())),
-            ];
-            body = ?body;
-        };
+        errorSerializer : HttpContext.ErrorSerializer;
+        candidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator;
     };
 
     public class App(data : Data) = self {
@@ -102,6 +61,7 @@ module {
                 req.certificate_version,
                 {
                     errorSerializer = data.errorSerializer;
+                    candidRepresentationNegotiator = data.candidRepresentationNegotiator;
                 },
             );
 
@@ -158,6 +118,7 @@ module {
                 null,
                 {
                     errorSerializer = data.errorSerializer;
+                    candidRepresentationNegotiator = data.candidRepresentationNegotiator;
                 },
             );
 
@@ -225,6 +186,56 @@ module {
                 streaming_strategy = null;
                 upgrade = null;
             };
+        };
+    };
+
+    public func defaultJsonErrorSerializer(
+        error : HttpContext.HttpError
+    ) : HttpContext.ErrorSerializerResponse {
+        let jsonBody : Json.Json = switch (error.data) {
+            case (#none) return {
+                headers = [];
+                body = null;
+            };
+            case (#message(message)) {
+                let statusCodeText = HttpContext.getStatusCodeLabel(error.statusCode);
+                #object_([
+                    ("status", #number(#int(error.statusCode))),
+                    ("error", #string(statusCodeText)),
+                    ("message", #string(message)),
+                ]);
+            };
+            case (#rfc9457(rfc)) {
+                let fields = Buffer.Buffer<(Text, Json.Json)>(10);
+                let addIfNotNull = func(
+                    key : Text,
+                    value : ?Text,
+                ) {
+                    switch (value) {
+                        case (?v) fields.add((key, #string(v)));
+                        case (null) ();
+                    };
+                };
+                fields.add(("type", #string(rfc.type_)));
+                fields.add(("status", #number(#int(error.statusCode))));
+                addIfNotNull("title", rfc.title);
+                addIfNotNull("detail", rfc.detail);
+                addIfNotNull("instance", rfc.instance);
+
+                for (extension in rfc.extensions.vals()) {
+                    fields.add((extension.name, mapExtensionToJson(extension.value)));
+                };
+
+                #object_(Buffer.toArray(fields));
+            };
+        };
+        let body = Text.encodeUtf8(Json.stringify(jsonBody, null));
+        {
+            headers = [
+                ("Content-Type", "application/json"),
+                ("Content-Length", Nat.toText(body.size())),
+            ];
+            body = ?body;
         };
     };
 

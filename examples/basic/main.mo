@@ -73,10 +73,10 @@ shared ({ caller = initializer }) actor class Actor() = self {
                         num_requested_changes = ?0;
                     });
                     let hashJson = switch (result.module_hash) {
-                        case (null) #null_;
-                        case (?hash) #string(debug_show (Blob.toArray(hash)));
+                        case (null) #Null;
+                        case (?hash) #Text(debug_show (Blob.toArray(hash)));
                     };
-                    routeContext.buildResponse(#ok, #json(#object_([("hash", hashJson)])));
+                    routeContext.buildResponse(#ok, #candid(#Record([("hash", hashJson)])));
                 },
             ),
         ];
@@ -108,6 +108,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
             AssetsMiddleware.new(assetMiddlewareConfig),
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
+        candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     });
 
     // Http server methods

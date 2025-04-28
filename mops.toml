@@ -3,7 +3,7 @@ name = "http"
 version = "0.0.1"
 description = "A collection of HTTP tools to make http requests easy to use"
 repository = "https://github.com/edjcase/motoko_http"
-keywords = [ "http", "router", "parser", "middleware", "web", "pipeline" ]
+keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
 license = "MIT"
 
 [dependencies]
@@ -18,6 +18,8 @@ asn1 = "2.0.2"
 json = "1.0.1"
 jwt = "0.2.0"
 compression = "0.2.0"
+serde = "3.2.2"
+xml = "0.3.0"
 
 [dev-dependencies]
 test = "2.1.1"
