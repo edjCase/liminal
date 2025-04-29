@@ -1,5 +1,5 @@
 import App "App";
-import Xml "mo:xml/Xml";
+import Xml "mo:xml";
 import XmlElement "mo:xml/Element";
 import Runtime "mo:new-base/Runtime";
 import Blob "mo:new-base/Blob";
@@ -22,6 +22,7 @@ import Int64 "mo:new-base/Int64";
 import Buffer "mo:base/Buffer";
 import Float "mo:new-base/Float";
 import Principal "mo:new-base/Principal";
+import Option "mo:new-base/Option";
 import BaseX "mo:base-x-encoder";
 
 module {
@@ -29,72 +30,135 @@ module {
     public type Candid = App.Candid;
     public type ContentPreference = App.ContentPreference;
 
+    public type CustomNegotiatorOptions = {
+        toJsonOverride : ?((Candid) -> Blob);
+        toCborOverride : ?((Candid) -> Blob);
+        toCandidOverride : ?((Candid) -> Blob);
+        toXmlOverride : ?((Candid) -> Blob);
+        catchAll : ?CatchAllSerializer;
+    };
+
+    public type CatchAllSerializer = (candid : Candid, type_ : Text, subType : Text) -> ?HttpContext.CandidNegotiatedContent;
+
     public func defaultNegotiator(
         candid : Candid,
         contentPreference : ContentPreference,
     ) : ?HttpContext.CandidNegotiatedContent {
+        return customNegotiator(
+            candid,
+            contentPreference,
+            toJsonFromCandid,
+            toCborFromCandid,
+            toCandidFromCandid,
+            toXmlFromCandid,
+            null,
+        );
+    };
 
+    public func buildCustomNegotiator(options : CustomNegotiatorOptions) : (Candid, ContentPreference) -> ?HttpContext.CandidNegotiatedContent {
+        let toJson = Option.get(options.toJsonOverride, toJsonFromCandid);
+        let toCbor = Option.get(options.toCborOverride, toCborFromCandid);
+        let toCandid = Option.get(options.toCandidOverride, toCandidFromCandid);
+        let toXml = Option.get(options.toXmlOverride, toXmlFromCandid);
+        return func(candid : Candid, contentPreference : ContentPreference) : ?HttpContext.CandidNegotiatedContent {
+            return customNegotiator(
+                candid,
+                contentPreference,
+                toJson,
+                toCbor,
+                toCandid,
+                toXml,
+                options.catchAll,
+            );
+        };
+    };
+
+    public func customNegotiator(
+        candid : Candid,
+        contentPreference : ContentPreference,
+        toJson : (Candid) -> Blob,
+        toCbor : (Candid) -> Blob,
+        toCandid : (Candid) -> Blob,
+        toXml : (Candid) -> Blob,
+        catchAll : ?CatchAllSerializer,
+    ) : ?HttpContext.CandidNegotiatedContent {
         label f for ({ type_; subType; parameters } in contentPreference.requestedTypes.vals()) {
             let normalizedType = type_ |> Text.trim(_, #char(' ')) |> Text.toLowercase(_);
             let normalizedSubType = subType |> Text.trim(_, #char(' ')) |> Text.toLowercase(_);
             let ?value : ?HttpContext.CandidNegotiatedContent = switch ((normalizedType, normalizedSubType)) {
-                case ((normalizedType, "*")) toWildcard(normalizedType, candid, contentPreference.disallowedTypes);
-                case (("application", "json")) ?toJson(candid);
-                case (("application", "cbor")) ?toCbor(candid);
-                case (("application", "candid")) ?toCandid(candid);
-                case (("text", "xml") or ("application", "xml")) ?toXml(candid);
-                case (_) continue f; // Not supported
+                case ((normalizedType, "*")) {
+                    let value = toWildcard(
+                        normalizedType,
+                        candid,
+                        contentPreference.disallowedTypes,
+                        toJson,
+                        toCbor,
+                        toCandid,
+                        toXml,
+                    );
+                    switch (value) {
+                        case (null) switch (catchAll) {
+                            case (null) continue f;
+                            case (?catchAll) catchAll(candid, normalizedType, "*");
+                        };
+                        case (?value) ?value;
+                    };
+                };
+                case (("application", "json")) ?toX(candid, toJson, "application/json");
+                case (("application", "cbor")) ?toX(candid, toCbor, "application/cbor");
+                case (("application", "candid")) ?toX(candid, toCandid, "application/candid");
+                case (("text", "xml")) ?toX(candid, toXml, "text/xml");
+                case (("application", "xml")) ?toX(candid, toXml, "application/xml");
+                case (_) {
+                    switch (catchAll) {
+                        case (null) continue f;
+                        case (?catchAll) catchAll(candid, normalizedType, normalizedSubType);
+                    };
+                }; // Not supported
             } else continue f;
             return ?value;
         };
         return null; // No supported content type found
     };
 
-    func toJson(candid : Candid) : HttpContext.CandidNegotiatedContent {
-        let jsonText = switch (Serde.JSON.fromCandid(candid)) {
-            case (#err(e)) Runtime.trap("Failed to convert Candid to JSON. Error: " # e);
-            case (#ok(json)) json;
-        };
+    func toX(candid : Candid, f : (Candid) -> Blob, contentType : Text) : HttpContext.CandidNegotiatedContent {
+        let blob = f(candid);
         return {
-            body = Text.encodeUtf8(jsonText);
-            contentType = "application/json";
+            body = blob;
+            contentType = contentType;
         };
     };
 
-    func toCbor(candid : Candid) : HttpContext.CandidNegotiatedContent {
+    func toJsonFromCandid(candid : Candid) : Blob {
+        switch (Serde.JSON.fromCandid(candid)) {
+            case (#err(e)) Runtime.trap("Failed to convert Candid to JSON. Error: " # e);
+            case (#ok(json)) Text.encodeUtf8(json);
+        };
+    };
+
+    func toCborFromCandid(candid : Candid) : Blob {
         let options = {
             blob_contains_only_values = false;
             renameKeys = [];
             types = null;
             use_icrc_3_value_type = false;
         };
-        let cborBlob = switch (Serde.CBOR.fromCandid(candid, options)) {
+        switch (Serde.CBOR.fromCandid(candid, options)) {
             case (#err(e)) Runtime.trap("Failed to convert Candid to CBOR. Error: " # e);
             case (#ok(cbor)) cbor;
         };
-        return {
-            body = cborBlob;
-            contentType = "application/cbor";
-        };
     };
 
-    func toCandid(candid : Candid) : HttpContext.CandidNegotiatedContent {
-        let candidBlob = switch (Serde.Candid.encode([candid], null)) {
+    func toCandidFromCandid(candid : Candid) : Blob {
+        switch (Serde.Candid.encode([candid], null)) {
             case (#err(e)) Runtime.trap("Failed to convert Candid to Candid. Error: " # e);
             case (#ok(candid)) candid;
         };
-        return {
-            body = candidBlob;
-            contentType = "application/candid";
-        };
     };
 
-    func toXml(candid : Candid) : HttpContext.CandidNegotiatedContent {
+    func toXmlFromCandid(candid : Candid) : Blob {
         let xml = transpileCandidToXml(candid);
-        {
-            body = Blob.fromArray(Iter.toArray(Xml.serializeToBytes(xml)));
-            contentType = "text/xml";
-        };
+        Blob.fromArray(Iter.toArray(Xml.toBytes(xml)));
     };
 
     func transpileCandidToXml(candid : Candid) : XmlElement.Element {
@@ -169,7 +233,15 @@ module {
         };
     };
 
-    func toWildcard(normalizedType : Text, candid : Candid, disallowedTypes : [MimeType.RawMimeType]) : ?HttpContext.CandidNegotiatedContent {
+    func toWildcard(
+        normalizedType : Text,
+        candid : Candid,
+        disallowedTypes : [MimeType.RawMimeType],
+        toJson : (Candid) -> Blob,
+        toCbor : (Candid) -> Blob,
+        toCandid : (Candid) -> Blob,
+        toXml : (Candid) -> Blob,
+    ) : ?HttpContext.CandidNegotiatedContent {
         type OutputMimeType = {
             type_ : Text;
             subType : Text;
@@ -230,11 +302,12 @@ module {
             };
             // If allowed, return value
             switch ((type_, subType)) {
-                case (("application", "json")) return ?toJson(candid);
-                case (("application", "cbor")) return ?toCbor(candid);
-                case (("application", "candid")) return ?toCandid(candid);
-                case (("text", "xml")) return ?toXml(candid);
-                case (_) Prelude.nyi();
+                case (("application", "json")) return ?toX(candid, toJson, "application/json");
+                case (("application", "cbor")) return ?toX(candid, toCbor, "application/cbor");
+                case (("application", "candid")) return ?toX(candid, toCandid, "application/candid");
+                case (("text", "xml")) return ?toX(candid, toXml, "text/xml");
+                case (("application", "xml")) return ?toX(candid, toXml, "application/xml");
+                case (_) Prelude.unreachable();
             };
         };
         return null;

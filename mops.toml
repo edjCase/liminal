@@ -3,7 +3,7 @@ name = "liminal"
 version = "0.0.1"
 description = "An HTTP framework that make http processing easier, utilizing middleware pipelines"
 repository = "https://github.com/edjcase/liminal"
-keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
+keywords = [ "http", "router", "parser", "middleware", "web", "pipeline" ]
 license = "MIT"
 
 [dependencies]
@@ -14,11 +14,11 @@ xtended-numbers = "0.4.0"
 certified-assets = "0.5.1"
 http-assets = "0.0.6"
 asn1 = "2.0.2"
-json = "1.0.1"
+json = "1.1.1"
 jwt = "0.2.0"
 compression = "0.2.0"
 serde = "3.2.2"
-xml = "0.3.0"
+xml = "1.0.0"
 
 [dev-dependencies]
 test = "2.1.1"
