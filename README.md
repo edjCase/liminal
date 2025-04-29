@@ -232,6 +232,70 @@ let routerConfig = {
 };
 ```
 
+### Route Path Formatting
+
+Liminal provides a flexible and powerful path matching system that supports various path patterns:
+
+#### Static Paths
+
+Basic routes with fixed path segments:
+
+```motoko
+Router.getQuery("/users", getAllUsers)
+Router.getQuery("/api/products", getProducts)
+```
+
+#### Path Parameters
+
+Capture dynamic values from the URL using curly braces:
+
+```motoko
+// Matches: /users/123, /users/abc
+Router.getQuery("/users/{id}", getUserById)
+
+// Multiple parameters
+// Matches: /blog/2023/05/hello-world
+Router.getQuery("/blog/{year}/{month}/{slug}", getBlogPost)
+```
+
+Access parameters in your handler:
+
+```motoko
+func getUserById(context : Route.RouteContext) : Route.HttpResponse {
+    let userId : Text = context.getRouteParam("id"); // or getRouteParamOrNull("id")
+    // ...
+}
+```
+
+#### Wildcard Segments
+
+##### Single Wildcard (\*)
+
+Matches exactly one segment in the path:
+
+```motoko
+// Matches: /files/document.txt, /files/image.jpg
+// Does NOT match: /files/folder/document.txt
+Router.getQuery("/files/*", getFile)
+
+// Can appear in the middle of a path
+// Matches: /files/document.txt/versions
+Router.getQuery("/files/*/versions", getFileVersions)
+```
+
+##### Multi Wildcard (\*\*)
+
+Matches any number of segments (including zero):
+
+```motoko
+// Matches: /api, /api/users, /api/users/123/profile
+Router.getQuery("/api/**", handleApiRequest)
+
+// Can appear in the middle of a path
+// Matches: /api/info, /api/users/123/info
+Router.getQuery("/api/**/info", getApiInfo)
+```
+
 ### HTTP Context
 
 The `HttpContext` provides access to request details:

@@ -5,6 +5,7 @@ import Text "mo:new-base/Text";
 import Iter "mo:new-base/Iter";
 import Result "mo:new-base/Result";
 import Runtime "mo:new-base/Runtime";
+import List "mo:new-base/List";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
 import Identity "./Identity";
@@ -88,6 +89,10 @@ module {
     public type PathSegment = {
         #text : Text;
         #param : Text;
+        #wildcard : {
+            #single;
+            #multi;
+        };
     };
 
     public type RouteMethod = {
@@ -99,24 +104,44 @@ module {
     };
 
     public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {
-        let pathSegments = path
+        let textSegments = path
+        |> Text.trim(_, #char('/'))
         |> Text.split(_, #char('/'))
-        |> Iter.filter(_, func(segment : Text) : Bool = segment.size() > 0)
-        |> Iter.map(
-            _,
-            func(segment : Text) : PathSegment {
-                if (Text.startsWith(segment, #char('{')) and Text.endsWith(segment, #char('}'))) {
-                    // Parameter segment: extract name between curly braces
-                    let paramName = TextX.slice(segment, 1, segment.size() - 2);
-                    return #param(paramName);
-                };
-                // Regular text segment
-                #text(segment);
-            },
-        )
-        |> Iter.toArray(_);
+        |> Iter.map(_, func(segment : Text) : Text = Text.trim(segment, #char(' ')));
 
-        #ok(pathSegments);
+        let pathSegments = List.empty<PathSegment>();
+        for (segment in textSegments) {
+            if (segment == "") {
+                return #err("Empty path segment found");
+            };
+            if (segment == "*") {
+                // Wildcard segment: single wildcard
+                List.add(pathSegments, #wildcard(#single));
+            } else if (segment == "**") {
+                // Wildcard segment: multi wildcard
+                List.add(pathSegments, #wildcard(#multi));
+            } else if (Text.startsWith(segment, #text("**"))) {
+                return #err("Invalid wildcard segment: " # segment);
+            } else if (Text.startsWith(segment, #char('{'))) {
+                if (not Text.endsWith(segment, #char('}'))) {
+                    return #err("Parameter segment must end with a '}'");
+                };
+                // Parameter segment: extract name between curly braces
+                let paramName = TextX.slice(segment, 1, segment.size() - 2);
+                if (TextX.isEmptyOrWhitespace(paramName)) {
+                    return #err("Parameter name cannot be empty");
+                };
+                if (Text.contains(paramName, #char('{')) or Text.contains(paramName, #char('}'))) {
+                    return #err("Parameter name cannot contain '{' or '}'");
+                };
+                List.add(pathSegments, #param(paramName));
+            } else {
+                // Regular text segment
+                List.add(pathSegments, #text(segment));
+            };
+        };
+
+        #ok(List.toArray(pathSegments));
     };
 
     public func pathSegmentsToText(segments : [PathSegment]) : Text {
@@ -127,6 +152,8 @@ module {
                 switch (segment) {
                     case (#text(text)) text;
                     case (#param(param)) "{" # param # "}";
+                    case (#wildcard(#single)) "*";
+                    case (#wildcard(#multi)) "**";
                 };
             },
         )

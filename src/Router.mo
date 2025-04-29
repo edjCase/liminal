@@ -7,7 +7,7 @@ import Runtime "mo:new-base/Runtime";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
 import Route "./Route";
-import IterTools "mo:itertools/Iter";
+import Prelude "mo:base/Prelude";
 import Path "./Path";
 import Identity "Identity";
 
@@ -279,32 +279,71 @@ module Module {
             null;
         };
 
-        private func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
+    };
+
+    public func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
+        params : [(Text, Text)];
+    } {
+        func matchRecursive(expIndex : Nat, actIndex : Nat, currentParams : List.List<(Text, Text)>) : ?{
             params : [(Text, Text)];
         } {
-            if (expected.size() != actual.size()) {
+            // Base case: if we've processed all expected segments
+            if (expIndex >= expected.size()) {
+                // Only a match if we've also processed all actual segments
+                return if (actIndex >= actual.size()) ?{
+                    params = List.toArray(currentParams);
+                } else null;
+            };
+
+            // Get current expected segment
+            let expectedSegment = expected[expIndex];
+
+            // Handle multi-wildcard case
+            if (expectedSegment == #wildcard(#multi)) {
+                // Try matching with the wildcard consuming 0 segments
+                let matchWithoutConsumingAny = matchRecursive(expIndex + 1, actIndex, currentParams);
+                if (matchWithoutConsumingAny != null) return matchWithoutConsumingAny;
+
+                // If we still have actual segments left, try matching with wildcard consuming 1 more segment
+                if (actIndex < actual.size()) {
+                    return matchRecursive(expIndex, actIndex + 1, currentParams);
+                };
+
                 return null;
             };
 
-            let params = List.empty<(Text, Text)>();
-            for ((i, actualSegment) in IterTools.enumerate(actual.vals())) {
-                let expectedSegment = expected[i];
-                switch (expectedSegment) {
-                    case (#text(text)) {
-                        if (not TextX.equalIgnoreCase(text, actualSegment)) {
-                            return null;
-                        };
+            // If no more actual segments but we still have expected segments (that aren't multi-wildcards)
+            if (actIndex >= actual.size()) {
+                return null;
+            };
+
+            // Get current actual segment
+            let actualSegment = actual[actIndex];
+
+            // Handle other segment types
+            switch (expectedSegment) {
+                case (#text(text)) {
+                    if (not TextX.equalIgnoreCase(text, actualSegment)) {
+                        return null;
                     };
-                    case (#param(param)) {
-                        List.add(params, (param, actualSegment));
-                    };
+                    return matchRecursive(expIndex + 1, actIndex + 1, currentParams);
                 };
+                case (#param(param)) {
+                    List.add(currentParams, (param, actualSegment));
+                    return matchRecursive(expIndex + 1, actIndex + 1, currentParams);
+                };
+                case (#wildcard(#single)) {
+                    // Single wildcard always matches one segment
+                    return matchRecursive(expIndex + 1, actIndex + 1, currentParams);
+                };
+                case (#wildcard(#multi)) Prelude.unreachable(); /* Already handled multi-wildcard */
             };
-            ?{
-                params = List.toArray(params);
-            };
+
+            return null;
         };
 
+        // Start the recursive matching
+        return matchRecursive(0, 0, List.empty<(Text, Text)>());
     };
 
 };
