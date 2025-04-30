@@ -2,7 +2,6 @@ import HttpContext "HttpContext";
 import Array "mo:new-base/Array";
 import Text "mo:new-base/Text";
 import Iter "mo:new-base/Iter";
-import Debug "mo:new-base/Debug";
 import Blob "mo:new-base/Blob";
 import Nat "mo:new-base/Nat";
 import TextX "mo:xtended-text/TextX";
@@ -33,7 +32,6 @@ module {
 
         // Extract boundary from content type using our helper
         let ?boundary = getFormValue(contentType, "boundary=") else return [];
-        Debug.print("Boundary: " # boundary);
 
         // Parse the multipart content using the boundary
         return parseMultipartContent(boundary, context);
