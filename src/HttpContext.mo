@@ -155,6 +155,7 @@ module {
         };
         #content : CandidValue;
         #text : Text;
+        #html : Text;
         #error : HttpErrorDataKind;
     };
 
@@ -336,6 +337,12 @@ module {
                 case (#text(text)) ({
                     statusCode = statusCodeNat;
                     headers = [("content-type", "text/plain")];
+                    body = ?Text.encodeUtf8(text);
+                    streamingStrategy = null;
+                });
+                case (#html(text)) ({
+                    statusCode = statusCodeNat;
+                    headers = [("content-type", "text/html")];
                     body = ?Text.encodeUtf8(text);
                     streamingStrategy = null;
                 });

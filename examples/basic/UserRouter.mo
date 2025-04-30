@@ -4,6 +4,7 @@ import Runtime "mo:new-base/Runtime";
 import UserHandler "UserHandler";
 import Serializer "Serializer";
 import Serde "mo:serde";
+import RouteContext "../../src/RouteContext";
 
 module {
 
@@ -12,12 +13,12 @@ module {
         let userKeys = ["id", "name"];
         let renamedUserKeys = [];
 
-        public func get(routeContext : Route.RouteContext) : Route.HttpResponse {
+        public func get(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
             let users = userHandler.get();
             routeContext.buildResponse(#ok, #content(toCandid(to_candid (users))));
         };
 
-        public func getById(routeContext : Route.RouteContext) : Route.HttpResponse {
+        public func getById(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
             let idText = routeContext.getRouteParam("id");
             let ?id = Nat.fromText(idText) else return routeContext.buildResponse(#badRequest, #error(#message("Invalid id '" # idText # "', must be a positive integer")));
 
@@ -25,7 +26,7 @@ module {
             routeContext.buildResponse(#ok, #content(toCandid(to_candid (user))));
         };
 
-        public func create<system>(routeContext : Route.RouteContext) : Route.HttpResponse {
+        public func create<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
             let createUserRequest : UserHandler.CreateUserRequest = switch (routeContext.parseJsonBody<UserHandler.CreateUserRequest>(Serializer.deserializeCreateUserRequest)) {
                 case (#err(e)) return routeContext.buildResponse(#badRequest, #error(#message("Failed to parse Json. Error: " # e)));
                 case (#ok(req)) req;

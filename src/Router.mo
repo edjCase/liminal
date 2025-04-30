@@ -10,6 +10,7 @@ import Route "./Route";
 import Prelude "mo:base/Prelude";
 import Path "./Path";
 import Identity "Identity";
+import RouteContext "RouteContext";
 
 module Module {
 
@@ -48,15 +49,15 @@ module Module {
         route(path, #get, handler);
     };
 
-    public func getQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func getQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #get, #syncQuery(handler));
     };
 
-    public func getUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func getUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #get, #syncUpdate(handler));
     };
 
-    public func getAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
+    public func getAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #get, #asyncUpdate(handler));
     };
 
@@ -64,15 +65,15 @@ module Module {
         route(path, #post, handler);
     };
 
-    public func postQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func postQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #post, #syncQuery(handler));
     };
 
-    public func postUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func postUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #post, #syncUpdate(handler));
     };
 
-    public func postAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
+    public func postAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #post, #asyncUpdate(handler));
     };
 
@@ -80,15 +81,15 @@ module Module {
         route(path, #put, handler);
     };
 
-    public func putQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func putQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncQuery(handler));
     };
 
-    public func putUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func putUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncUpdate(handler));
     };
 
-    public func putAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
+    public func putAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #put, #asyncUpdate(handler));
     };
 
@@ -96,15 +97,15 @@ module Module {
         route(path, #patch, handler);
     };
 
-    public func patchQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func patchQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncQuery(handler));
     };
 
-    public func patchUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func patchUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncUpdate(handler));
     };
 
-    public func patchAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
+    public func patchAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #patch, #asyncUpdate(handler));
     };
 
@@ -112,15 +113,15 @@ module Module {
         route(path, #delete, handler);
     };
 
-    public func deleteQuery(path : Text, handler : Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func deleteQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncQuery(handler));
     };
 
-    public func deleteUpdate(path : Text, handler : <system> Route.RouteContext -> Types.HttpResponse) : RouteConfig {
+    public func deleteUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncUpdate(handler));
     };
 
-    public func deleteAsyncUpdate(path : Text, handler : Route.RouteContext -> async* Types.HttpResponse) : RouteConfig {
+    public func deleteAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #delete, #asyncUpdate(handler));
     };
 
@@ -264,12 +265,12 @@ module Module {
 
         private func findRoute(
             httpContext : HttpContext.HttpContext
-        ) : ?Route.RouteContext {
+        ) : ?RouteContext.RouteContext {
             let path = httpContext.getPath();
             label f for (route in routes.vals()) {
                 if (route.method != httpContext.method) continue f;
                 let ?{ params } = matchPath(route.pathSegments, path) else continue f;
-                return ?Route.RouteContext(
+                return ?RouteContext.RouteContext(
                     httpContext,
                     route.handler,
                     params,

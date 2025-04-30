@@ -51,7 +51,7 @@ actor {
         routes = [
             Router.getQuery(
                 "/hello/{name}",
-                func(context : Route.RouteContext) : Route.HttpResponse {
+                func(context : RouteContext.RouteContext) : Route.HttpResponse {
                     let name = context.getRouteParam("name");
                     context.buildResponse(#ok, #text("Hello, " # name # "!"));
                 }
@@ -107,7 +107,7 @@ actor {
         routes = [
             Router.getQuery(
                 "/public",
-                func(context : Route.RouteContext) : Route.HttpResponse {
+                func(context : RouteContext.RouteContext) : Route.HttpResponse {
                     context.buildResponse(#ok, #text("Public endpoint"))
                 }
             ),
@@ -116,7 +116,7 @@ actor {
                 [
                     Router.getQuery(
                         "/profile",
-                        func(context : Route.RouteContext) : Route.HttpResponse {
+                        func(context : RouteContext.RouteContext) : Route.HttpResponse {
                             context.buildResponse(#ok, #text("Secure profile endpoint"))
                         }
                     )
@@ -261,7 +261,7 @@ Router.getQuery("/blog/{year}/{month}/{slug}", getBlogPost)
 Access parameters in your handler:
 
 ```motoko
-func getUserById(context : Route.RouteContext) : Route.HttpResponse {
+func getUserById(context : RouteContext.RouteContext) : Route.HttpResponse {
     let userId : Text = context.getRouteParam("id"); // or getRouteParamOrNull("id")
     // ...
 }
@@ -307,7 +307,7 @@ The `HttpContext` provides access to request details:
 - Identity (for authentication)
 
 ```motoko
-public func handleRequest(context : Route.RouteContext) : Route.HttpResponse {
+public func handleRequest(context : RouteContext.RouteContext) : Route.HttpResponse {
     // Access route parameters
     let id = context.getRouteParam("id");
 

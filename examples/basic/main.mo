@@ -1,5 +1,4 @@
 import Liminal "../../src";
-import Route "../../src/Route";
 import UserHandler "UserHandler";
 import UserRouter "UserRouter";
 import Principal "mo:new-base/Principal";
@@ -17,6 +16,11 @@ import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
 import CompressionMiddleware "../../src/Middleware/Compression";
 import Router "../../src/Router";
+import RouteContext "../../src/RouteContext";
+import Iter "mo:new-base/Iter";
+import Text "mo:new-base/Text";
+import Nat "mo:new-base/Nat";
+import FileUpload "../../src/FileUpload";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 
@@ -64,9 +68,59 @@ shared ({ caller = initializer }) actor class Actor() = self {
                 ],
                 #authenticated,
             ),
+            Router.getQuery(
+                "/upload",
+                func(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
+                    routeContext.buildResponse(#ok, #html("<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>File Upload</title>
+</head>
+<body>
+    <form action=\"/api/upload\" method=\"POST\" enctype=\"multipart/form-data\">
+        <div class=\"form-group\">
+            <label for=\"file\">Select file to upload:</label>
+            <input type=\"file\" id=\"file\" name=\"file\">
+        </div>
+        <button type=\"submit\" class=\"btn\">Upload File</button>
+    </form>
+</body>
+</html>"));
+                },
+            ),
+            Router.postUpdate(
+                "/upload",
+                func<system>(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
+                    let files = routeContext.getUploadedFiles();
+
+                    if (files.size() == 0) {
+                        return routeContext.buildResponse(
+                            #badRequest,
+                            #error(#message("No files were uploaded")),
+                        );
+                    };
+
+                    // Process each uploaded file
+                    let responseData = files.vals()
+                    |> Iter.map(
+                        _,
+                        func(file : FileUpload.UploadedFile) : Text {
+                            "Received file: " # file.filename #
+                            " (Size: " # Nat.toText(file.size) #
+                            " bytes, Type: " # file.contentType # ")";
+                        },
+                    )
+                    |> Text.join("\n", _);
+
+                    // Return success response
+                    routeContext.buildResponse(#ok, #text(responseData));
+                },
+            ),
             Router.getAsyncUpdate(
                 "/hash",
-                func(routeContext : Route.RouteContext) : async* Liminal.HttpResponse {
+                func(routeContext : RouteContext.RouteContext) : async* Liminal.HttpResponse {
                     let ic = actor ("aaaaa-aa") : IC.Service;
                     let result = await ic.canister_info({
                         canister_id = Principal.fromActor(self);
