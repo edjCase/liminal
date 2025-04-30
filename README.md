@@ -21,6 +21,7 @@ Key features:
 - ⏱️ **Rate Limiting**: Protect your APIs from abuse
 - 🛡️ **Authentication**: Configurable authentication requirements
 - 🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
+- 📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
 
 ## Package
 
@@ -338,6 +339,33 @@ context.buildResponse(#ok, #content(myCandidData))
 ```
 
 The `#content` response kind takes a Candid representation of your data and uses the client's Accept header to determine the appropriate format (JSON, CBOR, Candid, or XML). This works around Motoko's lack of reflection by using Candid as the common intermediate format - Motoko's `to_candid` converts your types to Candid, which is then converted to the requested format.
+
+### File Uploads
+
+Liminal provides built-in support for handling file uploads via multipart/form-data requests. The file upload functionality allows you to easily access uploaded files within your route handlers:
+
+```motoko
+func(context : RouteContext.RouteContext) : Route.HttpResponse {
+    // Access all uploaded files
+    let files = context.getUploadedFiles();
+
+    // Process each uploaded file
+    for (file in files.vals()) {
+        // Each file has: fieldName, filename, contentType, size, and content
+        let fieldName = file.fieldName;  // Form field name
+        let filename = file.filename;    // Original filename
+        let contentType = file.contentType;  // MIME type
+        let size = file.size;            // Size in bytes
+        let content = file.content;      // Blob containing file data
+
+        // Process the file as needed...
+    };
+
+    return context.buildResponse(#ok, #text("Upload successful"));
+}
+```
+
+The `getUploadedFiles()` method automatically parses the multipart/form-data content from the request and returns information about each uploaded file. This makes it straightforward to handle file uploads without needing to manually parse complex multipart boundaries and headers.
 
 ## Built-in Middleware
 
