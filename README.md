@@ -22,6 +22,7 @@ Key features:
 - 🛡️ **Authentication**: Configurable authentication requirements
 - 🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
 - 📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
+- 📝 **Logging**: Built-in logging system with configurable levels and custom logger support
 
 ## Package
 
@@ -158,6 +159,7 @@ actor {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+        logger = Liminal.debugLogger;
     });
 
     // Expose standard HTTP interface
@@ -325,7 +327,10 @@ public func handleRequest(context : RouteContext.RouteContext) : Route.HttpRespo
     let result = context.parseJsonBody<CreateRequest>(deserializeCreateRequest);
 
     // Return a response
-    context.buildResponse(#ok, #content(#Record([("id", #number(#int(id)))])));
+    let response = context.buildResponse(#ok, #content(#Record([("id", #number(#int(id)))])));
+
+    // Log
+    context.log(#info, "Created item with id: " # id)
 }
 ```
 
