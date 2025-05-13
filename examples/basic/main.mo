@@ -163,6 +163,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+        logger = Liminal.debugLogger;
     });
 
     // Http server methods

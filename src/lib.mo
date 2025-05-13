@@ -4,6 +4,7 @@ import HttpTypes "./HttpTypes";
 import HttpContext "./HttpContext";
 import AppModule "./App";
 import CandidRepresentationNegotation "./CandidRepresentationNegotiation";
+import Logging "Logging";
 
 module {
     public type Router = RouterModule.Router;
@@ -25,4 +26,6 @@ module {
     public let defaultJsonErrorSerializer : HttpContext.ErrorSerializer = AppModule.defaultJsonErrorSerializer;
 
     public let defaultCandidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator = CandidRepresentationNegotation.defaultNegotiator;
+
+    public let debugLogger : Logging.Logger = Logging.debugLogger;
 };

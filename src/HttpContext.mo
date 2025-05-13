@@ -17,6 +17,7 @@ import Identity "Identity";
 import Types "./Types";
 import ContentNegotiation "ContentNegotiation";
 import Serde "mo:serde";
+import Logging "Logging";
 
 module {
     public type SuccessHttpStatusCode = {
@@ -178,6 +179,7 @@ module {
     public type Options = {
         errorSerializer : ErrorSerializer;
         candidRepresentationNegotiator : CandidRepresentationNegotiator;
+        logger : Logging.Logger;
     };
 
     public class HttpContext(
@@ -189,6 +191,7 @@ module {
         public let certificateVersion : ?Nat16 = certificate_version;
         public let errorSerializer : ErrorSerializer = options.errorSerializer;
         public let candidRepresentationNegotiator : CandidRepresentationNegotiator = options.candidRepresentationNegotiator;
+        public let log = options.logger.log;
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 

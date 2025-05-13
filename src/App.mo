@@ -11,6 +11,7 @@ import Buffer "mo:base/Buffer";
 import ContentNegotiation "ContentNegotiation";
 import MimeType "MimeType";
 import Serde "mo:serde";
+import Logging "Logging";
 
 module {
     public type Next = () -> QueryResult;
@@ -51,6 +52,7 @@ module {
         middleware : [Middleware];
         errorSerializer : HttpContext.ErrorSerializer;
         candidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator;
+        logger : Logging.Logger;
     };
 
     public class App(data : Data) = self {
@@ -62,6 +64,7 @@ module {
                 {
                     errorSerializer = data.errorSerializer;
                     candidRepresentationNegotiator = data.candidRepresentationNegotiator;
+                    logger = data.logger;
                 },
             );
 
@@ -119,6 +122,7 @@ module {
                 {
                     errorSerializer = data.errorSerializer;
                     candidRepresentationNegotiator = data.candidRepresentationNegotiator;
+                    logger = data.logger;
                 },
             );
 

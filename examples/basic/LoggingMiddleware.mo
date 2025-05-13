@@ -1,6 +1,5 @@
 import HttpContext "../../src/HttpContext";
 import HttpMethod "../../src/HttpMethod";
-import Debug "mo:new-base/Debug";
 import Iter "mo:new-base/Iter";
 import Text "mo:base/Text";
 import Path "../../src/Path";
@@ -19,15 +18,15 @@ module {
 
         func logRequest(kind : { #query_; #update }, context : HttpContext.HttpContext) {
             let prefix = getPrefix(kind);
-            Debug.print(prefix # "HTTP Request: " # HttpMethod.toText(context.method) # " " # Path.toText(context.getPath()));
+            context.log(#debug_, prefix # "HTTP Request: " # HttpMethod.toText(context.method) # " " # Path.toText(context.getPath()));
             switch (context.getIdentity()) {
-                case (?identity) Debug.print("Identity:  " # debug_show ({ kind = identity.kind; id = identity.getId(); isAuthenticated = identity.isAuthenticated() }));
-                case (null) Debug.print("Identity: null");
+                case (?identity) context.log(#debug_, "Identity:  " # debug_show ({ kind = identity.kind; id = identity.getId(); isAuthenticated = identity.isAuthenticated() }));
+                case (null) context.log(#debug_, "Identity: null");
             }
 
         };
 
-        func logResponse(kind : { #query_; #update }, result : App.QueryResult) {
+        func logResponse(kind : { #query_; #update }, context : HttpContext.HttpContext, result : App.QueryResult) {
             let prefix = getPrefix(kind);
             let responseText = switch (result) {
                 case (#response(response)) {
@@ -66,19 +65,19 @@ module {
                 };
                 case (#upgrade) "Upgrading...";
             };
-            Debug.print(prefix # "HTTP Response: " # responseText);
+            context.log(#debug_, prefix # "HTTP Response: " # responseText);
         };
         {
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 logRequest(#query_, context);
                 let result = next();
-                logResponse(#query_, result);
+                logResponse(#query_, context, result);
                 result;
             };
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 logRequest(#update, context);
                 let result = await* next();
-                logResponse(#update, #response(result));
+                logResponse(#update, context, #response(result));
                 result;
             };
         };
