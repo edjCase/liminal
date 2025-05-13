@@ -38,6 +38,7 @@ module {
         public let httpContext : HttpContext.HttpContext = httpContext_;
         public let handler : RouteHandler = handler_;
         public let params : [(Text, Text)] = params_;
+        public let log = httpContext.log;
 
         public func getIdentity() : ?Identity.Identity = httpContext.getIdentity();
 
