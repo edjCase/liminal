@@ -18,6 +18,7 @@ import Types "./Types";
 import ContentNegotiation "ContentNegotiation";
 import Serde "mo:serde";
 import Logging "Logging";
+import Session "Session";
 
 module {
     public type SuccessHttpStatusCode = {
@@ -192,6 +193,7 @@ module {
         public let errorSerializer : ErrorSerializer = options.errorSerializer;
         public let candidRepresentationNegotiator : CandidRepresentationNegotiator = options.candidRepresentationNegotiator;
         public let log = options.logger.log;
+        public var session : ?Session.Session = null;
 
         var pathQueryCache : ?(Text, [(Text, Text)]) = null;
 

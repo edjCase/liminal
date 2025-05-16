@@ -3,7 +3,7 @@ name = "liminal"
 version = "0.0.1"
 description = "An HTTP framework that make http processing easier, utilizing middleware pipelines"
 repository = "https://github.com/edjcase/liminal"
-keywords = [ "http", "router", "parser", "middleware", "web", "pipeline" ]
+keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
 license = "MIT"
 
 [dependencies]

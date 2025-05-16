@@ -242,7 +242,7 @@ module Module {
             func(routeConfig : RouteConfig) : Iter.Iter<Route.Route> = buildRoutesFromConfig(routeConfig, prefix),
         );
 
-        public func route(httpContext : HttpContext.HttpContext) : SyncRouteResult {
+        public func routeQuery(httpContext : HttpContext.HttpContext) : SyncRouteResult {
             let ?routeContext = findRoute(httpContext) else return #noMatch;
 
             let response = switch (routeContext.handler) {
@@ -253,10 +253,10 @@ module Module {
             #response(response);
         };
 
-        public func routeAsync<system>(httpContext : HttpContext.HttpContext) : async* AsyncRouteResult {
+        public func routeUpdate<system>(httpContext : HttpContext.HttpContext) : async* AsyncRouteResult {
             let ?routeContext = findRoute(httpContext) else return #noMatch;
             let response = switch (routeContext.handler) {
-                case (#syncQuery(_)) return #noMatch; // Upgraded already, so skip query handlers
+                case (#syncQuery(handler)) handler(routeContext); // Could have been upgraded by previous middleware
                 case (#syncUpdate(handler)) handler<system>(routeContext);
                 case (#asyncUpdate(handler)) await* handler(routeContext);
             };

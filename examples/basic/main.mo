@@ -15,6 +15,7 @@ import RouterMiddleware "../../src/Middleware/Router";
 import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
 import CompressionMiddleware "../../src/Middleware/Compression";
+import SessionMiddleware "../../src/Middleware/Session";
 import Router "../../src/Router";
 import RouteContext "../../src/RouteContext";
 import Iter "mo:new-base/Iter";
@@ -143,6 +144,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
     // Http App
     let app = Liminal.App({
         middleware = [
+            SessionMiddleware.inMemoryDefault(),
             CompressionMiddleware.default(),
             CORSMiddleware.default(),
             JWTMiddleware.new({

@@ -30,5 +30,4 @@ module {
             Debug.print("[" # levelToText(level) # "] " # message);
         };
     };
-
 };
