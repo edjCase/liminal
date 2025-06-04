@@ -372,6 +372,17 @@ module {
             };
         };
 
+        public func buildRedirectResponse(url : Text, permanent : Bool) : Types.HttpResponse {
+            {
+                statusCode = if (permanent) 308 else 307;
+                headers = [
+                    ("location", url),
+                ];
+                body = null; // No body for redirects
+                streamingStrategy = null;
+            };
+        };
+
     };
 
     public func getStatusCodeNat(code : HttpStatusCodeOrCustom) : Nat = switch (code) {

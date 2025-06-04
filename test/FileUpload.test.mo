@@ -7,6 +7,7 @@ import Runtime "mo:new-base/Runtime";
 import FileUpload "../src/FileUpload";
 import HttpContext "../src/HttpContext";
 import ContentNegotiation "../src/ContentNegotiation";
+import Logging "../src/Logging";
 
 // Helper to create HttpContext for testing
 func createContext(contentType : Text, body : Blob) : HttpContext.HttpContext {
@@ -33,6 +34,7 @@ func createContext(contentType : Text, body : Blob) : HttpContext.HttpContext {
                     contentType = "application/octet-stream";
                 };
             };
+            logger = Logging.debugLogger;
         },
     );
 };

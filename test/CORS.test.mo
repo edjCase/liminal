@@ -6,6 +6,7 @@ import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";
 import ContentNegotiation "../src/ContentNegotiation";
 import Serde "mo:serde";
+import Logging "../src/Logging";
 
 // Helper function to find header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -55,8 +56,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
-
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                        logger = Logging.debugLogger;
                     },
                 );
                 let response1 = CORS.handlePreflight(
@@ -84,8 +85,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
-
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                        logger = Logging.debugLogger;
                     },
                 );
                 let response2 = CORS.handlePreflight(
@@ -123,8 +124,8 @@ suite(
                     null,
                     {
                         errorSerializer = dummyErrorSerialzer;
-
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                        logger = Logging.debugLogger;
                     },
                 );
                 let response = CORS.handlePreflight(
@@ -165,8 +166,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -203,8 +204,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -237,8 +238,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -270,8 +271,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -307,8 +308,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -344,8 +345,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -381,8 +382,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -417,8 +418,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -449,8 +450,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -488,8 +489,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -521,8 +522,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -556,8 +557,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -590,8 +591,8 @@ suite(
                         null,
                         {
                             errorSerializer = dummyErrorSerialzer;
-
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     CORS.defaultOptions,
@@ -625,6 +626,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
                         },
                     ),
                     {
@@ -658,6 +660,7 @@ suite(
                     {
                         errorSerializer = dummyErrorSerialzer;
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                        logger = Logging.debugLogger;
                     },
                 );
 

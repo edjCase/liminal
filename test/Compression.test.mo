@@ -11,6 +11,7 @@ import HttpContext "../src/HttpContext";
 import HttpMethod "../src/HttpMethod";
 import App "../src/App";
 import ContentNegotiation "../src/ContentNegotiation";
+import Logging "../src/Logging";
 
 // Helper function to get header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -49,6 +50,7 @@ func createContext(
                     contentType = "application/octet-stream";
                 };
             };
+            logger = Logging.debugLogger;
         },
     );
 

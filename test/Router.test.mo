@@ -111,7 +111,7 @@ test(
             let result = Router.matchPath(testCase.expected, testCase.actual);
 
             switch (result) {
-                case null {
+                case (null) {
                     Runtime.trap("Failed to match in test case: " # testCase.name);
                 };
                 case (?res) {
