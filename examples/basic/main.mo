@@ -16,6 +16,7 @@ import CSPMiddleware "../../src/Middleware/CSP";
 import JWTMiddleware "../../src/Middleware/JWT";
 import CompressionMiddleware "../../src/Middleware/Compression";
 import SessionMiddleware "../../src/Middleware/Session";
+import OAuthMiddleware "../../src/Middleware/OAuth";
 import Router "../../src/Router";
 import RouteContext "../../src/RouteContext";
 import Iter "mo:new-base/Iter";
@@ -141,12 +142,25 @@ shared ({ caller = initializer }) actor class Actor() = self {
         store = assetStore;
     };
 
+    let oauthConfig : OAuthMiddleware.Config = {
+        clientId = "Jjj7XLYYNit-pKe-fPXy1Etn";
+        clientSecret = "E1_eez7w-8ypEM1pMBqZTaeFoKW6_FO1ITelx87nxnksbp0w";
+        redirectUri = "https://your-domain.com/auth/callback";
+        authorizationEndpoint = OAuthMiddleware.Google.authorizationEndpoint;
+        tokenEndpoint = OAuthMiddleware.Google.tokenEndpoint;
+        userInfoEndpoint = OAuthMiddleware.Google.userInfoEndpoint;
+        scopes = OAuthMiddleware.Google.scopes;
+        usePKCE = true;
+        stateStore = OAuthMiddleware.inMemoryStateStore();
+    };
+
     // Http App
     let app = Liminal.App({
         middleware = [
             SessionMiddleware.inMemoryDefault(),
             CompressionMiddleware.default(),
             CORSMiddleware.default(),
+            OAuthMiddleware.new(oauthConfig),
             JWTMiddleware.new({
                 locations = JWTMiddleware.defaultLocations;
                 validation = {
