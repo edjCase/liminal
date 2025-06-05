@@ -4,7 +4,84 @@
     </head>
 <body>
     <div>Hello World!</div>
-    <img src="/motoko.svg" />
-    <img src="/large-image.png" />
+    <img src="/motoko.svg" width="100" />
+    <img src="/large-image.png" width="100" />
+
+     <h1>GitHub OAuth Test</h1>
+    
+    <div id="login-section">
+        <button onclick="startOAuth()">Login with GitHub</button>
+    </div>
+    
+    <div id="result-section" style="display: none;">
+        <h2>Authorization Code:</h2>
+        <p id="auth-code"></p>
+        <button onclick="sendCodeToBackend()">Send to Backend</button>
+        <div id="backend-response"></div>
+    </div>
+
+    <script>
+        // Replace with your GitHub OAuth app details
+        const BACKEND_URL = 'http://uxrrr-q7777-77774-qaaaq-cai.raw.localhost:4943/auth/login'; // Your backend endpoint
+        
+        let authCode = null;
+
+        function startOAuth() {
+            fetch('/auth/login')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        alert('Failed to initiate OAuth flow.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during OAuth initiation:', error);
+                    alert('An error occurred while starting the OAuth process.');
+                });
+            
+        }
+
+        function sendCodeToBackend() {
+            if (!authCode) return;
+            
+            fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: authCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backend-response').innerHTML = 
+                    `<h3>Backend Response:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                document.getElementById('backend-response').innerHTML = 
+                    `<h3>Error:</h3><p>${error.message}</p>`;
+            });
+        }
+
+        // Check if we're coming back from GitHub with a code
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            
+            if (error) {
+                alert(`OAuth Error: ${error}`);
+                return;
+            }
+            
+            if (code) {
+                authCode = code;
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('result-section').style.display = 'block';
+                document.getElementById('auth-code').textContent = code;
+            }
+        };
+    </script>
 </body>
 </html>

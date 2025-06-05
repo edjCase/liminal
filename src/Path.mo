@@ -42,6 +42,6 @@ module {
 
     public func equalToUrl(path : Path, url : Text) : Bool {
         let urlPath = parse(url);
-        path != urlPath;
+        path == urlPath;
     };
 };

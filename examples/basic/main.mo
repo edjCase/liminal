@@ -143,20 +143,21 @@ shared ({ caller = initializer }) actor class Actor() = self {
     };
 
     let oauthConfig : OAuthMiddleware.Config = {
-        clientId = "Jjj7XLYYNit-pKe-fPXy1Etn";
-        clientSecret = "E1_eez7w-8ypEM1pMBqZTaeFoKW6_FO1ITelx87nxnksbp0w";
-        redirectUri = "https://your-domain.com/auth/callback";
-        authorizationEndpoint = OAuthMiddleware.Google.authorizationEndpoint;
-        tokenEndpoint = OAuthMiddleware.Google.tokenEndpoint;
-        userInfoEndpoint = OAuthMiddleware.Google.userInfoEndpoint;
-        scopes = OAuthMiddleware.Google.scopes;
-        usePKCE = true;
+        clientId = "Ov23liYZ5V22rjHKThEN";
+        clientSecret = "52716f17326479e63509d5d74879ed3493e4235e";
+        redirectUri = "http://uxrrr-q7777-77774-qaaaq-cai.raw.localhost:4943/auth/callback";
+        authorizationEndpoint = OAuthMiddleware.GitHub.authorizationEndpoint;
+        tokenEndpoint = OAuthMiddleware.GitHub.tokenEndpoint;
+        userInfoEndpoint = OAuthMiddleware.GitHub.userInfoEndpoint;
+        scopes = ["read:user", "user:email"];
+        usePKCE = false;
         stateStore = OAuthMiddleware.inMemoryStateStore();
     };
 
     // Http App
     let app = Liminal.App({
         middleware = [
+            LoggingMiddleware.new(),
             SessionMiddleware.inMemoryDefault(),
             CompressionMiddleware.default(),
             CORSMiddleware.default(),
@@ -174,7 +175,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
             LoggingMiddleware.new(),
             // RequireAuthMiddleware.new(#authenticated),
             RouterMiddleware.new(routerConfig),
-            CSPMiddleware.default(),
+            // CSPMiddleware.default(),
             AssetsMiddleware.new(assetMiddlewareConfig),
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;

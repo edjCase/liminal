@@ -2,20 +2,17 @@ import Liminal "../";
 import Result "mo:new-base/Result";
 import Text "mo:new-base/Text";
 import Map "mo:new-base/Map";
-import Array "mo:new-base/Array";
-import Option "mo:new-base/Option";
 import Time "mo:new-base/Time";
 import Random "mo:base/Random";
-import Blob "mo:new-base/Blob";
-import Principal "mo:new-base/Principal";
 import Buffer "mo:base/Buffer";
-import Iter "mo:new-base/Iter";
-import Char "mo:new-base/Char";
-import Debug "mo:base/Debug";
-import Nat32 "mo:new-base/Nat32";
-import Nat8 "mo:new-base/Nat8";
+import Nat "mo:new-base/Nat";
 import App "../App";
 import Path "../Path";
+import IC "ic:aaaaa-aa";
+import Serde "mo:serde";
+import List "mo:new-base/List";
+import BaseX "mo:base-x-encoder";
+import Option "mo:new-base/Option";
 
 module {
 
@@ -24,14 +21,12 @@ module {
         authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
         tokenEndpoint = "https://oauth2.googleapis.com/token";
         userInfoEndpoint = ?"https://www.googleapis.com/oauth2/v2/userinfo";
-        scopes = ["openid", "profile", "email"];
     };
 
     public let GitHub = {
         authorizationEndpoint = "https://github.com/login/oauth/authorize";
         tokenEndpoint = "https://github.com/login/oauth/access_token";
         userInfoEndpoint = ?"https://api.github.com/user";
-        scopes = ["user:email"];
     };
 
     public type Config = {
@@ -105,17 +100,14 @@ module {
 
     public func new(config : Config) : App.Middleware {
 
-        func generateState() : Text {
-            let entropy = Random.Finite(Blob.fromArray([1, 2, 3, 4])); // Use better entropy in production
-            switch (entropy.byte()) {
-                case (?b) Text.fromChar(Char.fromNat32(Nat32.fromNat(Nat8.toNat(b))));
-                case (null) "default_state";
-            };
+        func generateState() : async* Text {
+            let randBytes = await Random.blob();
+            BaseX.toBase64(randBytes.vals(), true);
         };
 
-        func generateCodeVerifier() : Text {
+        func generateCodeVerifier(state : Text) : Text {
             // PKCE code verifier - should be cryptographically random
-            "code_verifier_" # generateState();
+            "code_verifier_" # state;
         };
 
         func generateCodeChallenge(verifier : Text) : Text {
@@ -145,22 +137,78 @@ module {
             baseUrl # "?" # Text.join("&", params.vals());
         };
 
-        func exchangeCodeForToken(code : Text, codeVerifier : ?Text) : async* Result.Result<TokenResponse, Text> {
-            // This would make an HTTP request to the token endpoint
-            // For now, returning a mock response
+        func exchangeCodeForToken(context : Liminal.HttpContext, code : Text, codeVerifier : ?Text) : async* Result.Result<TokenResponse, Text> {
+            let formData = List.empty<(Text, Text)>();
+            List.add(formData, ("grant_type", "authorization_code"));
+            List.add(formData, ("code", code));
+            List.add(formData, ("redirect_uri", config.redirectUri));
+            List.add(formData, ("client_id", config.clientId));
+            List.add(formData, ("client_secret", config.clientSecret));
+            switch (codeVerifier) {
+                case (?verifier) List.add(formData, ("code_verifier", verifier));
+                case (null) {};
+            };
+            let formDataText = Text.join(
+                "&",
+                formData |> List.map<(Text, Text), Text>(
+                    _,
+                    func(pair : (Text, Text)) : Text = pair.0 # "=" # pair.1,
+                )
+                |> List.values(_),
+            );
+            let tokenExchangeRequest : IC.http_request_args = {
+                url = config.tokenEndpoint;
+                max_response_bytes = ?1024; // config overridable
+                headers = [
+                    {
+                        name = "Content-Type";
+                        value = "application/x-www-form-urlencoded";
+                    },
+                    { name = "Accept"; value = "application/json" },
+                ];
+                body = ?Text.encodeUtf8(formDataText);
+                method = #post;
+                transform = null; // todo configurable
+            };
+
+            let response : IC.http_request_result = await (with cycles = 230_949_972_000) IC.http_request(tokenExchangeRequest);
+            if (response.status != 200) {
+
+                let jsonText = Text.decodeUtf8(response.body);
+                return #err(
+                    "Token exchange failed with status: " # Nat.toText(response.status) # ", body: " # Option.get(jsonText, "No response body")
+                );
+            };
+            let ?jsonText = Text.decodeUtf8(response.body) else return #err("Failed to decode response body");
+
+            let candidBlob = switch (Serde.JSON.fromText(jsonText, null)) {
+                case (#ok(candidBlob)) candidBlob;
+                case (#err(error)) return #err("Failed to parse JSON: " # error);
+            };
+            let ?tokenResponse : ?{
+                access_token : Text;
+                token_type : Text;
+                expires_in : ?Int;
+                refresh_token : ?Text;
+                scope : ?Text;
+                id_token : ?Text; // For OpenID Connect
+            } = from_candid (candidBlob) else return #err("Invalid token response format");
+
+            context.log(#info, "Token response: " # debug_show (tokenResponse));
+
             #ok({
-                accessToken = "mock_access_token";
-                tokenType = "Bearer";
-                expiresIn = ?3600;
-                refreshToken = ?"mock_refresh_token";
-                scope = ?Text.join(" ", config.scopes.vals());
-                idToken = null;
+                accessToken = tokenResponse.access_token;
+                tokenType = tokenResponse.token_type;
+                expiresIn = tokenResponse.expires_in;
+                refreshToken = tokenResponse.refresh_token;
+                scope = tokenResponse.scope;
+                idToken = tokenResponse.id_token;
             });
         };
 
-        func handleLogin(context : Liminal.HttpContext) : Liminal.HttpResponse {
-            let state = generateState();
-            let codeVerifier = if (config.usePKCE) ?generateCodeVerifier() else null;
+        func handleLogin(context : Liminal.HttpContext) : async* Liminal.HttpResponse {
+            let state = await* generateState();
+            let codeVerifier = if (config.usePKCE) ?generateCodeVerifier(state) else null;
             let codeChallenge = switch (codeVerifier) {
                 case (?verifier) ?generateCodeChallenge(verifier);
                 case (null) null;
@@ -176,97 +224,139 @@ module {
             config.stateStore.saveState(state, oauthState);
             let authUrl = buildAuthUrl(state, codeChallenge);
 
-            return context.buildRedirectResponse(authUrl, false);
+            return context.buildResponse(#ok, #content(#Record([("url", #Text(authUrl))])));
+        };
+
+        func getUserInfo(context : Liminal.HttpContext, accessToken : Text, endpoint : Text) : async* Result.Result<UserInfo, Text> {
+
+            let userInfoRequest : IC.http_request_args = {
+                url = endpoint;
+                max_response_bytes = null; // config overridable
+                headers = [
+                    {
+                        name = "Authorization";
+                        value = "Bearer " # accessToken;
+                    },
+                    { name = "Accept"; value = "application/json" },
+                ];
+                body = null;
+                method = #get;
+                transform = null; // todo configurable
+            };
+
+            let response : IC.http_request_result = await (with cycles = 230_949_972_000) IC.http_request(userInfoRequest);
+            if (response.status != 200) {
+                return #error(#message("Failed to fetch user info: " # Nat.toText(response.status)));
+            };
+
+            let ?jsonText = Text.decodeUtf8(response.body) else return #error(#message("Failed to decode user info response body"));
+
+            let candidBlob = switch (Serde.JSON.fromText(jsonText, null)) {
+                case (#ok(candidBlob)) candidBlob;
+                case (#err(error)) return #error(#message("Failed to parse user info JSON: " # error));
+            };
+            let ?userInfo : ?{
+                sub : Text;
+                name : ?Text;
+                email : ?Text;
+                picture : ?Text;
+            } = from_candid (candidBlob) else return #error(#message("Invalid user info format"));
+
+            context.log(#info, "User info: " # debug_show (userInfo));
+
+            userInfo;
         };
 
         func handleCallback(context : Liminal.HttpContext) : async* Liminal.HttpResponse {
-            switch (context.getQueryParam("code"), context.getQueryParam("state")) {
-                case (?code, ?state) {
-                    switch (config.stateStore.getState(state)) {
-                        case (?oauthState) {
-                            config.stateStore.removeState(state);
-
-                            // Exchange code for token
-                            let tokenResult = await* exchangeCodeForToken(code, oauthState.codeVerifier);
-                            switch (tokenResult) {
-                                case (#ok(tokenResponse)) {
-                                    // Store token and create session
-                                    // You'd typically get user info here and create a session
-                                    let userId = "user_" # state; // Placeholder
-                                    config.stateStore.saveToken(userId, tokenResponse);
-
-                                    let session = switch (context.session) {
-                                        case (?s) s;
-                                        case (null) context.createSession();
-                                    };
-
-                                    // Set session cookie or JWT
-                                    session.set("userId", userId);
-                                    session.set("authenticated", "true");
-
-                                    let redirectUrl = switch (oauthState.redirectAfterAuth) {
-                                        case (?url) url;
-                                        case (null) "/";
-                                    };
-
-                                    return context.buildRedirectResponse(redirectUrl, false);
-                                };
-                                case (#err(error)) {
-                                    return context.buildResponse(
-                                        #unauthorized,
-                                        #error(#message("OAuth token exchange failed: " # error)),
-                                    );
-                                };
-                            };
-                        };
-                        case (null) {
-                            return context.buildResponse(
-                                #badRequest,
-                                #error(#message("Invalid OAuth state")),
-                            );
-                        };
+            let ?code = context.getQueryParam("code") else {
+                return context.buildResponse(
+                    #badRequest,
+                    #error(#message("Missing authorization code")),
+                );
+            };
+            let oauthState = switch (context.getQueryParam("state")) {
+                case (?state) {
+                    let ?oauthState = config.stateStore.getState(state) else {
+                        return context.buildResponse(
+                            #badRequest,
+                            #error(#message("Invalid OAuth state")),
+                        );
                     };
+                    config.stateStore.removeState(state);
+                    oauthState;
                 };
-                case (_, _) {
+                case (null) ({
+                    codeVerifier = null;
+                    redirectAfterAuth = null;
+                });
+            };
+            // Exchange code for token
+            let tokenResult = await* exchangeCodeForToken(context, code, oauthState.codeVerifier);
+            switch (tokenResult) {
+                case (#ok(tokenResponse)) {
+                    let userInfo = await* getUserInfo();
+                    let userId = ""; // TODO
+                    config.stateStore.saveToken(userId, tokenResponse);
+
+                    // TODO set identity
+
+                    let redirectUrl = switch (oauthState.redirectAfterAuth) {
+                        case (?url) url;
+                        case (null) "/";
+                    };
+
+                    return context.buildRedirectResponse(redirectUrl, false);
+                };
+                case (#err(error)) {
                     return context.buildResponse(
-                        #badRequest,
-                        #error(#message("Missing authorization code or state")),
+                        #unauthorized,
+                        #error(#message("OAuth token exchange failed: " # error)),
                     );
                 };
             };
         };
 
+        let loginPath : Path.Path = ["auth", "login"];
+        let callbackPath : Path.Path = ["auth", "callback"];
+        let logoutPath : Path.Path = ["auth", "logout"];
+
         {
             handleQuery = func(context : Liminal.HttpContext, next : App.Next) : App.QueryResult {
                 let path = context.getPath();
-                if (Path.equalToUrl(path, "/auth/login") and context.method == #get) {
-                    return #upgrade;
-                };
-                if (Path.equalToUrl(path, "/auth/callback") and context.method == #get) {
-                    return #upgrade;
-                };
-                if (Path.equalToUrl(path, "/auth/logout") and context.method == #post) {
-                    return #upgrade;
+                switch (context.method) {
+                    case (#get) {
+                        if (path == loginPath or path == callbackPath) {
+                            return #upgrade;
+                        };
+                    };
+                    case (#post) {
+                        if (path == logoutPath) {
+                            return #upgrade;
+                        };
+                    };
+                    case (_) ();
                 };
                 next();
             };
             handleUpdate = func(context : Liminal.HttpContext, next : App.NextAsync) : async* Liminal.HttpResponse {
                 let path = context.getPath();
 
-                // Handle OAuth authorization initiation
-                if (Path.equalToUrl(path, "/auth/login") and context.method == #get) {
-                    return handleLogin(context);
-                };
-
-                // Handle OAuth callback
-                if (Path.equalToUrl(path, "/auth/callback") and context.method == #get) {
-                    return await* handleCallback(context);
-                };
-
-                // Handle logout
-                if (Path.equalToUrl(path, "/auth/logout") and context.method == #post) {
-                    context.session := null;
-                    return context.buildRedirectResponse("/", false);
+                switch (context.method) {
+                    case (#get) {
+                        if (path == loginPath) {
+                            return await* handleLogin(context);
+                        };
+                        if (path == callbackPath) {
+                            return await* handleCallback(context);
+                        };
+                    };
+                    case (#post) {
+                        if (path == logoutPath) {
+                            context.session := null;
+                            return context.buildRedirectResponse("/", false);
+                        };
+                    };
+                    case (_) ();
                 };
 
                 // Continue to next middleware

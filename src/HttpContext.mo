@@ -7,7 +7,7 @@ import Runtime "mo:new-base/Runtime";
 import Iter "mo:new-base/Iter";
 import Blob "mo:new-base/Blob";
 import IterTools "mo:itertools/Iter";
-import Parser "./Parser";
+import Uri "./Uri";
 import HttpMethod "./HttpMethod";
 import Json "mo:json";
 import Path "Path";
@@ -233,7 +233,7 @@ module {
             switch (pathQueryCache) {
                 case (?v) v;
                 case (null) {
-                    let v = Parser.parseUrl(request.url);
+                    let v = Uri.parseToComponents(request.url);
                     pathQueryCache := ?v;
                     v;
                 };
