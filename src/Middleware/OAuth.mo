@@ -246,21 +246,21 @@ module {
 
             let response : IC.http_request_result = await (with cycles = 230_949_972_000) IC.http_request(userInfoRequest);
             if (response.status != 200) {
-                return #error(#message("Failed to fetch user info: " # Nat.toText(response.status)));
+                return #err("Failed to fetch user info: " # Nat.toText(response.status));
             };
 
-            let ?jsonText = Text.decodeUtf8(response.body) else return #error(#message("Failed to decode user info response body"));
+            let ?jsonText = Text.decodeUtf8(response.body) else return #err("Failed to decode user info response body");
 
             let candidBlob = switch (Serde.JSON.fromText(jsonText, null)) {
                 case (#ok(candidBlob)) candidBlob;
-                case (#err(error)) return #error(#message("Failed to parse user info JSON: " # error));
+                case (#err(error)) return #err("Failed to parse user info JSON: " # error);
             };
             let ?userInfo : ?{
                 sub : Text;
                 name : ?Text;
                 email : ?Text;
                 picture : ?Text;
-            } = from_candid (candidBlob) else return #error(#message("Invalid user info format"));
+            } = from_candid (candidBlob) else return #err("Invalid user info format, unable to parse candid bytes");
 
             context.log(#info, "User info: " # debug_show (userInfo));
 
@@ -294,9 +294,8 @@ module {
             let tokenResult = await* exchangeCodeForToken(context, code, oauthState.codeVerifier);
             switch (tokenResult) {
                 case (#ok(tokenResponse)) {
-                    let userInfo = await* getUserInfo();
-                    let userId = ""; // TODO
-                    config.stateStore.saveToken(userId, tokenResponse);
+                    let userInfo = await* getUserInfo(context, tokenResponse.accessToken, config.userInfoEndpoint);
+                    config.stateStore.saveToken(userInfo.id, tokenResponse);
 
                     // TODO set identity
 

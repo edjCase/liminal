@@ -31,6 +31,6 @@ if [ -z "$CANISTER_ID" ] || [ "$CANISTER_ID" = "null" ]; then
 fi
 
 # Run the sync command
-icx-asset sync $CANISTER_ID examples/basic/assets
+icx-asset sync $CANISTER_ID assets
 
 echo "Assets synced successfully for canister ID: $CANISTER_ID"

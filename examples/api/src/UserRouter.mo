@@ -1,10 +1,10 @@
-import Route "../../src/Route";
+import Route "mo:liminal/Route";
 import Nat "mo:new-base/Nat";
 import Runtime "mo:new-base/Runtime";
 import UserHandler "UserHandler";
 import Serializer "Serializer";
 import Serde "mo:serde";
-import RouteContext "../../src/RouteContext";
+import RouteContext "mo:liminal/RouteContext";
 
 module {
 

@@ -1,8 +1,8 @@
 {
   "dfx": "0.27.0",
   "canisters": {
-    "basic": {
-      "main": "examples/basic/main.mo",
+    "asset": {
+      "main": "src/main.mo",
       "type": "motoko"
     }
   },
