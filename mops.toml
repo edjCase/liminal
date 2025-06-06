@@ -17,7 +17,20 @@ jwt = "0.2.0"
 compression = "0.2.0"
 serde = "3.2.2"
 xml = "1.0.0"
-http-assets = "0.0.7"
+http-assets = "../ic-assets/src"
+
+# Remove
+base = "0.14.8"
+http-types = "1.0.1"
+map = "9.0.1"
+certified-assets = "0.5.1"
+ic = "2.0.0"
+vector = "0.4.1"
+encoding = "https://github.com/aviate-labs/encoding.mo#v0.4.1@2711d18727e954b11afc0d37945608512b5fbce2"
+http-parser = "0.3.4"
+sha2 = "0.1.2"
+memory-region = "1.2.4"
+
 
 [dev-dependencies]
 test = "2.1.1"
