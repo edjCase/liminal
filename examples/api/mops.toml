@@ -1,16 +1,5 @@
 [dependencies]
-liminal = "../../src"
-new-base = "0.4.0"
-itertools = "0.2.2"
-xtended-text = "1.0.0"
-xtended-numbers = "0.4.0"
-asn1 = "2.0.2"
-json = "1.0.1"
-jwt = "0.2.0"
-compression = "0.2.0"
-serde = "3.2.2"
-xml = "1.0.0"
-http-assets = "0.0.7"
+liminal = "../.."
 
 [toolchain]
 moc = "0.14.10"

@@ -1,2 +1,2 @@
 [dependencies]
-liminal = "../../src"
+liminal = "../.."
