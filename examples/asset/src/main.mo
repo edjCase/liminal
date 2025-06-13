@@ -1,28 +1,12 @@
 import Liminal "mo:liminal";
-import UserHandler "UserHandler";
-import UserRouter "UserRouter";
 import Principal "mo:new-base/Principal";
 import Blob "mo:new-base/Blob";
 import Result "mo:new-base/Result";
 import Error "mo:new-base/Error";
-import LoggingMiddleware "LoggingMiddleware";
-import IC "mo:ic";
 import AssetsMiddleware "mo:liminal/Middleware/Assets";
 import HttpAssets "mo:http-assets";
 import AssetCanister "mo:liminal/AssetCanister";
-import CORSMiddleware "mo:liminal/Middleware/CORS";
-import RouterMiddleware "mo:liminal/Middleware/Router";
-import CSPMiddleware "mo:liminal/Middleware/CSP";
-import JWTMiddleware "mo:liminal/Middleware/JWT";
-import CompressionMiddleware "mo:liminal/Middleware/Compression";
-import SessionMiddleware "mo:liminal/Middleware/Session";
-import OAuthMiddleware "mo:liminal/Middleware/OAuth";
-import Router "mo:liminal/Router";
-import RouteContext "mo:liminal/RouteContext";
-import Iter "mo:new-base/Iter";
 import Text "mo:new-base/Text";
-import Nat "mo:new-base/Nat";
-import FileUpload "mo:liminal/FileUpload";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 

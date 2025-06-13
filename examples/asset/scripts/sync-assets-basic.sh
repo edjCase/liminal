@@ -22,11 +22,11 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Get the canister ID from the JSON file
-CANISTER_ID=$(jq -r '.basic.local' "$CANISTER_IDS_FILE")
+CANISTER_ID=$(jq -r '.asset.local' "$CANISTER_IDS_FILE")
 
 # Check if CANISTER_ID is empty or null
 if [ -z "$CANISTER_ID" ] || [ "$CANISTER_ID" = "null" ]; then
-    echo "Error: Could not find basic.local in canister_ids.json"
+    echo "Error: Could not find asset.local in canister_ids.json"
     exit 1
 fi
 

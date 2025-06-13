@@ -11,7 +11,6 @@ import CSPMiddleware "mo:liminal/Middleware/CSP";
 import JWTMiddleware "mo:liminal/Middleware/JWT";
 import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import SessionMiddleware "mo:liminal/Middleware/Session";
-// import OAuthMiddleware "mo:liminal/Middleware/OAuth";
 import Router "mo:liminal/Router";
 import RouteContext "mo:liminal/RouteContext";
 import Iter "mo:new-base/Iter";
