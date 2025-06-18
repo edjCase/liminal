@@ -13,10 +13,7 @@ import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import SessionMiddleware "mo:liminal/Middleware/Session";
 import Router "mo:liminal/Router";
 import RouteContext "mo:liminal/RouteContext";
-import Iter "mo:new-base/Iter";
-import Text "mo:new-base/Text";
-import Nat "mo:new-base/Nat";
-import FileUpload "mo:liminal/FileUpload";
+import FileUploader "FileUploader";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 
@@ -51,56 +48,8 @@ shared ({ caller = initializer }) actor class Actor() = self {
                 ],
                 #authenticated,
             ),
-            Router.getQuery(
-                "/upload",
-                func(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
-                    routeContext.buildResponse(#ok, #html("<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-    <title>File Upload</title>
-</head>
-<body>
-    <form action=\"/api/upload\" method=\"POST\" enctype=\"multipart/form-data\">
-        <div class=\"form-group\">
-            <label for=\"file\">Select file to upload:</label>
-            <input type=\"file\" id=\"file\" name=\"file\">
-        </div>
-        <button type=\"submit\" class=\"btn\">Upload File</button>
-    </form>
-</body>
-</html>"));
-                },
-            ),
-            Router.postUpdate(
-                "/upload",
-                func<system>(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
-                    let files = routeContext.getUploadedFiles();
-
-                    if (files.size() == 0) {
-                        return routeContext.buildResponse(
-                            #badRequest,
-                            #error(#message("No files were uploaded")),
-                        );
-                    };
-
-                    // Process each uploaded file
-                    let responseData = files.vals()
-                    |> Iter.map(
-                        _,
-                        func(file : FileUpload.UploadedFile) : Text {
-                            "Received file: " # file.filename #
-                            " (Size: " # Nat.toText(file.size) #
-                            " bytes, Type: " # file.contentType # ")";
-                        },
-                    )
-                    |> Text.join("\n", _);
-
-                    // Return success response
-                    routeContext.buildResponse(#ok, #text(responseData));
-                },
-            ),
+            Router.getQuery("/upload", FileUploader.getUploadFormHtml),
+            Router.postUpdate("/upload", FileUploader.handleUpload),
             Router.getAsyncUpdate(
                 "/hash",
                 func(routeContext : RouteContext.RouteContext) : async* Liminal.HttpResponse {
