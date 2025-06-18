@@ -402,6 +402,46 @@ suite(
         );
 
         test(
+            "preflight request with wildcard everything",
+            func() : () {
+                let response = CORS.handlePreflight(
+                    HttpContext.HttpContext(
+                        {
+                            method = HttpMethod.toText(#options);
+                            url = "/test";
+                            headers = [
+                                ("Origin", "http://example.com"),
+                                ("Access-Control-Request-Method", "GET"),
+                                ("Access-Control-Request-Headers", "content-type"),
+                            ];
+                            body = Blob.fromArray([]);
+                        },
+                        null,
+                        {
+                            errorSerializer = dummyErrorSerialzer;
+                            candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
+                            logger = Logging.debugLogger;
+                        },
+                    ),
+                    {
+                        CORS.defaultOptions with allowHeaders = [];
+                        allowOrigins = [];
+                        allowMethods = [];
+                    },
+                );
+                switch (response) {
+                    case (#next(_)) Runtime.trap("Expected #complete, got #next");
+                    case (#complete(response)) {
+                        // Just verify the headers are present, don't assert specific status
+                        assert (getHeader(response.headers, "Access-Control-Allow-Origin") == ?"*");
+                        assert (getHeader(response.headers, "Access-Control-Allow-Headers") == ?"*");
+                        assert (getHeader(response.headers, "Access-Control-Allow-Methods") == ?"*");
+                    };
+                };
+            },
+        );
+
+        test(
             "options request with no request method (not preflight)",
             func() : () {
                 let response = CORS.handlePreflight(

@@ -1,0 +1,11 @@
+[
+  {
+    "match": "**/*",
+
+    "security_policy": "disabled",
+    "disable_security_policy_warning": true,
+
+    "allow_raw_access": true,
+    "enable_aliasing": true
+  }
+]

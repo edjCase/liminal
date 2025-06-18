@@ -1,33 +1,14 @@
-import Liminal "../../src";
-import UserHandler "UserHandler";
-import UserRouter "UserRouter";
+import Liminal "mo:liminal";
 import Principal "mo:new-base/Principal";
 import Blob "mo:new-base/Blob";
 import Result "mo:new-base/Result";
 import Error "mo:new-base/Error";
-import LoggingMiddleware "LoggingMiddleware";
-import IC "mo:ic";
-import AssetsMiddleware "../../src/Middleware/Assets";
+import AssetsMiddleware "mo:liminal/Middleware/Assets";
 import HttpAssets "mo:http-assets";
-import AssetCanister "../../src/AssetCanister";
-import CORSMiddleware "../../src/Middleware/CORS";
-import RouterMiddleware "../../src/Middleware/Router";
-import CSPMiddleware "../../src/Middleware/CSP";
-import JWTMiddleware "../../src/Middleware/JWT";
-import CompressionMiddleware "../../src/Middleware/Compression";
-import SessionMiddleware "../../src/Middleware/Session";
-import Router "../../src/Router";
-import RouteContext "../../src/RouteContext";
-import Iter "mo:new-base/Iter";
+import AssetCanister "mo:liminal/AssetCanister";
 import Text "mo:new-base/Text";
-import Nat "mo:new-base/Nat";
-import FileUpload "../../src/FileUpload";
 
 shared ({ caller = initializer }) actor class Actor() = self {
-
-    stable var userStableData : UserHandler.StableData = {
-        users = [];
-    };
 
     let canisterId = Principal.fromActor(self);
 
@@ -42,101 +23,6 @@ shared ({ caller = initializer }) actor class Actor() = self {
     var assetStore = HttpAssets.Assets(assetStableData, ?setPermissions);
     var assetCanister = AssetCanister.AssetCanister(assetStore);
 
-    var userHandler = UserHandler.Handler(userStableData);
-
-    let userRouter = UserRouter.Router(userHandler);
-
-    // Upgrade methods
-
-    system func preupgrade() {
-        userStableData := userHandler.toStableData();
-    };
-
-    system func postupgrade() {
-        userHandler := UserHandler.Handler(userStableData);
-    };
-
-    let routerConfig : RouterMiddleware.Config = {
-        prefix = ?"/api";
-        identityRequirement = null;
-        routes = [
-            Router.groupWithAuthorization(
-                "/users",
-                [
-                    Router.getQuery("/", userRouter.get),
-                    Router.postUpdate("/", userRouter.create),
-                    Router.getQuery("/{id}", userRouter.getById),
-                ],
-                #authenticated,
-            ),
-            Router.getQuery(
-                "/upload",
-                func(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
-                    routeContext.buildResponse(#ok, #html("<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-    <title>File Upload</title>
-</head>
-<body>
-    <form action=\"/api/upload\" method=\"POST\" enctype=\"multipart/form-data\">
-        <div class=\"form-group\">
-            <label for=\"file\">Select file to upload:</label>
-            <input type=\"file\" id=\"file\" name=\"file\">
-        </div>
-        <button type=\"submit\" class=\"btn\">Upload File</button>
-    </form>
-</body>
-</html>"));
-                },
-            ),
-            Router.postUpdate(
-                "/upload",
-                func<system>(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
-                    let files = routeContext.getUploadedFiles();
-
-                    if (files.size() == 0) {
-                        return routeContext.buildResponse(
-                            #badRequest,
-                            #error(#message("No files were uploaded")),
-                        );
-                    };
-
-                    // Process each uploaded file
-                    let responseData = files.vals()
-                    |> Iter.map(
-                        _,
-                        func(file : FileUpload.UploadedFile) : Text {
-                            "Received file: " # file.filename #
-                            " (Size: " # Nat.toText(file.size) #
-                            " bytes, Type: " # file.contentType # ")";
-                        },
-                    )
-                    |> Text.join("\n", _);
-
-                    // Return success response
-                    routeContext.buildResponse(#ok, #text(responseData));
-                },
-            ),
-            Router.getAsyncUpdate(
-                "/hash",
-                func(routeContext : RouteContext.RouteContext) : async* Liminal.HttpResponse {
-                    let ic = actor ("aaaaa-aa") : IC.Service;
-                    let result = await ic.canister_info({
-                        canister_id = Principal.fromActor(self);
-                        num_requested_changes = ?0;
-                    });
-                    let hashJson = switch (result.module_hash) {
-                        case (null) #Null;
-                        case (?hash) #Text(debug_show (Blob.toArray(hash)));
-                    };
-                    routeContext.buildResponse(#ok, #content(#Record([("hash", hashJson)])));
-                },
-            ),
-        ];
-    };
-
     let assetMiddlewareConfig : AssetsMiddleware.Config = {
         store = assetStore;
     };
@@ -144,23 +30,6 @@ shared ({ caller = initializer }) actor class Actor() = self {
     // Http App
     let app = Liminal.App({
         middleware = [
-            SessionMiddleware.inMemoryDefault(),
-            CompressionMiddleware.default(),
-            CORSMiddleware.default(),
-            JWTMiddleware.new({
-                locations = JWTMiddleware.defaultLocations;
-                validation = {
-                    audience = #skip;
-                    issuer = #skip;
-                    signature = #skip;
-                    notBefore = false;
-                    expiration = false;
-                };
-            }),
-            LoggingMiddleware.new(),
-            // RequireAuthMiddleware.new(#authenticated),
-            RouterMiddleware.new(routerConfig),
-            CSPMiddleware.default(),
             AssetsMiddleware.new(assetMiddlewareConfig),
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;

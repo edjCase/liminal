@@ -108,13 +108,16 @@ module {
                             };
 
                             // Add Access-Control-Allow-Methods header
-                            let allowedMethodsText = Text.join(
-                                ", ",
-                                Iter.map<HttpMethod.HttpMethod, Text>(
-                                    options.allowMethods.vals(),
-                                    func(m) { HttpMethod.toText(m) },
-                                ),
-                            );
+                            let allowedMethodsText = if (options.allowMethods.size() > 0) {
+                                Text.join(
+                                    ", ",
+                                    Iter.map<HttpMethod.HttpMethod, Text>(
+                                        options.allowMethods.vals(),
+                                        func(m) { HttpMethod.toText(m) },
+                                    ),
+                                );
+                            } else { "*" };
+
                             List.add(corsHeaders, ("Access-Control-Allow-Methods", allowedMethodsText));
 
                             // Handle Access-Control-Request-Headers
@@ -147,7 +150,11 @@ module {
                                             };
 
                                             // Add Access-Control-Allow-Headers header
-                                            let allowedHeadersText = Text.join(", ", options.allowHeaders.vals());
+                                            let allowedHeadersText = if (options.allowHeaders.size() > 0) {
+                                                Text.join(", ", options.allowHeaders.vals());
+                                            } else {
+                                                "*";
+                                            };
                                             List.add(corsHeaders, ("Access-Control-Allow-Headers", allowedHeadersText));
                                         };
                                     };
