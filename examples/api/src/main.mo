@@ -7,10 +7,10 @@ import LoggingMiddleware "LoggingMiddleware";
 import { ic } "mo:ic";
 import CORSMiddleware "mo:liminal/Middleware/CORS";
 import RouterMiddleware "mo:liminal/Middleware/Router";
-import CSPMiddleware "mo:liminal/Middleware/CSP";
 import JWTMiddleware "mo:liminal/Middleware/JWT";
 import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import SessionMiddleware "mo:liminal/Middleware/Session";
+import OAuthMiddleware "mo:liminal/Middleware/OAuth";
 import Router "mo:liminal/Router";
 import RouteContext "mo:liminal/RouteContext";
 import FileUploader "FileUploader";
@@ -67,17 +67,28 @@ shared ({ caller = initializer }) actor class Actor() = self {
         ];
     };
 
-    // let oauthConfig : OAuthMiddleware.Config = {
-    //     clientId = "Ov23liYZ5V22rjHKThEN";
-    //     clientSecret = "52716f17326479e63509d5d74879ed3493e4235e";
-    //     redirectUri = "http://uxrrr-q7777-77774-qaaaq-cai.raw.localhost:4943/auth/callback";
-    //     authorizationEndpoint = OAuthMiddleware.GitHub.authorizationEndpoint;
-    //     tokenEndpoint = OAuthMiddleware.GitHub.tokenEndpoint;
-    //     userInfoEndpoint = OAuthMiddleware.GitHub.userInfoEndpoint;
-    //     scopes = ["read:user", "user:email"];
-    //     usePKCE = false;
-    //     stateStore = OAuthMiddleware.inMemoryStateStore();
-    // };
+    stable var accessTokenOrNull : ?Text = null;
+
+    let oauthConfig : OAuthMiddleware.Config = {
+        providers = [{
+            OAuthMiddleware.GitHub with
+            name = "GitHub";
+            clientId = "Ov23liYZ5V22rjHKThEN";
+            clientSecret = "52716f17326479e63509d5d74879ed3493e4235e"; // WARNING: INSECURE! DO NOT USE IN PRODUCTION!
+            scopes = ["read:user", "user:email"];
+            usePKCE = true;
+        }];
+        siteUrl = "http://uxrrr-q7777-77774-qaaaq-cai.raw.localhost:4943";
+        store = OAuthMiddleware.inMemoryStore();
+        onLogin = func(context : Liminal.HttpContext, data : OAuthMiddleware.LoginData) : async* Liminal.HttpResponse {
+            accessTokenOrNull := ?data.tokenInfo.accessToken;
+            context.buildRedirectResponse("/post-login", false);
+        };
+        onLogout = func(context : Liminal.HttpContext, _ : OAuthMiddleware.LogoutData) : async* Liminal.HttpResponse {
+            accessTokenOrNull := null;
+            context.buildRedirectResponse("/post-logout", false);
+        };
+    };
 
     // Http App
     let app = Liminal.App({
@@ -86,7 +97,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
             SessionMiddleware.inMemoryDefault(),
             CompressionMiddleware.default(),
             CORSMiddleware.default(),
-            // OAuthMiddleware.new(oauthConfig),
+            OAuthMiddleware.new(oauthConfig),
             JWTMiddleware.new({
                 locations = JWTMiddleware.defaultLocations;
                 validation = {
@@ -97,10 +108,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
                     expiration = false;
                 };
             }),
-            LoggingMiddleware.new(),
-            // RequireAuthMiddleware.new(#authenticated),
             RouterMiddleware.new(routerConfig),
-            CSPMiddleware.default(),
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;

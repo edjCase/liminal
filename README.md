@@ -24,6 +24,9 @@ Key features:
 - 📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
 - 📝 **Logging**: Built-in logging system with configurable levels and custom logger support
 
+Experimental features:
+🔐 **OAuth Authentication**: Built-in OAuth 2.0 support for Google, GitHub, and custom providers (INSECURE)
+
 ## Package
 
 ### MOPS
@@ -522,6 +525,41 @@ CSPMiddleware.new({
     // Additional CSP directives...
 })
 ```
+
+### OAuth (Experimental)
+
+⚠️ **Warning: Experimental and insecure - client secrets stored in plain text. Not production ready.**
+
+Provides OAuth 2.0 authentication with popular providers.
+
+```motoko
+import OAuthMiddleware "mo:liminal/Middleware/OAuth";
+
+let oauthConfig = {
+    providers = [{
+        OAuthMiddleware.GitHub with
+        name = "GitHub";
+        clientId = "your-client-id";
+        clientSecret = "your-client-secret"; // INSECURE!
+        scopes = ["read:user", "user:email"];
+        usePKCE = true;
+    }];
+    siteUrl = "https://your-canister-url.ic0.app";
+    store = OAuthMiddleware.inMemoryStore();
+    onLogin = func(context, data) {
+        // Handle successful login
+        context.buildRedirectResponse("/dashboard", false);
+    };
+    onLogout = func(context, data) {
+        // Handle logout
+        context.buildRedirectResponse("/", false);
+    };
+};
+
+OAuthMiddleware.new(oauthConfig)
+```
+
+Routes: `GET /auth/{provider}/login`, `GET /auth/{provider}/callback`, `POST /auth/{provider}/logout`
 
 ## Assets Integration
 

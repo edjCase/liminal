@@ -7,12 +7,13 @@ import Random "mo:base/Random";
 import Buffer "mo:base/Buffer";
 import Nat "mo:new-base/Nat";
 import App "../App";
-import Path "../Path";
-import IC "ic:aaaaa-aa";
+import IC "mo:ic";
 import Serde "mo:serde";
 import List "mo:new-base/List";
 import BaseX "mo:base-x-encoder";
 import Option "mo:new-base/Option";
+import Array "mo:new-base/Array";
+import Sha256 "mo:sha2/Sha256";
 
 module {
 
@@ -20,45 +21,57 @@ module {
     public let Google = {
         authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
         tokenEndpoint = "https://oauth2.googleapis.com/token";
-        userInfoEndpoint = ?"https://www.googleapis.com/oauth2/v2/userinfo";
+        userInfoEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo";
     };
 
     public let GitHub = {
         authorizationEndpoint = "https://github.com/login/oauth/authorize";
         tokenEndpoint = "https://github.com/login/oauth/access_token";
-        userInfoEndpoint = ?"https://api.github.com/user";
+        userInfoEndpoint = "https://api.github.com/user";
     };
 
     public type Config = {
+        providers : [ProviderConfig];
+        siteUrl : Text;
+        store : OAuthStore; // Where to store OAuth state/tokens
+        onLogin : (Liminal.HttpContext, LoginData) -> async* Liminal.HttpResponse;
+        onLogout : (Liminal.HttpContext, LogoutData) -> async* Liminal.HttpResponse;
+    };
+
+    public type LoginData = {
+        providerConfig : ProviderConfig;
+        tokenInfo : TokenInfo;
+        oauthContext : OAuthContext;
+    };
+
+    public type LogoutData = {
+        providerConfig : ProviderConfig;
+    };
+
+    public type ProviderConfig = {
+        name : Text; // e.g., "Google", "GitHub"
         clientId : Text;
-        clientSecret : Text;
-        redirectUri : Text;
+        clientSecret : Text; // TODO this is insecure even with environment variables, need secure method, canister encryption?
         authorizationEndpoint : Text;
         tokenEndpoint : Text;
-        userInfoEndpoint : ?Text;
         scopes : [Text];
-        // Optional PKCE support
-        usePKCE : Bool;
-        // Where to store OAuth state/tokens
-        stateStore : StateStore;
+        usePKCE : Bool; // Optional PKCE support
     };
 
-    public type StateStore = {
-        saveState : (key : Text, state : OAuthState) -> ();
-        getState : (key : Text) -> ?OAuthState;
-        removeState : (key : Text) -> ();
-        saveToken : (userId : Text, token : TokenResponse) -> ();
-        getToken : (userId : Text) -> ?TokenResponse;
+    public type OAuthStore = {
+        saveContext : (value : OAuthContext) -> ();
+        getContext : (key : Text) -> ?OAuthContext;
+        removeContext : (key : Text) -> ();
     };
 
-    public type OAuthState = {
+    public type OAuthContext = {
         state : Text;
         codeVerifier : ?Text; // For PKCE
         redirectAfterAuth : ?Text;
         createdAt : Int;
     };
 
-    public type TokenResponse = {
+    public type TokenInfo = {
         accessToken : Text;
         tokenType : Text;
         expiresIn : ?Int;
@@ -68,63 +81,45 @@ module {
     };
 
     public type UserInfo = {
-        sub : Text;
+        id : Text;
         name : ?Text;
         email : ?Text;
-        picture : ?Text;
     };
 
     // Simple in-memory state store (you might want persistent storage)
-    public func inMemoryStateStore() : StateStore {
-        var states = Map.empty<Text, OAuthState>();
-        var tokens = Map.empty<Text, TokenResponse>();
+    public func inMemoryStore() : OAuthStore {
+        var contexts = Map.empty<Text, OAuthContext>();
 
         {
-            saveState = func(key : Text, state : OAuthState) {
-                Map.add(states, Text.compare, key, state);
+            saveContext = func(value : OAuthContext) {
+                Map.add(contexts, Text.compare, value.state, value);
             };
-            getState = func(key : Text) : ?OAuthState {
-                Map.get(states, Text.compare, key);
+            getContext = func(state : Text) : ?OAuthContext {
+                Map.get(contexts, Text.compare, state);
             };
-            removeState = func(key : Text) {
-                ignore Map.delete<Text, OAuthState>(states, Text.compare, key);
-            };
-            saveToken = func(userId : Text, token : TokenResponse) {
-                Map.add(tokens, Text.compare, userId, token);
-            };
-            getToken = func(userId : Text) : ?TokenResponse {
-                Map.get(tokens, Text.compare, userId);
+            removeContext = func(state : Text) {
+                ignore Map.delete<Text, OAuthContext>(contexts, Text.compare, state);
             };
         };
     };
 
     public func new(config : Config) : App.Middleware {
 
-        func generateState() : async* Text {
-            let randBytes = await Random.blob();
-            BaseX.toBase64(randBytes.vals(), true);
+        func getRedirectUri(providerName : Text) : Text {
+            // Construct the redirect URI based on the provider name and site URL
+            let siteUrlWithSlash = if (Text.endsWith(config.siteUrl, #char('/'))) config.siteUrl else config.siteUrl # "/";
+            siteUrlWithSlash # "auth/" # Text.toLower(providerName) # "/callback";
         };
 
-        func generateCodeVerifier(state : Text) : Text {
-            // PKCE code verifier - should be cryptographically random
-            "code_verifier_" # state;
-        };
-
-        func generateCodeChallenge(verifier : Text) : Text {
-            // In production, this should be SHA256(verifier) base64url encoded
-            // For now, using a simple transformation
-            "challenge_" # verifier;
-        };
-
-        func buildAuthUrl(state : Text, codeChallenge : ?Text) : Text {
-            let baseUrl = config.authorizationEndpoint;
+        func buildAuthUrl(providerConfig : ProviderConfig, state : Text, codeChallenge : ?Text) : Text {
+            let baseUrl = providerConfig.authorizationEndpoint;
             let params = Buffer.Buffer<Text>(8);
 
             params.add("response_type=code");
-            params.add("client_id=" # config.clientId);
-            params.add("redirect_uri=" # config.redirectUri);
+            params.add("client_id=" # providerConfig.clientId);
+            params.add("redirect_uri=" # getRedirectUri(providerConfig.name));
             params.add("state=" # state);
-            params.add("scope=" # Text.join(" ", config.scopes.vals()));
+            params.add("scope=" # Text.join(" ", providerConfig.scopes.vals()));
 
             switch (codeChallenge) {
                 case (?challenge) {
@@ -137,13 +132,18 @@ module {
             baseUrl # "?" # Text.join("&", params.vals());
         };
 
-        func exchangeCodeForToken(context : Liminal.HttpContext, code : Text, codeVerifier : ?Text) : async* Result.Result<TokenResponse, Text> {
+        func exchangeCodeForToken(
+            providerConfig : ProviderConfig,
+            context : Liminal.HttpContext,
+            code : Text,
+            codeVerifier : ?Text,
+        ) : async* Result.Result<TokenInfo, Text> {
             let formData = List.empty<(Text, Text)>();
             List.add(formData, ("grant_type", "authorization_code"));
             List.add(formData, ("code", code));
-            List.add(formData, ("redirect_uri", config.redirectUri));
-            List.add(formData, ("client_id", config.clientId));
-            List.add(formData, ("client_secret", config.clientSecret));
+            List.add(formData, ("redirect_uri", getRedirectUri(providerConfig.name)));
+            List.add(formData, ("client_id", providerConfig.clientId));
+            List.add(formData, ("client_secret", providerConfig.clientSecret));
             switch (codeVerifier) {
                 case (?verifier) List.add(formData, ("code_verifier", verifier));
                 case (null) {};
@@ -156,9 +156,9 @@ module {
                 )
                 |> List.values(_),
             );
-            let tokenExchangeRequest : IC.http_request_args = {
-                url = config.tokenEndpoint;
-                max_response_bytes = ?1024; // config overridable
+            let tokenExchangeRequest : IC.HttpRequestArgs = {
+                url = providerConfig.tokenEndpoint;
+                max_response_bytes = null; // config overridable
                 headers = [
                     {
                         name = "Content-Type";
@@ -171,7 +171,7 @@ module {
                 transform = null; // todo configurable
             };
 
-            let response : IC.http_request_result = await (with cycles = 230_949_972_000) IC.http_request(tokenExchangeRequest);
+            let response : IC.HttpRequestResult = await (with cycles = 230_949_972_000) IC.ic.http_request(tokenExchangeRequest);
             if (response.status != 200) {
 
                 let jsonText = Text.decodeUtf8(response.body);
@@ -206,105 +206,67 @@ module {
             });
         };
 
-        func handleLogin(context : Liminal.HttpContext) : async* Liminal.HttpResponse {
-            let state = await* generateState();
-            let codeVerifier = if (config.usePKCE) ?generateCodeVerifier(state) else null;
-            let codeChallenge = switch (codeVerifier) {
-                case (?verifier) ?generateCodeChallenge(verifier);
-                case (null) null;
-            };
+        func handleLogin(providerConfig : ProviderConfig, context : Liminal.HttpContext) : async* Liminal.HttpResponse {
 
-            let oauthState : OAuthState = {
+            let stateBytes = await Random.blob();
+            let state : Text = BaseX.toBase64(stateBytes.vals(), true);
+
+            let (codeVerifier, codeChallenge) = if (providerConfig.usePKCE) {
+                let verifierBytes = await Random.blob();
+                let challenge = BaseX.toBase64(Sha256.fromBlob(#sha256, verifierBytes).vals(), true);
+                let verifier = BaseX.toBase64(verifierBytes.vals(), true);
+                (?verifier, ?challenge);
+            } else (null, null);
+
+            let oauthContext : OAuthContext = {
                 state = state;
                 codeVerifier = codeVerifier;
                 redirectAfterAuth = context.getQueryParam("redirect");
                 createdAt = Time.now();
             };
 
-            config.stateStore.saveState(state, oauthState);
-            let authUrl = buildAuthUrl(state, codeChallenge);
+            config.store.saveContext(oauthContext);
+            let authUrl = buildAuthUrl(providerConfig, state, codeChallenge);
 
-            return context.buildResponse(#ok, #content(#Record([("url", #Text(authUrl))])));
+            // return context.buildResponse(#ok, #content(#Record([("url", #Text(authUrl))])));
+            context.buildRedirectResponse(authUrl, false);
         };
 
-        func getUserInfo(context : Liminal.HttpContext, accessToken : Text, endpoint : Text) : async* Result.Result<UserInfo, Text> {
-
-            let userInfoRequest : IC.http_request_args = {
-                url = endpoint;
-                max_response_bytes = null; // config overridable
-                headers = [
-                    {
-                        name = "Authorization";
-                        value = "Bearer " # accessToken;
-                    },
-                    { name = "Accept"; value = "application/json" },
-                ];
-                body = null;
-                method = #get;
-                transform = null; // todo configurable
-            };
-
-            let response : IC.http_request_result = await (with cycles = 230_949_972_000) IC.http_request(userInfoRequest);
-            if (response.status != 200) {
-                return #err("Failed to fetch user info: " # Nat.toText(response.status));
-            };
-
-            let ?jsonText = Text.decodeUtf8(response.body) else return #err("Failed to decode user info response body");
-
-            let candidBlob = switch (Serde.JSON.fromText(jsonText, null)) {
-                case (#ok(candidBlob)) candidBlob;
-                case (#err(error)) return #err("Failed to parse user info JSON: " # error);
-            };
-            let ?userInfo : ?{
-                sub : Text;
-                name : ?Text;
-                email : ?Text;
-                picture : ?Text;
-            } = from_candid (candidBlob) else return #err("Invalid user info format, unable to parse candid bytes");
-
-            context.log(#info, "User info: " # debug_show (userInfo));
-
-            userInfo;
-        };
-
-        func handleCallback(context : Liminal.HttpContext) : async* Liminal.HttpResponse {
+        func handleCallback(providerConfig : ProviderConfig, context : Liminal.HttpContext) : async* Liminal.HttpResponse {
             let ?code = context.getQueryParam("code") else {
                 return context.buildResponse(
                     #badRequest,
                     #error(#message("Missing authorization code")),
                 );
             };
-            let oauthState = switch (context.getQueryParam("state")) {
+            let oauthContext : OAuthContext = switch (context.getQueryParam("state")) {
                 case (?state) {
-                    let ?oauthState = config.stateStore.getState(state) else {
+                    let ?oauthContext = config.store.getContext(state) else {
                         return context.buildResponse(
                             #badRequest,
                             #error(#message("Invalid OAuth state")),
                         );
                     };
-                    config.stateStore.removeState(state);
-                    oauthState;
+                    config.store.removeContext(state);
+                    oauthContext;
                 };
-                case (null) ({
-                    codeVerifier = null;
-                    redirectAfterAuth = null;
-                });
+                case (null) return context.buildResponse(
+                    #badRequest,
+                    #error(#message("Missing OAuth state")),
+                );
             };
             // Exchange code for token
-            let tokenResult = await* exchangeCodeForToken(context, code, oauthState.codeVerifier);
+            let tokenResult = await* exchangeCodeForToken(providerConfig, context, code, oauthContext.codeVerifier);
             switch (tokenResult) {
-                case (#ok(tokenResponse)) {
-                    let userInfo = await* getUserInfo(context, tokenResponse.accessToken, config.userInfoEndpoint);
-                    config.stateStore.saveToken(userInfo.id, tokenResponse);
-
-                    // TODO set identity
-
-                    let redirectUrl = switch (oauthState.redirectAfterAuth) {
-                        case (?url) url;
-                        case (null) "/";
-                    };
-
-                    return context.buildRedirectResponse(redirectUrl, false);
+                case (#ok(tokenInfo)) {
+                    await* config.onLogin(
+                        context,
+                        {
+                            providerConfig;
+                            tokenInfo;
+                            oauthContext;
+                        },
+                    );
                 };
                 case (#err(error)) {
                     return context.buildResponse(
@@ -314,60 +276,141 @@ module {
                 };
             };
         };
-
-        let loginPath : Path.Path = ["auth", "login"];
-        let callbackPath : Path.Path = ["auth", "callback"];
-        let logoutPath : Path.Path = ["auth", "logout"];
+        type RequestInfo = {
+            #login : ProviderConfig;
+            #callback : ProviderConfig;
+            #logout : ProviderConfig;
+            #providerNotFound : Text;
+            #invalidRoute : Text;
+        };
+        func parseRequest(context : Liminal.HttpContext) : ?RequestInfo {
+            let path = context.getPath();
+            if (path.size() < 3 or Text.toLower(path[0]) != "auth") {
+                return null;
+            };
+            let providerName = Text.toLower(path[1]);
+            let ?providerConfig = Array.find(
+                config.providers,
+                func(p : ProviderConfig) : Bool = Text.toLower(p.name) == providerName,
+            ) else {
+                return ?#providerNotFound(providerName);
+            };
+            let oauthPath = Text.toLower(path[2]);
+            ?(
+                switch (oauthPath) {
+                    case ("login") #login(providerConfig);
+                    case ("callback") #callback(providerConfig);
+                    case ("logout") #logout(providerConfig);
+                    case (path) #invalidRoute(path);
+                }
+            );
+        };
 
         {
             handleQuery = func(context : Liminal.HttpContext, next : App.Next) : App.QueryResult {
-                let path = context.getPath();
-                switch (context.method) {
-                    case (#get) {
-                        if (path == loginPath or path == callbackPath) {
-                            return #upgrade;
+                let ?requestKind = parseRequest(context) else return next();
+                switch (requestKind) {
+                    case (#login(_)) {
+                        if (context.method != #get) {
+                            return #response(
+                                context.buildResponse(
+                                    #methodNotAllowed,
+                                    #error(#message("Method not allowed for OAuth login, expected GET")),
+                                )
+                            );
                         };
+                        return #upgrade;
                     };
-                    case (#post) {
-                        if (path == logoutPath) {
-                            return #upgrade;
+                    case (#callback(_)) {
+                        if (context.method != #get) {
+                            return #response(
+                                context.buildResponse(
+                                    #methodNotAllowed,
+                                    #error(#message("Method not allowed for OAuth callback, expected GET")),
+                                )
+                            );
                         };
+                        return #upgrade;
                     };
-                    case (_) ();
+                    case (#logout(_)) {
+                        if (context.method != #post) {
+                            return #response(
+                                context.buildResponse(
+                                    #methodNotAllowed,
+                                    #error(#message("Method not allowed for OAuth logout, expected POST")),
+                                )
+                            );
+                        };
+                        #upgrade;
+                    };
+                    case (#providerNotFound(providerName)) {
+                        return #response(
+                            context.buildResponse(
+                                #notFound,
+                                #error(#message("OAuth provider not found: " # providerName)),
+                            )
+                        );
+                    };
+                    case (#invalidRoute(path)) {
+                        return #response(
+                            context.buildResponse(
+                                #notFound,
+                                #error(#message("Invalid OAuth route: " # path)),
+                            )
+                        );
+                    };
                 };
-                next();
             };
             handleUpdate = func(context : Liminal.HttpContext, next : App.NextAsync) : async* Liminal.HttpResponse {
-                let path = context.getPath();
+                let ?requestKind = parseRequest(context) else return await* next();
 
-                switch (context.method) {
-                    case (#get) {
-                        if (path == loginPath) {
-                            return await* handleLogin(context);
+                switch (requestKind) {
+                    case (#login(providerConfig)) {
+                        if (context.method != #get) {
+                            return context.buildResponse(
+                                #methodNotAllowed,
+                                #error(#message("Method not allowed for OAuth login, expected GET")),
+                            );
                         };
-                        if (path == callbackPath) {
-                            return await* handleCallback(context);
-                        };
+                        return await* handleLogin(providerConfig, context);
                     };
-                    case (#post) {
-                        if (path == logoutPath) {
-                            context.session := null;
-                            return context.buildRedirectResponse("/", false);
+                    case (#callback(providerConfig)) {
+                        if (context.method != #get) {
+                            return context.buildResponse(
+                                #methodNotAllowed,
+                                #error(#message("Method not allowed for OAuth callback, expected GET")),
+                            );
                         };
+                        return await* handleCallback(providerConfig, context);
                     };
-                    case (_) ();
+                    case (#logout(providerConfig)) {
+                        if (context.method != #post) {
+                            return context.buildResponse(
+                                #methodNotAllowed,
+                                #error(#message("Method not allowed for OAuth logout, expected POST")),
+                            );
+                        };
+                        await* config.onLogout(
+                            context,
+                            {
+                                providerConfig;
+                            },
+                        );
+                    };
+                    case (#providerNotFound(providerName)) {
+                        return context.buildResponse(
+                            #notFound,
+                            #error(#message("OAuth provider not found: " # providerName)),
+                        );
+                    };
+                    case (#invalidRoute(path)) {
+                        return context.buildResponse(
+                            #notFound,
+                            #error(#message("Invalid OAuth route: " # path)),
+                        );
+                    };
                 };
-
-                // Continue to next middleware
-                await* next();
             };
         };
-    };
-
-    // Get current user's OAuth token
-    public func getUserToken(context : Liminal.HttpContext, stateStore : StateStore) : ?TokenResponse {
-        let ?session = context.session else return null;
-        let ?userId = session.get("userId") else return null;
-        stateStore.getToken(userId);
     };
 };
