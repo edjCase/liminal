@@ -1,9 +1,9 @@
 [package]
 name = "liminal"
-version = "0.0.5"
+version = "0.0.6"
 description = "An HTTP framework that make http processing easier, utilizing middleware pipelines"
 repository = "https://github.com/edjcase/liminal"
-keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
+keywords = [ "http", "router", "parser", "middleware", "web", "pipeline" ]
 license = "MIT"
 
 [dependencies]
@@ -12,8 +12,8 @@ itertools = "0.2.2"
 xtended-text = "1.0.0"
 xtended-numbers = "0.4.0"
 asn1 = "2.0.2"
-json = "1.0.1"
-jwt = "0.2.0"
+json = "1.2.1"
+jwt = "1.0.1"
 compression = "0.2.0"
 serde = "3.2.2"
 xml = "1.0.0"
@@ -22,7 +22,7 @@ sha2 = "0.1.4"
 
 [dev-dependencies]
 test = "2.1.1"
-ic = "2.0.0"
+ic = "2.1.0"
 
 [toolchain]
 moc = "0.14.10"
