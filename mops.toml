@@ -1,6 +1,6 @@
 [package]
 name = "liminal"
-version = "0.0.4"
+version = "0.0.5"
 description = "An HTTP framework that make http processing easier, utilizing middleware pipelines"
 repository = "https://github.com/edjcase/liminal"
 keywords = ["http", "router", "parser", "middleware", "web", "pipeline"]
@@ -23,3 +23,6 @@ sha2 = "0.1.4"
 [dev-dependencies]
 test = "2.1.1"
 ic = "2.0.0"
+
+[toolchain]
+moc = "0.14.10"
