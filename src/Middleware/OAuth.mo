@@ -13,6 +13,8 @@ import BaseX "mo:base-x-encoder";
 import Option "mo:new-base/Option";
 import Array "mo:new-base/Array";
 import Sha256 "mo:sha2/Sha256";
+import UrlKit "mo:url-kit";
+import Iter "mo:new-base/Iter";
 
 module {
 
@@ -118,14 +120,14 @@ module {
                 ("scope", Text.join(" ", providerConfig.scopes.vals())),
                 ("code_challenge", codeChallenge),
                 ("code_challenge_method", "S256"),
-            ]
+            ].vals()
             |> Iter.map(
                 _,
                 func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
             )
             |> Text.join("&", _);
 
-            baseUrl # "?" # params;
+            baseUrl # "?" # paramsText;
         };
 
         func exchangeCodeForToken(
@@ -140,7 +142,7 @@ module {
                 ("redirect_uri", getRedirectUri(providerConfig.name)),
                 ("client_id", providerConfig.clientId),
                 ("code_verifier", codeVerifier),
-            ]
+            ].vals()
             |> Iter.map(
                 _,
                 func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
@@ -200,11 +202,11 @@ module {
         func handleLogin(providerConfig : ProviderConfig, context : Liminal.HttpContext) : async* Liminal.HttpResponse {
 
             let stateBytes = await Random.blob();
-            let state : Text = BaseX.toBase64(stateBytes.vals(), true);
+            let state : Text = BaseX.toBase64(stateBytes.vals(), #url({ includePadding = false }));
 
             let verifierBytes = await Random.blob();
-            let codeChallenge = BaseX.toBase64(Sha256.fromBlob(#sha256, verifierBytes).vals(), true);
-            let verifier = BaseX.toBase64(verifierBytes.vals(), true);
+            let codeChallenge = BaseX.toBase64(Sha256.fromBlob(#sha256, verifierBytes).vals(), #url({ includePadding = false }));
+            let verifier = BaseX.toBase64(verifierBytes.vals(), #url({ includePadding = false }));
 
             let oauthContext : OAuthContext = {
                 state = state;

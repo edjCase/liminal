@@ -45,6 +45,7 @@ Here's a minimal example to get started:
 import Liminal "mo:liminal";
 import Route "mo:liminal/Route";
 import Router "mo:liminal/Router";
+import RouteContext "mo:liminal/RouteContext";
 import RouterMiddleware "mo:liminal/Middleware/Router";
 import CORSMiddleware "mo:liminal/Middleware/CORS";
 
@@ -75,6 +76,7 @@ actor {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+        logger = Liminal.debugLogger;
     });
 
     // Expose standard HTTP interface
@@ -96,13 +98,15 @@ Here's a more comprehensive example demonstrating multiple middleware components
 import Liminal "mo:liminal";
 import Route "mo:liminal/Route";
 import Router "mo:liminal/Router";
+import RouteContext "mo:liminal/RouteContext";
 import RouterMiddleware "mo:liminal/Middleware/Router";
 import CORSMiddleware "mo:liminal/Middleware/CORS";
 import JWTMiddleware "mo:liminal/Middleware/JWT";
 import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import CSPMiddleware "mo:liminal/Middleware/CSP";
-import LoggingMiddleware "mo:liminal/Middleware/Logging";
 import AssetsMiddleware "mo:liminal/Middleware/Assets";
+import SessionMiddleware "mo:liminal/Middleware/Session";
+import HttpAssets "mo:http-assets";
 
 actor {
     // Define your routes
@@ -143,6 +147,7 @@ actor {
             // and in reverse order for responses
             CompressionMiddleware.default(),
             CORSMiddleware.default(),
+            SessionMiddleware.inMemoryDefault(),
             JWTMiddleware.new({
                 locations = JWTMiddleware.defaultLocations;
                 validation = {
@@ -153,7 +158,6 @@ actor {
                     expiration = false;
                 };
             }),
-            LoggingMiddleware.new(),
             RouterMiddleware.new(routerConfig),
             CSPMiddleware.default(),
             AssetsMiddleware.new({
@@ -188,19 +192,26 @@ Middleware are components that process HTTP requests and responses in a pipeline
 - Modify the response after the next middleware processes it
 
 ```motoko
+import App "mo:liminal/App";
+import HttpContext "mo:liminal/HttpContext";
+import HttpMethod "mo:liminal/HttpMethod";
+
 // Example of a simple logging middleware
 public func createLoggingMiddleware() : App.Middleware {
     {
         handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
-            Debug.print("Query: " # HttpMethod.toText(context.method) # " " # context.request.url);
+            context.log(#info, "Query: " # HttpMethod.toText(context.method) # " " # context.request.url);
             let response = next();
-            Debug.print("Response: " # debug_show(Option.map(response, func(r) = r.statusCode)));
+            switch (response) {
+                case (#response(r)) context.log(#info, "Response: " # debug_show(r.statusCode));
+                case (#upgrade) context.log(#info, "Response: Upgrade to update call");
+            };
             response
         };
         handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
-            Debug.print("Update: " # HttpMethod.toText(context.method) # " " # context.request.url);
+            context.log(#info, "Update: " # HttpMethod.toText(context.method) # " " # context.request.url);
             let response = await* next();
-            Debug.print("Response: " # debug_show(Option.map(response, func(r) = r.statusCode)));
+            context.log(#info, "Response: " # debug_show(response.statusCode));
             response
         };
     }
@@ -483,6 +494,87 @@ RequireAuthMiddleware.new(#custom(func(identity : Identity) : Bool {
 }))
 ```
 
+### Session
+
+Provides session management with configurable storage and cookie options.
+
+```motoko
+// Use default in-memory session store
+SessionMiddleware.inMemoryDefault()
+
+// Or with custom configuration
+SessionMiddleware.new({
+    cookieName = "session";
+    idleTimeout = 1200; // 20 minutes in seconds
+    cookieOptions = {
+        path = "/";
+        secure = true;
+        httpOnly = true;
+        sameSite = ?#lax;
+        maxAge = null;
+    };
+    store = myCustomSessionStore;
+    idGenerator = generateCustomSessionId;
+})
+```
+
+Access session data in route handlers:
+
+```motoko
+func handleRequest(context : RouteContext.RouteContext) : Route.HttpResponse {
+    // Get session (automatically created if needed)
+    let ?session = context.session else {
+        return context.buildResponse(#internalServerError, #error(#message("Session unavailable")));
+    };
+
+    // Store data in session
+    session.set("user_id", "123");
+    session.set("preferences", "dark_mode");
+
+    // Retrieve data from session
+    let ?userId = session.get("user_id") else {
+        return context.buildResponse(#unauthorized, #error(#message("Not logged in")));
+    };
+
+    // Remove specific key
+    session.remove("temp_data");
+
+    // Clear entire session
+    session.clear();
+
+    context.buildResponse(#ok, #text("Session updated"));
+}
+```
+
+### CSRF
+
+Provides Cross-Site Request Forgery protection with configurable token validation.
+
+```motoko
+// Use with session storage
+CSRFMiddleware.new(CSRFMiddleware.defaultConfig({
+    get = func() : ?Text {
+        // Get token from session or other storage
+        null
+    };
+    set = func(token : Text) {
+        // Store token in session or other storage
+    };
+}))
+
+// Or with custom configuration
+CSRFMiddleware.new({
+    tokenTTL = 1_800_000_000_000; // 30 minutes in nanoseconds
+    tokenStorage = myTokenStorage;
+    headerName = "X-CSRF-Token";
+    protectedMethods = [#post, #put, #patch, #delete];
+    exemptPaths = ["/api/public"];
+    tokenRotation = #perRequest;
+})
+```
+
+CSRF tokens are automatically generated for GET requests and validated for protected HTTP methods. Include the token in your forms or AJAX requests using the configured header name.
+
 ### Assets
 
 Serves static files with configurable caching.
@@ -563,6 +655,9 @@ Routes: `GET /auth/{provider}/login`, `GET /auth/{provider}/callback`, `POST /au
 Liminal provides a wrapper around the Internet Computer's asset canister functionality:
 
 ```motoko
+import HttpAssets "mo:http-assets";
+import AssetCanister "mo:liminal/AssetCanister";
+
 // Initialize asset store
 stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
 assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
@@ -594,15 +689,30 @@ public shared query func get(args : Assets.GetArgs) : async Assets.EncodedAsset 
 Custom error handling can be configured via the app's `errorSerializer`:
 
 ```motoko
+import Json "mo:json";
+import Text "mo:new-base/Text";
+import Option "mo:new-base/Option";
+
 let app = Liminal.App({
     middleware = [ /* ... */ ];
     errorSerializer = func(error : HttpContext.HttpError) : HttpContext.ErrorSerializerResponse {
-        let body = #object_([
-            ("error", #string("Custom Error")),
-            ("code", #number(#int(error.statusCode))),
-            ("message", #string(Option.get(error.message, ""))),
-            // Additional error fields...
-        ])
+        let body = switch (error.data) {
+            case (#none) #object_([
+                ("error", #string("Error")),
+                ("code", #number(#int(error.statusCode))),
+            ]);
+            case (#message(message)) #object_([
+                ("error", #string("Custom Error")),
+                ("code", #number(#int(error.statusCode))),
+                ("message", #string(message)),
+            ]);
+            case (#rfc9457(details)) #object_([
+                ("error", #string("Custom Error")),
+                ("code", #number(#int(error.statusCode))),
+                ("type", #string(details.type_)),
+                // Additional fields from RFC 9457...
+            ]);
+        }
         |> Json.stringify(_, null)
         |> Text.encodeUtf8(_);
 
