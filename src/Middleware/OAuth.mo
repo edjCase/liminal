@@ -4,7 +4,6 @@ import Text "mo:new-base/Text";
 import Map "mo:new-base/Map";
 import Time "mo:new-base/Time";
 import Random "mo:base/Random";
-import Buffer "mo:base/Buffer";
 import Nat "mo:new-base/Nat";
 import App "../App";
 import IC "mo:ic";
@@ -51,11 +50,9 @@ module {
     public type ProviderConfig = {
         name : Text; // e.g., "Google", "GitHub"
         clientId : Text;
-        clientSecret : Text; // TODO this is insecure even with environment variables, need secure method, canister encryption?
         authorizationEndpoint : Text;
         tokenEndpoint : Text;
         scopes : [Text];
-        usePKCE : Bool; // Optional PKCE support
     };
 
     public type OAuthStore = {
@@ -66,7 +63,7 @@ module {
 
     public type OAuthContext = {
         state : Text;
-        codeVerifier : ?Text; // For PKCE
+        codeVerifier : Text;
         redirectAfterAuth : ?Text;
         createdAt : Int;
     };
@@ -111,51 +108,45 @@ module {
             siteUrlWithSlash # "auth/" # Text.toLower(providerName) # "/callback";
         };
 
-        func buildAuthUrl(providerConfig : ProviderConfig, state : Text, codeChallenge : ?Text) : Text {
+        func buildAuthUrl(providerConfig : ProviderConfig, state : Text, codeChallenge : Text) : Text {
             let baseUrl = providerConfig.authorizationEndpoint;
-            let params = Buffer.Buffer<Text>(8);
+            let paramsText = [
+                ("response_type", "code"),
+                ("client_id", providerConfig.clientId),
+                ("redirect_uri", getRedirectUri(providerConfig.name)),
+                ("state", state),
+                ("scope", Text.join(" ", providerConfig.scopes.vals())),
+                ("code_challenge", codeChallenge),
+                ("code_challenge_method", "S256"),
+            ]
+            |> Iter.map(
+                _,
+                func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
+            )
+            |> Text.join("&", _);
 
-            params.add("response_type=code");
-            params.add("client_id=" # providerConfig.clientId);
-            params.add("redirect_uri=" # getRedirectUri(providerConfig.name));
-            params.add("state=" # state);
-            params.add("scope=" # Text.join(" ", providerConfig.scopes.vals()));
-
-            switch (codeChallenge) {
-                case (?challenge) {
-                    params.add("code_challenge=" # challenge);
-                    params.add("code_challenge_method=S256");
-                };
-                case (null) {};
-            };
-
-            baseUrl # "?" # Text.join("&", params.vals());
+            baseUrl # "?" # params;
         };
 
         func exchangeCodeForToken(
             providerConfig : ProviderConfig,
             context : Liminal.HttpContext,
             code : Text,
-            codeVerifier : ?Text,
+            codeVerifier : Text,
         ) : async* Result.Result<TokenInfo, Text> {
-            let formData = List.empty<(Text, Text)>();
-            List.add(formData, ("grant_type", "authorization_code"));
-            List.add(formData, ("code", code));
-            List.add(formData, ("redirect_uri", getRedirectUri(providerConfig.name)));
-            List.add(formData, ("client_id", providerConfig.clientId));
-            List.add(formData, ("client_secret", providerConfig.clientSecret));
-            switch (codeVerifier) {
-                case (?verifier) List.add(formData, ("code_verifier", verifier));
-                case (null) {};
-            };
-            let formDataText = Text.join(
-                "&",
-                formData |> List.map<(Text, Text), Text>(
-                    _,
-                    func(pair : (Text, Text)) : Text = pair.0 # "=" # pair.1,
-                )
-                |> List.values(_),
-            );
+            let formDataText : Text = [
+                ("grant_type", "authorization_code"),
+                ("code", code),
+                ("redirect_uri", getRedirectUri(providerConfig.name)),
+                ("client_id", providerConfig.clientId),
+                ("code_verifier", codeVerifier),
+            ]
+            |> Iter.map(
+                _,
+                func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
+            )
+            |> Text.join("&", _);
+
             let tokenExchangeRequest : IC.HttpRequestArgs = {
                 url = providerConfig.tokenEndpoint;
                 max_response_bytes = null; // config overridable
@@ -211,16 +202,13 @@ module {
             let stateBytes = await Random.blob();
             let state : Text = BaseX.toBase64(stateBytes.vals(), true);
 
-            let (codeVerifier, codeChallenge) = if (providerConfig.usePKCE) {
-                let verifierBytes = await Random.blob();
-                let challenge = BaseX.toBase64(Sha256.fromBlob(#sha256, verifierBytes).vals(), true);
-                let verifier = BaseX.toBase64(verifierBytes.vals(), true);
-                (?verifier, ?challenge);
-            } else (null, null);
+            let verifierBytes = await Random.blob();
+            let codeChallenge = BaseX.toBase64(Sha256.fromBlob(#sha256, verifierBytes).vals(), true);
+            let verifier = BaseX.toBase64(verifierBytes.vals(), true);
 
             let oauthContext : OAuthContext = {
                 state = state;
-                codeVerifier = codeVerifier;
+                codeVerifier = verifier;
                 redirectAfterAuth = context.getQueryParam("redirect");
                 createdAt = Time.now();
             };

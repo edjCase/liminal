@@ -8,7 +8,7 @@ import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
 import Route "./Route";
 import Prelude "mo:base/Prelude";
-import Path "./Path";
+import Path "mo:url-kit/Path";
 import Identity "Identity";
 import RouteContext "RouteContext";
 

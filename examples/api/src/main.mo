@@ -74,9 +74,8 @@ shared ({ caller = initializer }) actor class Actor() = self {
             OAuthMiddleware.GitHub with
             name = "GitHub";
             clientId = "Ov23liYZ5V22rjHKThEN";
-            clientSecret = "52716f17326479e63509d5d74879ed3493e4235e"; // WARNING: INSECURE! DO NOT USE IN PRODUCTION!
             scopes = ["read:user", "user:email"];
-            usePKCE = true;
+            // PKCE is now mandatory for security - no client secrets needed
         }];
         siteUrl = "http://uxrrr-q7777-77774-qaaaq-cai.raw.localhost:4943";
         store = OAuthMiddleware.inMemoryStore();

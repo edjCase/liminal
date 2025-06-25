@@ -7,18 +7,18 @@ import Runtime "mo:new-base/Runtime";
 import Iter "mo:new-base/Iter";
 import Blob "mo:new-base/Blob";
 import IterTools "mo:itertools/Iter";
-import Uri "./Uri";
 import HttpMethod "./HttpMethod";
 import Json "mo:json";
-import Path "Path";
 import JWT "mo:jwt";
 import Nat "mo:base/Nat";
-import Identity "Identity";
+import Identity "./Identity";
 import Types "./Types";
-import ContentNegotiation "ContentNegotiation";
+import ContentNegotiation "./ContentNegotiation";
 import Serde "mo:serde";
-import Logging "Logging";
-import Session "Session";
+import Logging "./Logging";
+import Session "./Session";
+import Path "mo:url-kit/Path";
+import UrlKit "mo:url-kit";
 
 module {
     public type SuccessHttpStatusCode = {
@@ -195,7 +195,7 @@ module {
         public let log = options.logger.log;
         public var session : ?Session.Session = null;
 
-        var pathQueryCache : ?(Text, [(Text, Text)]) = null;
+        var urlCache : ?UrlKit.Url = null;
 
         public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Runtime.trap("Unsupported HTTP method: " # request.method);
 
@@ -221,28 +221,36 @@ module {
             return identity;
         };
 
-        public func getPath() : Path.Path {
-            Path.parse(getPathQueryInternal().0); // TODO cache or not?
-        };
-
-        public func getQueryParams() : [(Text, Text)] {
-            getPathQueryInternal().1;
-        };
-
-        private func getPathQueryInternal() : (Text, [(Text, Text)]) {
-            switch (pathQueryCache) {
+        public func getUrlData() : UrlKit.Url {
+            switch (urlCache) {
                 case (?v) v;
                 case (null) {
-                    let v = Uri.parseToComponents(request.url);
-                    pathQueryCache := ?v;
-                    v;
+                    // TODO is there a better way to handle this than trap?
+                    let parsedUrl = switch (UrlKit.fromText(request.url)) {
+                        case (#ok(v)) v;
+                        case (#err(err)) Runtime.trap("Invalid URL '" # request.url # "'. Error: " # err);
+                    };
+                    urlCache := ?parsedUrl;
+                    parsedUrl;
                 };
             };
         };
 
+        public func getPath() : Path.Path {
+            let url = getUrlData();
+            url.path;
+        };
+
+        public func getQueryParams() : [(Text, Text)] {
+            let url = getUrlData();
+            url.queryParams;
+        };
+
         public func getQueryParam(key : Text) : ?Text {
+            let url = getUrlData();
+
             // TODO optimize this
-            let ?queryKeyValue = getQueryParams().vals()
+            let ?queryKeyValue = url.queryParams.vals()
             |> IterTools.find(
                 _,
                 func((k, _) : (Text, Text)) : Bool = TextX.equalIgnoreCase(k, key),

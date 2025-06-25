@@ -25,7 +25,7 @@ Key features:
 - 📝 **Logging**: Built-in logging system with configurable levels and custom logger support
 
 Experimental features:
-🔐 **OAuth Authentication**: Built-in OAuth 2.0 support for Google, GitHub, and custom providers (INSECURE)
+🔐 **OAuth Authentication**: Built-in OAuth 2.0 support with PKCE for Google, GitHub, and custom providers
 
 ## Package
 
@@ -528,9 +528,7 @@ CSPMiddleware.new({
 
 ### OAuth (Experimental)
 
-⚠️ **Warning: Experimental and insecure - client secrets stored in plain text. Not production ready.**
-
-Provides OAuth 2.0 authentication with popular providers.
+Provides secure OAuth 2.0 authentication with PKCE for popular providers. PKCE (Proof Key for Code Exchange) is used for all OAuth flows, eliminating the need to store client secrets.
 
 ```motoko
 import OAuthMiddleware "mo:liminal/Middleware/OAuth";
@@ -540,9 +538,8 @@ let oauthConfig = {
         OAuthMiddleware.GitHub with
         name = "GitHub";
         clientId = "your-client-id";
-        clientSecret = "your-client-secret"; // INSECURE!
         scopes = ["read:user", "user:email"];
-        usePKCE = true;
+        // PKCE is mandatory - no client secrets needed
     }];
     siteUrl = "https://your-canister-url.ic0.app";
     store = OAuthMiddleware.inMemoryStore();
