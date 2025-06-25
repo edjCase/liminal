@@ -2,7 +2,7 @@ import HttpContext "mo:liminal/HttpContext";
 import HttpMethod "mo:liminal/HttpMethod";
 import Iter "mo:new-base/Iter";
 import Text "mo:base/Text";
-import Path "mo:liminal/Path";
+import Path "mo:url-kit/Path";
 import App "mo:liminal/App";
 
 module {

@@ -5,6 +5,7 @@ import HttpContext "./HttpContext";
 import AppModule "./App";
 import CandidRepresentationNegotation "./CandidRepresentationNegotiation";
 import Logging "Logging";
+import RouteContext "./RouteContext";
 
 module {
     public type Router = RouterModule.Router;
@@ -19,6 +20,8 @@ module {
 
     public type RawUpdateHttpRequest = HttpTypes.UpdateRequest;
     public type RawUpdateHttpResponse = HttpTypes.UpdateResponse;
+
+    public type RouteContext = RouteContext.RouteContext;
 
     public type App = AppModule.App;
     public func App(data : AppModule.Data) : App = AppModule.App(data);
