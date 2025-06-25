@@ -8,7 +8,6 @@ import Nat "mo:new-base/Nat";
 import App "../App";
 import IC "mo:ic";
 import Serde "mo:serde";
-import List "mo:new-base/List";
 import BaseX "mo:base-x-encoder";
 import Option "mo:new-base/Option";
 import Array "mo:new-base/Array";

@@ -22,7 +22,13 @@ module {
         // Parse integer part
         switch (intPartText) {
             case ("" or "0") (); // Continue to decimal part
-            case ("1") return ?1000; // Can't be higher than 1000, so just return early
+            case ("1") {
+                // For integer part "1", decimal part must be 0 or missing
+                switch (decimalPartTextOrNull) {
+                    case (null or ?"" or ?"0" or ?"00" or ?"000") return ?1000;
+                    case (_) return null; // Invalid - can't be greater than 1.0
+                };
+            };
             case (_) return null; // Has to be 0 or 1 or empty string
         };
 
