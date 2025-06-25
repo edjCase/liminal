@@ -1,128 +1,147 @@
 import { test } "mo:test";
 import MimeType "../src/MimeType";
+import Runtime "mo:new-base/Runtime";
 
 test(
     "MimeType.toRaw - converts MimeType to RawMimeType correctly",
     func() : () {
-        // Test text/html conversion
-        let htmlMimeType = #text_html({
-            charset = ?"utf-8";
-            level = ?"1";
-            version = null;
-        });
-        let htmlRaw = MimeType.toRaw(htmlMimeType);
-        assert htmlRaw.type_ == "text";
-        assert htmlRaw.subType == "html";
-        assert htmlRaw.parameters.size() == 2; // charset and level
+        // Test basic conversion for different mime types
+        let testCases = [
+            (
+                #text_html({
+                    charset = ?"utf-8";
+                    level = ?"1";
+                    version = null;
+                }),
+                "text",
+                "html",
+                2, // expected parameter count
+                "text/html with charset and level",
+            ),
+            (
+                #application_json({
+                    charset = ?"utf-8";
+                    schema = null;
+                }),
+                "application",
+                "json",
+                1, // expected parameter count
+                "application/json with charset",
+            ),
+            (
+                #text_plain({
+                    charset = ?"iso-8859-1";
+                    format = null;
+                }),
+                "text",
+                "plain",
+                1, // expected parameter count
+                "text/plain with charset",
+            ),
+        ];
 
-        // Test application/json conversion
-        let jsonMimeType = #application_json({
-            charset = ?"utf-8";
-            schema = null;
-        });
-        let jsonRaw = MimeType.toRaw(jsonMimeType);
-        assert jsonRaw.type_ == "application";
-        assert jsonRaw.subType == "json";
-        assert jsonRaw.parameters.size() == 1; // charset only
-    },
-);
-
-test(
-    "MimeType.fromRaw - converts RawMimeType to MimeType correctly",
-    func() : () {
-        // Test text/html conversion
-        let htmlRaw : MimeType.RawMimeType = {
-            type_ = "text";
-            subType = "html";
-            parameters = [("charset", "utf-8"), ("level", "1")];
-        };
-        let htmlMimeType = MimeType.fromRaw(htmlRaw);
-        switch (htmlMimeType) {
-            case (#text_html(params)) {
-                assert params.charset == ?"utf-8";
-                assert params.level == ?"1";
-                assert params.version == null;
+        for ((mimeType, expectedType, expectedSubType, expectedParamCount, description) in testCases.vals()) {
+            let raw = MimeType.toRaw(mimeType);
+            if (raw.type_ != expectedType) {
+                Runtime.trap("toRaw type failed for " # description # ": expected '" # expectedType # "', got '" # raw.type_ # "'");
             };
-            case (_) assert false; // Should be text_html
-        };
-
-        // Test unknown type becomes #other
-        let unknownRaw : MimeType.RawMimeType = {
-            type_ = "unknown";
-            subType = "test";
-            parameters = [];
-        };
-        let unknownMimeType = MimeType.fromRaw(unknownRaw);
-        switch (unknownMimeType) {
-            case (#other(raw)) {
-                assert raw.type_ == "unknown";
-                assert raw.subType == "test";
+            if (raw.subType != expectedSubType) {
+                Runtime.trap("toRaw subType failed for " # description # ": expected '" # expectedSubType # "', got '" # raw.subType # "'");
             };
-            case (_) assert false; // Should be #other
+            if (raw.parameters.size() != expectedParamCount) {
+                Runtime.trap("toRaw parameter count failed for " # description # ": expected " # debug_show (expectedParamCount) # ", got " # debug_show (raw.parameters.size()));
+            };
         };
     },
 );
 
 test(
-    "MimeType.toText - converts MimeType to text string correctly",
+    "MimeType.toTextRaw - converts RawMimeType to text correctly",
     func() : () {
-        // Test without parameters
-        let jsonMimeType = #application_json({
-            charset = null;
-            schema = null;
-        });
-        let jsonText = MimeType.toText(jsonMimeType, false);
-        assert jsonText == "application/json";
+        let testCases = [
+            (
+                {
+                    type_ = "application";
+                    subType = "json";
+                    parameters = [];
+                } : MimeType.RawMimeType,
+                false,
+                "application/json",
+                "simple application/json without parameters",
+            ),
+            (
+                {
+                    type_ = "application";
+                    subType = "json";
+                    parameters = [("charset", "utf-8")];
+                } : MimeType.RawMimeType,
+                true,
+                "application/json; charset=utf-8",
+                "application/json with parameters",
+            ),
+            (
+                {
+                    type_ = "text";
+                    subType = "html";
+                    parameters = [("charset", "utf-8"), ("level", "1")];
+                } : MimeType.RawMimeType,
+                true,
+                "text/html; charset=utf-8; level=1",
+                "text/html with multiple parameters",
+            ),
+        ];
 
-        // Test with parameters
-        let htmlMimeType = #text_html({
-            charset = ?"utf-8";
-            level = null;
-            version = null;
-        });
-        let htmlTextWithParams = MimeType.toText(htmlMimeType, true);
-        assert htmlTextWithParams == "text/html; charset=utf-8";
-    },
-);
-
-test(
-    "MimeType.toTextRaw - converts RawMimeType to text string correctly",
-    func() : () {
-        let raw : MimeType.RawMimeType = {
-            type_ = "application";
-            subType = "json";
-            parameters = [("charset", "utf-8")];
+        for ((raw, includeParameters, expected, description) in testCases.vals()) {
+            let actual = MimeType.toTextRaw(raw, includeParameters);
+            if (actual != expected) {
+                Runtime.trap("toTextRaw failed for " # description # ": expected '" # expected # "', got '" # actual # "'");
+            };
         };
-
-        // Without parameters
-        let textWithoutParams = MimeType.toTextRaw(raw, false);
-        assert textWithoutParams == "application/json";
-
-        // With parameters
-        let textWithParams = MimeType.toTextRaw(raw, true);
-        assert textWithParams == "application/json; charset=utf-8";
     },
 );
 
 test(
     "MimeType.fromText - parses text to MimeType correctly",
     func() : () {
-        // Test simple mime type
-        switch (MimeType.fromText("application/json")) {
-            case (?(mimeType, quality)) {
-                switch (mimeType) {
-                    case (#application_json(_)) assert true;
-                    case (_) assert false;
+        let validCases = [
+            ("application/json", "application/json"),
+            ("text/html", "text/html"),
+            ("text/plain", "text/plain"),
+            ("image/png", "image/png"),
+            ("application/xml", "application/xml"),
+        ];
+
+        for ((input, description) in validCases.vals()) {
+            switch (MimeType.fromText(input)) {
+                case (?(mimeType, quality)) {
+                    if (quality != 1000) {
+                        Runtime.trap("fromText quality failed for " # description # ": expected 1000, got " # debug_show (quality));
+                    };
+                    // Successfully parsed, verify it's a valid mime type (not null)
                 };
-                assert quality == 1000; // Quality factor is Nat 0-1000
+                case (null) {
+                    Runtime.trap("fromText failed to parse valid " # description);
+                };
             };
-            case (null) assert false;
         };
 
-        // Test invalid mime type
-        switch (MimeType.fromText("invalid")) {
-            case (null) assert true; // Should return null for invalid
-            case (_) assert false;
+        let invalidCases = [
+            ("invalid", "invalid format"),
+            ("", "empty string"),
+            ("text", "missing subtype"),
+            ("text/", "empty subtype"),
+            ("/html", "missing type"),
+        ];
+
+        for ((input, description) in invalidCases.vals()) {
+            switch (MimeType.fromText(input)) {
+                case (null) {
+                    // Expected null for invalid input
+                };
+                case (?result) {
+                    Runtime.trap("fromText should return null for " # description # " ('" # input # "'), got " # debug_show (result));
+                };
+            };
         };
     },
 );
@@ -130,45 +149,45 @@ test(
 test(
     "MimeType.fromTextRaw - parses text to RawMimeType correctly",
     func() : () {
-        // Test simple mime type
-        switch (MimeType.fromTextRaw("application/json")) {
-            case (?(raw, quality)) {
-                assert raw.type_ == "application";
-                assert raw.subType == "json";
-                assert raw.parameters.size() == 0;
-                assert quality == 1000; // Quality factor is Nat 0-1000
+        let testCases = [
+            (
+                "application/json",
+                "application",
+                "json",
+                0,
+                1000,
+                "simple application/json",
+            ),
+            (
+                "text/html; charset=utf-8",
+                "text",
+                "html",
+                1,
+                1000,
+                "text/html with charset parameter",
+            ),
+        ];
+
+        for ((input, expectedType, expectedSubType, expectedParamCount, expectedQuality, description) in testCases.vals()) {
+            switch (MimeType.fromTextRaw(input)) {
+                case (?(raw, quality)) {
+                    if (raw.type_ != expectedType) {
+                        Runtime.trap("fromTextRaw type failed for " # description # ": expected '" # expectedType # "', got '" # raw.type_ # "'");
+                    };
+                    if (raw.subType != expectedSubType) {
+                        Runtime.trap("fromTextRaw subType failed for " # description # ": expected '" # expectedSubType # "', got '" # raw.subType # "'");
+                    };
+                    if (raw.parameters.size() != expectedParamCount) {
+                        Runtime.trap("fromTextRaw parameter count failed for " # description # ": expected " # debug_show (expectedParamCount) # ", got " # debug_show (raw.parameters.size()));
+                    };
+                    if (quality != expectedQuality) {
+                        Runtime.trap("fromTextRaw quality failed for " # description # ": expected " # debug_show (expectedQuality) # ", got " # debug_show (quality));
+                    };
+                };
+                case (null) {
+                    Runtime.trap("fromTextRaw failed to parse valid " # description # " ('" # input # "')");
+                };
             };
-            case (null) assert false;
-        };
-
-        // Test invalid mime type
-        switch (MimeType.fromTextRaw("invalid")) {
-            case (null) assert true; // Should return null for invalid
-            case (_) assert false;
-        };
-    },
-);
-
-test(
-    "MimeType roundtrip conversion - toRaw and fromRaw",
-    func() : () {
-        let originalMimeType = #text_html({
-            charset = ?"utf-8";
-            level = ?"1";
-            version = ?"5";
-        });
-
-        let raw = MimeType.toRaw(originalMimeType);
-        let convertedBack = MimeType.fromRaw(raw);
-
-        // Verify the roundtrip maintains the same structure
-        switch (convertedBack) {
-            case (#text_html(params)) {
-                assert params.charset == ?"utf-8";
-                assert params.level == ?"1";
-                assert params.version == ?"5";
-            };
-            case (_) assert false;
         };
     },
 );

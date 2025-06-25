@@ -460,6 +460,28 @@ module {
     };
 
     public func getStatusCodeLabel(code : Nat) : Text = switch (code) {
+        // 2xx Success
+        case (200) "OK";
+        case (201) "Created";
+        case (202) "Accepted";
+        case (203) "Non-Authoritative Information";
+        case (204) "No Content";
+        case (205) "Reset Content";
+        case (206) "Partial Content";
+        case (207) "Multi-Status";
+        case (208) "Already Reported";
+        case (226) "IM Used";
+
+        // 3xx Redirection
+        case (300) "Multiple Choices";
+        case (301) "Moved Permanently";
+        case (302) "Found";
+        case (303) "See Other";
+        case (304) "Not Modified";
+        case (305) "Use Proxy";
+        case (307) "Temporary Redirect";
+        case (308) "Permanent Redirect";
+
         // 4xx Client Errors
         case (400) "Bad Request";
         case (401) "Unauthorized";

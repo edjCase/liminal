@@ -648,6 +648,12 @@ module {
 
         let ?type_ = mediaTypeParts.next() else return null;
         let ?subType = mediaTypeParts.next() else return null;
+        let trimmedType = Text.trim(type_, #char(' '));
+        let trimmedSubType = Text.trim(subType, #char(' '));
+
+        if (trimmedType == "" or trimmedSubType == "") {
+            return null;
+        };
 
         // Parse parameters
         let parameters = Buffer.Buffer<(Text, Text)>(4);
@@ -670,8 +676,8 @@ module {
 
         ?(
             {
-                type_ = Text.trim(type_, #char(' '));
-                subType = Text.trim(subType, #char(' '));
+                type_ = trimmedType;
+                subType = trimmedSubType;
                 parameters = Buffer.toArray(parameters);
             },
             qualityFactor,

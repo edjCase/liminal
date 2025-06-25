@@ -1,5 +1,6 @@
 import { test; suite } "mo:test";
 import Logging "../src/Logging";
+import Runtime "mo:new-base/Runtime";
 
 suite(
     "Logging module tests",
@@ -8,12 +9,21 @@ suite(
         test(
             "levelToText - converts all log levels to correct text",
             func() : () {
-                assert Logging.levelToText(#verbose) == "VERBOSE";
-                assert Logging.levelToText(#debug_) == "DEBUG";
-                assert Logging.levelToText(#info) == "INFO";
-                assert Logging.levelToText(#warn) == "WARN";
-                assert Logging.levelToText(#error) == "ERROR";
-                assert Logging.levelToText(#fatal) == "FATAL";
+                let testCases = [
+                    (#verbose, "VERBOSE"),
+                    (#debug_, "DEBUG"),
+                    (#info, "INFO"),
+                    (#warn, "WARN"),
+                    (#error, "ERROR"),
+                    (#fatal, "FATAL"),
+                ];
+
+                for ((level, expected) in testCases.vals()) {
+                    let actual = Logging.levelToText(level);
+                    if (actual != expected) {
+                        Runtime.trap("levelToText failed for " # debug_show (level) # ": expected '" # expected # "', got '" # actual # "'");
+                    };
+                };
             },
         );
 
@@ -23,12 +33,19 @@ suite(
                 // Test that debugLogger exists and can be called
                 // Note: We can't easily test Debug.print output in unit tests
                 // but we can verify the logger interface works
-                Logging.debugLogger.log(#info, "Test message");
-                Logging.debugLogger.log(#error, "Test error message");
-                Logging.debugLogger.log(#debug_, "Test debug message");
+                let testCases = [
+                    (#info, "Test message"),
+                    (#error, "Test error message"),
+                    (#debug_, "Test debug message"),
+                    (#verbose, "Test verbose message"),
+                    (#warn, "Test warn message"),
+                    (#fatal, "Test fatal message"),
+                ];
 
-                // Test passes if no runtime errors occur
-                assert true;
+                for ((level, message) in testCases.vals()) {
+                    // Test passes if no runtime errors occur during logging
+                    Logging.debugLogger.log(level, message);
+                };
             },
         );
 
@@ -44,15 +61,19 @@ suite(
                     };
                 };
 
-                // Test all log levels work with custom logger
-                customLogger.log(#verbose, "verbose message");
-                customLogger.log(#debug_, "debug message");
-                customLogger.log(#info, "info message");
-                customLogger.log(#warn, "warn message");
-                customLogger.log(#error, "error message");
-                customLogger.log(#fatal, "fatal message");
+                let testCases = [
+                    (#verbose, "verbose message"),
+                    (#debug_, "debug message"),
+                    (#info, "info message"),
+                    (#warn, "warn message"),
+                    (#error, "error message"),
+                    (#fatal, "fatal message"),
+                ];
 
-                assert true;
+                for ((level, message) in testCases.vals()) {
+                    // Test passes if no runtime errors occur during logging
+                    customLogger.log(level, message);
+                };
             },
         );
     },
