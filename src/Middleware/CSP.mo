@@ -1,6 +1,7 @@
 import App "../App";
 import HttpContext "../HttpContext";
 import CSP "../CSP";
+import Debug "mo:base/Debug";
 
 module {
     public type Options = CSP.Options;
@@ -16,6 +17,7 @@ module {
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (next()) {
                     case (#response(response)) {
+                        context.log(#verbose, "Adding CSP headers to response");
                         let updatedResponse = CSP.addHeadersToResponse(response, options);
                         #response(updatedResponse);
                     };

@@ -230,7 +230,7 @@ module {
                         case (#ok(v)) v;
                         case (#err(err)) Runtime.trap("Invalid URL '" # request.url # "'. Error: " # err);
                     };
-                    urlCache := ?parsedUrl;
+                    urlCache := ?UrlKit.normalize(parsedUrl);
                     parsedUrl;
                 };
             };

@@ -11,6 +11,7 @@ import Prelude "mo:base/Prelude";
 import Path "mo:url-kit/Path";
 import Identity "Identity";
 import RouteContext "RouteContext";
+import HttpMethod "./HttpMethod";
 
 module Module {
 
@@ -267,9 +268,12 @@ module Module {
             httpContext : HttpContext.HttpContext
         ) : ?RouteContext.RouteContext {
             let path = httpContext.getPath();
+            httpContext.log(#verbose, "Finding route for path: '" # Path.toText(path) # "' with method " # HttpMethod.toText(httpContext.method));
             label f for (route in routes.vals()) {
+                httpContext.log(#verbose, "Attempting to match to route " # debug_show (route.pathSegments) # " with method " # HttpMethod.toText(route.method));
                 if (route.method != httpContext.method) continue f;
                 let ?{ params } = matchPath(route.pathSegments, path) else continue f;
+                httpContext.log(#debug_, "Route successfully matched. Path: " # debug_show (route.pathSegments) # ", Method: " # HttpMethod.toText(route.method));
                 return ?RouteContext.RouteContext(
                     httpContext,
                     route.handler,
@@ -341,6 +345,13 @@ module Module {
             };
 
             return null;
+        };
+
+        if (expected.size() == 0 and actual.size() == 0) {
+            // Special case: both empty means a match with no params
+            return ?{
+                params = [];
+            };
         };
 
         // Start the recursive matching
