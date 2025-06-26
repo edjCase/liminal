@@ -44,6 +44,7 @@ module {
     };
 
     public type Middleware = {
+        name : Text;
         handleQuery : QueryFunc;
         handleUpdate : UpdateFunc;
     };
@@ -68,23 +69,32 @@ module {
                 },
             );
 
-            func handle(middleware : Middleware, next : Next) : QueryResult {
-                // Only run if the middleware has a handleQuery function
-                // Otherwise, skip to the next middleware
-                middleware.handleQuery(httpContext, next);
-            };
-
             // Helper function to create the middleware chain
             func createNext(index : Nat) : Next {
                 func() : QueryResult {
+
+                    // Ensure we restore the original logger
                     if (index >= data.middleware.size()) {
                         // If no middleware handled the request, return not found
                         return #response(getNotFoundResponse());
                     };
 
+                    let originalLogger = httpContext.logger;
+
+                    let next = func() : QueryResult {
+                        httpContext.logger := originalLogger; // Restore original logger
+                        httpContext.log(#verbose, "Finished handling query with middleware: " # middleware.name);
+                        createNext(index + 1)();
+                    };
+
+                    // Only run if the middleware has a handleQuery function
+                    // Otherwise, skip to the next middleware
+
                     let middleware = data.middleware[index];
-                    let next = createNext(index + 1);
-                    handle(middleware, next);
+                    httpContext.log(#verbose, "Handling query with middleware: " # middleware.name);
+                    httpContext.logger := Logging.withLogScope(originalLogger, "{Query} " # middleware.name);
+                    // Call the middleware's handleQuery function
+                    middleware.handleQuery(httpContext, next);
                 };
             };
 
@@ -92,9 +102,8 @@ module {
                 return getHttpNotFoundResponse();
             };
             // Start the middleware chain with the first middleware
-            let middleware = data.middleware[0];
-            let next = createNext(1);
-            switch (handle(middleware, next)) {
+            let startMiddlewareChain = createNext(0);
+            switch (startMiddlewareChain()) {
                 case (#upgrade) {
                     // Upgrade to update request if nothing is handled by the query middleware
                     {
@@ -129,7 +138,15 @@ module {
             func callMiddlewareUpdate(middleware : Middleware, next : NextAsync) : async* HttpResponse {
                 // Only run if the middleware has a handleUpdate function
                 // Otherwise, skip to the next middleware
-                await* middleware.handleUpdate(httpContext, next);
+
+                let originalLogger = httpContext.logger;
+                httpContext.logger := Logging.withLogScope(originalLogger, "{Update} " # middleware.name);
+                try {
+                    await* middleware.handleUpdate(httpContext, next);
+                } finally {
+                    // Ensure we restore the original logger even if an error occurs
+                    httpContext.logger := originalLogger; // Restore original logger
+                };
             };
 
             // Helper function to create the middleware chain

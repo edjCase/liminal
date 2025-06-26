@@ -33,6 +33,7 @@ module {
         // Function to compress a response if appropriate
 
         {
+            name = "Compression";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (next()) {
                     case (#response(response)) {

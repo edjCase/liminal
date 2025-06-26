@@ -1,7 +1,6 @@
 import App "../App";
 import HttpContext "../HttpContext";
 import CSP "../CSP";
-import Debug "mo:base/Debug";
 
 module {
     public type Options = CSP.Options;
@@ -14,6 +13,7 @@ module {
 
     public func new(options : Options) : App.Middleware {
         {
+            name = "CSP";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (next()) {
                     case (#response(response)) {

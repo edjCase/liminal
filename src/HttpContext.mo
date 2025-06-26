@@ -185,14 +185,14 @@ module {
 
     public class HttpContext(
         r : HttpTypes.UpdateRequest,
-        certificate_version : ?Nat16,
+        certificateVersion_ : ?Nat16,
         options : Options,
     ) = self {
         public let request : HttpTypes.UpdateRequest = r;
-        public let certificateVersion : ?Nat16 = certificate_version;
+        public let certificateVersion : ?Nat16 = certificateVersion_;
         public let errorSerializer : ErrorSerializer = options.errorSerializer;
         public let candidRepresentationNegotiator : CandidRepresentationNegotiator = options.candidRepresentationNegotiator;
-        public let log = options.logger.log;
+        public var logger = options.logger;
         public var session : ?Session.Session = null;
 
         var urlCache : ?UrlKit.Url = null;
@@ -200,6 +200,10 @@ module {
         public let ?method : ?HttpMethod.HttpMethod = HttpMethod.fromText(request.method) else Runtime.trap("Unsupported HTTP method: " # request.method);
 
         private var identity : ?Identity.Identity = null;
+
+        public func log(level : Logging.LogLevel, message : Text) : () {
+            logger.log(level, message);
+        };
 
         public func setIdentityJWT(jwt : JWT.Token, isValid : Bool) {
             let id = switch (JWT.getPayloadValue(jwt, "sub")) {

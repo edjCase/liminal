@@ -185,7 +185,6 @@ test(
         let response = app.http_request(request);
 
         let cspHeader = getHeader(response.headers, "Content-Security-Policy");
-        Debug.print("CSP Header: " # debug_show (response.headers));
         switch (cspHeader) {
             case (?csp) {
                 assertOptionText(cspHeader, "default-src 'self'", "CSP header should contain default-src 'self'");

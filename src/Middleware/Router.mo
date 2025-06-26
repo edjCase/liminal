@@ -9,6 +9,7 @@ module Module {
     public func new(config : Config) : App.Middleware {
         let router = Router.Router(config);
         {
+            name = "Router";
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (router.routeQuery(httpContext)) {
                     case (#response(response)) #response(response);

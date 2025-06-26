@@ -13,7 +13,7 @@ suite(
                     (#verbose, "VERBOSE"),
                     (#debug_, "DEBUG"),
                     (#info, "INFO"),
-                    (#warn, "WARN"),
+                    (#warning, "WARNING"),
                     (#error, "ERROR"),
                     (#fatal, "FATAL"),
                 ];
@@ -38,7 +38,7 @@ suite(
                     (#error, "Test error message"),
                     (#debug_, "Test debug message"),
                     (#verbose, "Test verbose message"),
-                    (#warn, "Test warn message"),
+                    (#warning, "Test warning message"),
                     (#fatal, "Test fatal message"),
                 ];
 
@@ -65,7 +65,7 @@ suite(
                     (#verbose, "verbose message"),
                     (#debug_, "debug message"),
                     (#info, "info message"),
-                    (#warn, "warn message"),
+                    (#warning, "warning message"),
                     (#error, "error message"),
                     (#fatal, "fatal message"),
                 ];

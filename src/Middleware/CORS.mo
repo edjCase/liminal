@@ -17,6 +17,7 @@ module {
 
     public func new(options : Options) : App.Middleware {
         {
+            name = "CORS";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (CORS.handlePreflight(context, options)) {
                     case (#complete(response)) {

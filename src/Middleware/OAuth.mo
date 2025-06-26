@@ -304,6 +304,7 @@ module {
         };
 
         {
+            name = "OAuth";
             handleQuery = func(context : Liminal.HttpContext, next : App.Next) : App.QueryResult {
                 let ?requestKind = parseRequest(context) else return next();
                 switch (requestKind) {

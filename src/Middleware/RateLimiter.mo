@@ -9,6 +9,7 @@ module {
         let rateLimiter = RateLimiter.RateLimiter(config);
 
         {
+            name = "Rate Limiter";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 // Can't store rate limiting info in the query and queries aren't the bottle neck
                 next();

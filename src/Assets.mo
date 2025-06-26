@@ -37,7 +37,7 @@ module {
         };
         switch (options.store.http_request(request)) {
             case (#err(e)) {
-                Debug.print("Error: " # debug_show e);
+                context.log(#error, "Error serving asset: " # debug_show (e));
                 return #noMatch;
             }; // TODO handle error
             case (#ok(response)) {
