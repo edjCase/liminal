@@ -48,16 +48,19 @@ module {
         let jwt = switch (JWT.parse(jwtText)) {
             case (#ok(parsedJwt)) parsedJwt;
             case (#err(err)) {
-                Debug.print("Failed to parse JWT: " # err);
+                context.log(#error, "JWT parse failed: " # err);
                 return;
             };
         };
 
         // 3. Validate JWT
         let isValid = switch (JWT.validate(jwt, validation)) {
-            case (#ok) true;
+            case (#ok) {
+                context.log(#debug_, "JWT validated successfully");
+                true;
+            };
             case (#err(err)) {
-                Debug.print("Failed to validate JWT: " # err);
+                context.log(#warning, "JWT validation failed: " # err);
                 false;
             };
         };

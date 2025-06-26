@@ -165,8 +165,8 @@ module {
 
             let response : IC.HttpRequestResult = await (with cycles = 230_949_972_000) IC.ic.http_request(tokenExchangeRequest);
             if (response.status != 200) {
-
                 let jsonText = Text.decodeUtf8(response.body);
+                context.log(#warning, "Token exchange failed with status: " # Nat.toText(response.status));
                 return #err(
                     "Token exchange failed with status: " # Nat.toText(response.status) # ", body: " # Option.get(jsonText, "No response body")
                 );
@@ -186,7 +186,7 @@ module {
                 id_token : ?Text; // For OpenID Connect
             } = from_candid (candidBlob) else return #err("Invalid token response format");
 
-            context.log(#info, "Token response: " # debug_show (tokenResponse));
+            context.log(#debug_, "OAuth token exchange successful");
 
             #ok({
                 accessToken = tokenResponse.access_token;
@@ -199,7 +199,7 @@ module {
         };
 
         func handleLogin(providerConfig : ProviderConfig, context : Liminal.HttpContext) : async* Liminal.HttpResponse {
-
+            context.log(#debug_, "Initiating OAuth login for provider: " # providerConfig.name);
             let stateBytes = await Random.blob();
             let state : Text = BaseX.toBase64(stateBytes.vals(), #url({ includePadding = false }));
 
@@ -222,7 +222,9 @@ module {
         };
 
         func handleCallback(providerConfig : ProviderConfig, context : Liminal.HttpContext) : async* Liminal.HttpResponse {
+            context.log(#debug_, "Processing OAuth callback for provider: " # providerConfig.name);
             let ?code = context.getQueryParam("code") else {
+                context.log(#warning, "OAuth callback missing authorization code");
                 return context.buildResponse(
                     #badRequest,
                     #error(#message("Missing authorization code")),
@@ -231,6 +233,7 @@ module {
             let oauthContext : OAuthContext = switch (context.getQueryParam("state")) {
                 case (?state) {
                     let ?oauthContext = config.store.getContext(state) else {
+                        context.log(#warning, "Invalid OAuth state parameter");
                         return context.buildResponse(
                             #badRequest,
                             #error(#message("Invalid OAuth state")),
@@ -239,15 +242,19 @@ module {
                     config.store.removeContext(state);
                     oauthContext;
                 };
-                case (null) return context.buildResponse(
-                    #badRequest,
-                    #error(#message("Missing OAuth state")),
-                );
+                case (null) {
+                    context.log(#warning, "OAuth callback missing state parameter");
+                    return context.buildResponse(
+                        #badRequest,
+                        #error(#message("Missing OAuth state")),
+                    );
+                };
             };
             // Exchange code for token
             let tokenResult = await* exchangeCodeForToken(providerConfig, context, code, oauthContext.codeVerifier);
             switch (tokenResult) {
                 case (#ok(tokenInfo)) {
+                    context.log(#info, "OAuth login successful for provider: " # providerConfig.name);
                     await* config.onLogin(
                         context,
                         {
@@ -258,6 +265,7 @@ module {
                     );
                 };
                 case (#err(error)) {
+                    context.log(#warning, "OAuth token exchange failed: " # error);
                     return context.buildResponse(
                         #unauthorized,
                         #error(#message("OAuth token exchange failed: " # error)),

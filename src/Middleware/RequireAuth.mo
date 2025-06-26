@@ -10,10 +10,14 @@ module {
         let checkRequirement = func(
             httpContext : HttpContext.HttpContext
         ) : ?Types.HttpResponse {
-            let ?identity = httpContext.getIdentity() else return ?unauthorized();
+            let ?identity = httpContext.getIdentity() else {
+                httpContext.log(#warning, "No identity found - unauthorized");
+                return ?httpContext.buildResponse(#unauthorized, #error(#message("Unauthorized")));
+            };
 
             if (not identity.isAuthenticated()) {
-                return ?unauthorized();
+                httpContext.log(#warning, "Identity not authenticated - unauthorized");
+                return ?httpContext.buildResponse(#unauthorized, #error(#message("Unauthorized")));
             };
 
             let meetsRequirement = switch (requirement) {
@@ -21,7 +25,8 @@ module {
                 case (#custom(custom)) custom(identity);
             };
             if (not meetsRequirement) {
-                return ?forbidden();
+                httpContext.log(#warning, "Authorization requirement not met - forbidden");
+                return ?httpContext.buildResponse(#forbidden, #error(#message("Forbidden")));
             };
             null;
         };
@@ -44,22 +49,6 @@ module {
                     case (null) await* next();
                 };
             };
-        };
-    };
-
-    private func unauthorized() : Types.HttpResponse {
-        {
-            statusCode = 401;
-            headers = [("WWW-Authenticate", "")]; // TODO config?
-            body = ?Text.encodeUtf8("Unauthorized"); // TODO json?
-        };
-    };
-
-    private func forbidden() : Types.HttpResponse {
-        {
-            statusCode = 403;
-            headers = [];
-            body = ?Text.encodeUtf8("Forbidden"); // TODO json?
         };
     };
 };

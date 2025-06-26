@@ -11,7 +11,10 @@ module {
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (Assets.serve(httpContext, options)) {
                     case (#noMatch) next();
-                    case (#response(response)) #response(response);
+                    case (#response(response)) {
+                        httpContext.log(#debug_, "Served static asset");
+                        #response(response);
+                    };
                 };
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {

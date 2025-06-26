@@ -160,6 +160,7 @@ module {
                 let now = Time.now();
                 let sessionExp = now + Int.abs(config.idleTimeout * 1_000_000_000);
                 let sessionId = await* config.idGenerator();
+                context.log(#debug_, "Created new session: " # sessionId);
                 let data = {
                     id = sessionId;
                     data = [];

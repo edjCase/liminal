@@ -6,7 +6,7 @@ import Random "mo:new-base/Random";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";
-import Path "../Path";
+import Path "mo:url-kit/Path";
 
 module {
     public type TokenStorage = {
@@ -128,15 +128,23 @@ module {
         };
 
         // Validate CSRF token
-        let ?requestToken = context.getHeader(config.headerName) else return #forbidden("CSRF token missing from request header: " # config.headerName);
-        let ?storedToken = config.tokenStorage.get() else return #forbidden("CSRF token not found in storage");
+        let ?requestToken = context.getHeader(config.headerName) else {
+            context.log(#warning, "CSRF token missing from header: " # config.headerName);
+            return #forbidden("CSRF token missing from request header: " # config.headerName);
+        };
+        let ?storedToken = config.tokenStorage.get() else {
+            context.log(#warning, "CSRF token not found in storage");
+            return #forbidden("CSRF token not found in storage");
+        };
 
         if (requestToken != storedToken) {
+            context.log(#warning, "CSRF token validation failed");
             return #forbidden("CSRF token validation failed");
         };
 
         // Check token expiration
         if (isTokenExpired(storedToken, config.tokenTTL)) {
+            context.log(#warning, "CSRF token expired");
             return #forbidden("CSRF token expired");
         };
 

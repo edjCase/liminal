@@ -17,7 +17,10 @@ module {
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 switch (rateLimiter.check(context)) {
                     case (#skipped) await* next();
-                    case (#limited(response)) response;
+                    case (#limited(response)) {
+                        context.log(#warning, "Request rate limited");
+                        response;
+                    };
                     case (#allowed({ responseHeaders })) {
                         let response = await* next();
                         if (responseHeaders.size() > 0) {

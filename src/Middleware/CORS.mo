@@ -19,7 +19,10 @@ module {
         {
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (CORS.handlePreflight(context, options)) {
-                    case (#complete(response)) return #response(response);
+                    case (#complete(response)) {
+                        context.log(#debug_, "Handled preflight request");
+                        return #response(response);
+                    };
                     case (#next({ corsHeaders })) {
                         switch (next()) {
                             case (#response(response)) {

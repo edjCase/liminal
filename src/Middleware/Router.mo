@@ -13,13 +13,19 @@ module Module {
                 switch (router.routeQuery(httpContext)) {
                     case (#response(response)) #response(response);
                     case (#upgrade) #upgrade;
-                    case (#noMatch) next();
+                    case (#noMatch) {
+                        httpContext.log(#verbose, "No route matched, continuing to next middleware");
+                        next();
+                    };
                 };
             };
             handleUpdate = func(httpContext : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
                 switch (await* router.routeUpdate(httpContext)) {
                     case (#response(response)) response;
-                    case (#noMatch) await* next();
+                    case (#noMatch) {
+                        httpContext.log(#verbose, "No route matched in update, continuing to next middleware");
+                        await* next();
+                    };
                 };
             };
         };
