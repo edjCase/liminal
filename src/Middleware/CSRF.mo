@@ -7,6 +7,7 @@ import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";
 import Path "mo:url-kit/Path";
+import BaseX "mo:base-x-encoder";
 
 module {
     public type TokenStorage = {
@@ -60,35 +61,26 @@ module {
         {
             name = "CSRF";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
-                switch (handleCsrf(context, config)) {
-                    case (#proceed) {
-                        // If GET request, generate a new token
-                        if (context.method == #get) {
-                            generateAndSetToken(context, config);
-                        };
-
-                        next();
-                    };
-                    case (#forbidden(message)) {
-                        #response(
-                            context.buildResponse(
-                                #forbidden,
-                                #error(#message(message)),
-                            )
-                        );
-                    };
-                };
+                // Query calls cant store CSRF tokens, so we skip them
+                next();
             };
 
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
-                switch (handleCsrf(context, config)) {
-                    case (#proceed) {
-                        // If GET request, generate a new token
-                        if (context.method == #get) {
-                            generateAndSetToken(context, config);
+                switch (await* handleCsrf(context, config)) {
+                    case (#proceed(tokenOrNull)) {
+                        let response = await* next();
+                        switch (tokenOrNull) {
+                            case (null) {
+                                // No token to add, just return the response
+                                response;
+                            };
+                            case (?token) {
+                                {
+                                    response with
+                                    headers = Array.concat(response.headers, [(config.headerName, token)]);
+                                };
+                            };
                         };
-
-                        await* next();
                     };
                     case (#forbidden(message)) {
                         context.buildResponse(
@@ -106,8 +98,8 @@ module {
     };
 
     // Main CSRF logic
-    private func handleCsrf(context : HttpContext.HttpContext, config : Config) : {
-        #proceed;
+    private func handleCsrf(context : HttpContext.HttpContext, config : Config) : async* {
+        #proceed : ?Text;
         #forbidden : Text;
     } {
         // Skip CSRF check for non-protected methods
@@ -117,14 +109,14 @@ module {
         ) != null;
 
         if (not isProtectedMethod) {
-            return #proceed;
+            return #proceed(null);
         };
 
         // Check exempt paths
         let path = Path.toText(context.getPath());
         for (exemptPath in config.exemptPaths.vals()) {
             if (Text.startsWith(path, #text(exemptPath))) {
-                return #proceed;
+                return #proceed(null);
             };
         };
 
@@ -151,24 +143,36 @@ module {
 
         // Handle token rotation if needed
         if (config.tokenRotation == #onSuccess) {
-            generateAndSetToken(context, config);
+            let newToken = await* generateAndSetToken(context, config);
+            return #proceed(?newToken);
         };
 
-        return #proceed;
+        #proceed(null);
     };
 
-    // Generate a new CSRF token
-    private func generateAndSetToken(context : HttpContext.HttpContext, config : Config) {
-        let randomPart = Random.crypto(); // Would be actual random bytes
-        let token = Int.toText(Time.now()) # "-" # randomPart;
+    private func generateAndSetToken(context : HttpContext.HttpContext, config : Config) : async* Text {
+        // Generate a new CSRF token
+        let randomPart = await Random.blob(); // Would be actual random bytes
+        let token = Int.toText(Time.now()) # "-" # BaseX.toBase64(randomPart.vals(), #url({ includePadding = false }));
+
+        // Store the token
         config.tokenStorage.set(token);
+
+        token;
     };
 
     // Check if token is expired
     private func isTokenExpired(token : Text, ttl : Int) : Bool {
-        // In a real implementation, the token would include a timestamp
-        // Placeholder implementation assumes tokens don't expire:
-        false;
+        let parts = Text.split(token, #char('-'));
+        let ?timePart = parts.next() else return true; // Invalid token format
+        let ?randomPart = parts.next() else return true; // Invalid token format
+
+        let ?timestamp = Int.fromText(timePart) else {
+            return true; // Invalid timestamp
+        };
+
+        let currentTime = Time.now();
+        return (currentTime - timestamp) > ttl;
     };
 
 };
