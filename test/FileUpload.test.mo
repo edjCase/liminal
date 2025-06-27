@@ -34,7 +34,7 @@ func createContext(contentType : Text, body : Blob) : HttpContext.HttpContext {
                     contentType = "application/octet-stream";
                 };
             };
-            logger = Logging.debugLogger;
+            logger = Logging.buildDebugLogger(#warning);
         },
     );
 };

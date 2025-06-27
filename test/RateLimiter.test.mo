@@ -52,7 +52,7 @@ func createContext(
                     contentType = "application/octet-stream";
                 };
             };
-            logger = Logging.debugLogger;
+            logger = Logging.buildDebugLogger(#warning);
         },
     );
 

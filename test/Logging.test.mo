@@ -44,7 +44,7 @@ suite(
 
                 for ((level, message) in testCases.vals()) {
                     // Test passes if no runtime errors occur during logging
-                    Logging.debugLogger.log(level, message);
+                    Logging.buildDebugLogger(#warning).log(level, message);
                 };
             },
         );

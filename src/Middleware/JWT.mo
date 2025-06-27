@@ -25,6 +25,7 @@ module {
 
     public func new(options : Options) : App.Middleware {
         {
+            name = "JWT";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 tryParseAndSetJWT(context, options.validation, options.locations);
                 next();

@@ -57,7 +57,7 @@ suite(
                     {
                         errorSerializer = dummyErrorSerialzer;
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                        logger = Logging.debugLogger;
+                        logger = Logging.buildDebugLogger(#warning);
                     },
                 );
                 let response1 = CORS.handlePreflight(
@@ -86,7 +86,7 @@ suite(
                     {
                         errorSerializer = dummyErrorSerialzer;
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                        logger = Logging.debugLogger;
+                        logger = Logging.buildDebugLogger(#warning);
                     },
                 );
                 let response2 = CORS.handlePreflight(
@@ -125,7 +125,7 @@ suite(
                     {
                         errorSerializer = dummyErrorSerialzer;
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                        logger = Logging.debugLogger;
+                        logger = Logging.buildDebugLogger(#warning);
                     },
                 );
                 let response = CORS.handlePreflight(
@@ -167,7 +167,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -205,7 +205,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -239,7 +239,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -272,7 +272,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -309,7 +309,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -346,7 +346,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -383,7 +383,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -420,7 +420,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -459,7 +459,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -491,7 +491,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -530,7 +530,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -563,7 +563,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -598,7 +598,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -632,7 +632,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     CORS.defaultOptions,
@@ -666,7 +666,7 @@ suite(
                         {
                             errorSerializer = dummyErrorSerialzer;
                             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                            logger = Logging.debugLogger;
+                            logger = Logging.buildDebugLogger(#warning);
                         },
                     ),
                     {
@@ -700,7 +700,7 @@ suite(
                     {
                         errorSerializer = dummyErrorSerialzer;
                         candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
-                        logger = Logging.debugLogger;
+                        logger = Logging.buildDebugLogger(#warning);
                     },
                 );
 

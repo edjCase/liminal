@@ -31,6 +31,7 @@ module {
             null;
         };
         {
+            name = "Require Auth";
             handleQuery = func(
                 httpContext : HttpContext.HttpContext,
                 next : App.Next,
@@ -45,7 +46,7 @@ module {
                 next : App.NextAsync,
             ) : async* App.HttpResponse {
                 switch (checkRequirement(httpContext)) {
-                    case (?response) #response(response);
+                    case (?response) response;
                     case (null) await* next();
                 };
             };
