@@ -311,21 +311,6 @@ module {
             };
         };
 
-        /// Computes evidence for an asset, such as a cryptographic proof of existence.
-        /// Used for verifying asset integrity and authenticity.
-        ///
-        /// ```motoko
-        /// let evidence = await assetCanister.compute_evidence(callerPrincipal, {
-        ///     key = "/important-document.pdf";
-        /// });
-        /// ```
-        public func compute_evidence(caller : Principal, args : HttpAssets.ComputeEvidenceArguments) : async* (?Blob) {
-            switch (await* assets.compute_evidence(caller, args)) {
-                case (#ok(evidence)) evidence;
-                case (#err(err)) Runtime.trap(err);
-            };
-        };
-
         /// Computes evidence for batch operations to prove the legitimacy of the changes.
         /// Returns a blob containing cryptographic evidence for the specified batch.
         ///

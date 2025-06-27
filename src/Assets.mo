@@ -3,7 +3,6 @@ import Types "./Types";
 import Nat "mo:new-base/Nat";
 import Blob "mo:new-base/Blob";
 import Nat16 "mo:new-base/Nat16";
-import Debug "mo:new-base/Debug";
 import HttpAssets "mo:http-assets";
 
 module {

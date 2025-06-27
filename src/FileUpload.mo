@@ -22,7 +22,22 @@ module {
         content : Blob;
     };
 
-    /// Parse multipart/form-data content from the request
+    /// Parses multipart/form-data content from an HTTP request.
+    /// Extracts uploaded files and their metadata from form submissions.
+    /// Returns an empty array if the request is not multipart/form-data.
+    ///
+    /// ```motoko
+    /// import FileUpload "mo:liminal/FileUpload";
+    ///
+    /// let files = FileUpload.parseMultipartFormData(httpContext);
+    /// for (file in files.vals()) {
+    ///     let name = file.fieldName;
+    ///     let filename = file.filename;
+    ///     let size = file.size;
+    ///     let content = file.content;
+    ///     // Process uploaded file
+    /// };
+    /// ```
     public func parseMultipartFormData(context : HttpContext.HttpContext) : [UploadedFile] {
         // Check if content type is multipart/form-data
         let ?contentType = context.getHeader("Content-Type") else return [];

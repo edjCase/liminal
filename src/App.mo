@@ -56,6 +56,21 @@ module {
         logger : Logging.Logger;
     };
 
+    /// Main application class that handles HTTP requests through a middleware pipeline.
+    /// Processes both query (read-only) and update (state-changing) requests.
+    /// Provides automatic content negotiation, error handling, and logging.
+    ///
+    /// ```motoko
+    /// let app = Liminal.App({
+    ///     middleware = [
+    ///         RouterMiddleware.new(routerConfig),
+    ///         CORSMiddleware.new(corsConfig)
+    ///     ];
+    ///     errorSerializer = Liminal.defaultJsonErrorSerializer;
+    ///     candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+    ///     logger = Liminal.buildDebugLogger(#info);
+    /// });
+    /// ```
     public class App(data : Data) = self {
 
         /// Handles HTTP query requests (read-only operations).

@@ -9,7 +9,6 @@ import HttpMethod "../HttpMethod";
 import App "../App";
 import Path "mo:url-kit/Path";
 import BaseX "mo:base-x-encoder";
-import Debug "mo:new-base/Debug";
 
 module {
     public type TokenStorage = {
@@ -55,7 +54,9 @@ module {
         #forbidden : Text;
     };
 
-    // Default CSRF configuration
+    /// Creates a default CSRF protection configuration
+    /// - Parameter tokenStorage: The storage mechanism for CSRF tokens
+    /// - Returns: A Config object with standard CSRF protection settings
     public func defaultConfig(tokenStorage : TokenStorage) : Config {
         {
             tokenTTL = 1_800_000_000_000; // 30 minutes

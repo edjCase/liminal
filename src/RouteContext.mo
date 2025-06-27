@@ -152,7 +152,7 @@ module {
         /// ```motoko
         /// // Return JSON response
         /// let response = routeContext.buildResponse(#ok, #content(#json(userJson)));
-        /// 
+        ///
         /// // Return custom response
         /// let customResponse = routeContext.buildResponse(#created, #custom({
         ///     headers = [("Location", "/users/123")];

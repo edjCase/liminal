@@ -53,7 +53,9 @@ module {
         expiresAt : Int;
     };
 
-    // Default configuration
+    /// Creates a default session configuration with standard settings
+    /// - Parameter store: The session store to use for persisting session data
+    /// - Returns: A Config object with sensible defaults (20-minute timeout, secure cookies, etc.)
     public func defaultConfig(store : SessionStore) : Config {
         {
             cookieName = "session";
@@ -70,12 +72,16 @@ module {
         };
     };
 
-    // Default factory function with standard settings
+    /// Creates a session middleware with default configuration and in-memory storage
+    /// This is a convenience function for quick setup without custom configuration
+    /// - Returns: A ready-to-use session middleware with standard settings
     public func inMemoryDefault() : App.Middleware {
         new(defaultConfig(buildInMemoryStore()));
     };
 
-    // Create new session middleware with custom config
+    /// Creates a new session middleware with custom configuration
+    /// - Parameter config: The session configuration object defining behavior
+    /// - Returns: A middleware that handles session creation, validation, and cleanup
     public func new(config : Config) : App.Middleware {
         {
             name = "Session";
@@ -108,6 +114,9 @@ module {
         };
     };
 
+    /// Generates a cryptographically secure random session ID
+    /// Uses crypto-grade randomness to create a 128-bit (16-byte) session identifier
+    /// - Returns: A hexadecimal string representation of the random session ID
     public func generateRandomId() : async* Text {
         let rand = Random.crypto();
 
@@ -121,6 +130,9 @@ module {
         BaseX.toHex(buffer.vals(), { isUpper = false; prefix = #none });
     };
 
+    /// Creates an in-memory session store with automatic cleanup of expired sessions
+    /// This store is not persistent across canister upgrades
+    /// - Returns: A SessionStore implementation using in-memory storage
     public func buildInMemoryStore() : SessionStore {
         let sessions = Map.empty<Text, SessionData>();
         func cleanupExpiredSessions() : () {

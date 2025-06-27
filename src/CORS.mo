@@ -18,6 +18,16 @@ module {
         exposeHeaders : [Text]; // Empty means none
     };
 
+    /// Default CORS options that provide a permissive but secure baseline configuration.
+    /// Allows common HTTP methods and headers while requiring explicit origin configuration.
+    /// Sets a 24-hour cache for preflight requests and disables credentials by default.
+    ///
+    /// ```motoko
+    /// import CORS "mo:liminal/CORS";
+    ///
+    /// let options = CORS.defaultOptions;
+    /// let result = CORS.handlePreflight(httpContext, options);
+    /// ```
     public let defaultOptions : Options = {
         allowOrigins = [];
         allowMethods = [#get, #post, #put, #patch, #delete, #head, #options];

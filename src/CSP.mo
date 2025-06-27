@@ -19,6 +19,16 @@ module {
         upgradeInsecureRequests : Bool;
     };
 
+    /// Default Content Security Policy options that provide a secure baseline configuration.
+    /// Restricts sources to 'self' for most resources while allowing some flexibility for styles and fonts.
+    /// Includes necessary exceptions for ICP-specific domains and localhost development.
+    ///
+    /// ```motoko
+    /// import CSP "mo:liminal/CSP";
+    ///
+    /// let options = CSP.defaultOptions;
+    /// let response = CSP.addHeadersToResponse(response, options);
+    /// ```
     public let defaultOptions : Options = {
         defaultSrc = ["'self'"];
         scriptSrc = ["'self'"];

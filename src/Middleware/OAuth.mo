@@ -84,7 +84,9 @@ module {
         email : ?Text;
     };
 
-    // Simple in-memory state store (you might want persistent storage)
+    /// Creates a simple in-memory OAuth state store
+    /// This store is not persistent across canister upgrades - use for development only
+    /// - Returns: An OAuthStore implementation using in-memory storage
     public func inMemoryStore() : OAuthStore {
         var contexts = Map.empty<Text, OAuthContext>();
 
@@ -101,6 +103,10 @@ module {
         };
     };
 
+    /// Creates a new OAuth authentication middleware
+    /// Handles the complete OAuth 2.0 flow including authorization redirects and token exchange
+    /// - Parameter config: OAuth configuration including providers, callbacks, and storage
+    /// - Returns: A middleware that handles OAuth authentication flows
     public func new(config : Config) : App.Middleware {
 
         func getRedirectUri(providerName : Text) : Text {

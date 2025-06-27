@@ -23,9 +23,7 @@ Key features:
 - 🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
 - 📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
 - 📝 **Logging**: Built-in logging system with configurable levels and custom logger support
-
-Experimental features:
-🔐 **OAuth Authentication**: Built-in OAuth 2.0 support with PKCE for Google, GitHub, and custom providers
+- 🔐 **OAuth Authentication**: Built-in OAuth 2.0 support with PKCE for Google, GitHub, and custom providers
 
 ## Package
 
@@ -36,6 +34,83 @@ mops add liminal
 ```
 
 To setup MOPS package manager, follow the instructions from the [MOPS Site](https://mops.one)
+
+## Liminal Middleware Pipeline
+
+Liminal uses a **middleware pipeline** pattern where each middleware component processes requests as they flow down the pipeline, and then processes responses as they flow back up in reverse order. This creates a "sandwich" effect where the first middleware to see a request is the last to process the response.
+
+### Basic Flow Example
+
+```
+                  Request ──┐     ┌─> Response
+                            │     |
+                            ▼     │
+                        ┌─────────────┐
+        - Decompresses  │ Compression │ - Compresses
+          request       │ Middleware  │   response
+                        └─────────────┘
+                            │     ▲
+                            ▼     │
+                        ┌─────────────┐
+        - Parses JWT    │  JWT        │ - Ignores
+        - Sets identity │  Middleware │   response
+                        └─────────────┘
+                            │     ▲
+                            ▼     │
+                        ┌─────────────┐
+        - Matches url   │ API Router  │ - Returns API
+          to function   │ Middleware  │   response
+                        └─────────────┘
+```
+
+### How It Works
+
+1. **Request Flow (Down)**: The HTTP request starts at the first middleware and flows down through each middleware in the order they were defined in your middleware array.
+
+2. **Response Generation**: Any middleware in the pipeline can choose to generate a response and stop the request flow. When this happens, the response immediately begins flowing back up through only the middleware that have already processed the request, bypassing any remaining middleware further down the pipeline.
+
+3. **Response Flow (Up)**: The response then flows back up through the middleware pipeline in **reverse order**, allowing each middleware to modify or enhance the response.
+
+## Query/Update Upgrade Flow
+
+### How Middleware Handles Query→Update Upgrades
+
+In the Internet Computer, all HTTP requests start as **Query calls** (fast, read-only). If a middleware needs to modify state or make async calls, it can **upgrade** the request to an **Update call** (slower, can modify state). When this happens, the entire request restarts from the beginning with the same middleware pipeline.
+
+### Upgrade Flow Example
+
+```
+        Query Flow                       Update Flow
+
+
+Request ──┐             ┌──────► Request ──┐     ┌─► Response
+          │             │                  │     │
+          ▼             │                  ▼     │
+      ┌─────────────┐   │              ┌─────────────┐
+      │ Compression │   │              │ Compression │
+      │ Middleware  │   │              │ Middleware  │
+      └─────────────┘   │              └─────────────┘
+          │             │                  │     ▲
+          ▼             │                  ▼     │
+      ┌─────────────┐   │              ┌─────────────┐
+      │ JWT         │ ──┘              │ JWT         │
+      │ Middleware  │ Upgrade          │ Middleware  │
+      └─────────────┘                  └─────────────┘
+                                           │     ▲
+                                           ▼     │
+      ┌─────────────┐                  ┌─────────────┐
+      │ API Router  │                  │ API Router  │
+      │ Middleware  │                  │ Middleware  │
+      └─────────────┘                  └─────────────┘
+```
+
+### How Upgrades Work
+
+1. **Query Processing**: Request flows down through middleware as Query calls (fast path)
+
+2. **Upgrade Decision**: Any middleware can decide it needs to upgrade (e.g., needs to modify state, make async calls)
+
+3. **Request Restart**: When upgraded, the entire request restarts from the beginning as an Update call and go through each middleware again
 
 ## Quick Start
 
