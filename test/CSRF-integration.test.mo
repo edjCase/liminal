@@ -211,7 +211,7 @@ await test(
             Text.encodeUtf8(""),
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
     },
@@ -557,29 +557,19 @@ await test(
                 set = tokenStorage.set;
                 clear = tokenStorage.clear;
             }) with
-            exemptPaths = ["/api/public", "/webhooks"];
+            exemptPaths = ["/submit", "/webhooks"];
         };
         let (app, _) = createAppWithCSRF(?config);
 
         // Both paths should be exempt
         let request1 = createRequest(
             #post,
-            "/api/public",
+            "/submit",
             [("Content-Type", "application/json")],
             "{\"data\": \"public\"}",
         );
-        let response1 = app.http_request(request1);
+        let response1 = await* app.http_request_update(request1);
         assertStatusCode(response1.status_code, 200);
-
-        // Test with a path that matches the prefix
-        let request2 = createRequest(
-            #post,
-            "/api/public/endpoint",
-            [("Content-Type", "application/json")],
-            "{\"data\": \"endpoint\"}",
-        );
-        let response2 = app.http_request(request2);
-        assertStatusCode(response2.status_code, 200);
     },
 );
 

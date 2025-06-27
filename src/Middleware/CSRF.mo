@@ -49,6 +49,12 @@ module {
         #onSuccess; // Only rotate after successful validation
     };
 
+    // Validation result type
+    private type ValidationResult = {
+        #proceed : Bool; // Bool indicates if token generation is needed
+        #forbidden : Text;
+    };
+
     // Default CSRF configuration
     public func defaultConfig(tokenStorage : TokenStorage) : Config {
         {
@@ -68,7 +74,28 @@ module {
         {
             name = "CSRF";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
-                #upgrade; // CSRF middleware does not handle queries, has to upgrade
+                context.log(#info, "CSRF: handleQuery called for method: " # HttpMethod.toText(context.method));
+
+                switch (validateCsrf(context, config)) {
+                    case (#proceed(needsTokenGeneration)) {
+                        if (needsTokenGeneration) {
+                            context.log(#info, "CSRF: Query validation passed but token generation needed, upgrading");
+                            #upgrade;
+                        } else {
+                            context.log(#info, "CSRF: Query validation passed, proceeding");
+                            next();
+                        };
+                    };
+                    case (#forbidden(message)) {
+                        context.log(#warning, "CSRF: Query validation failed: " # message);
+                        #response(
+                            context.buildResponse(
+                                #forbidden,
+                                #error(#message(message)),
+                            )
+                        );
+                    };
+                };
             };
 
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
@@ -77,7 +104,7 @@ module {
                     case (?endpoint) {
                         let path = Path.toText(context.getPath());
                         if (path == endpoint) {
-                            let token = await* generateAndSetToken(context, config);
+                            let token = await* generateAndUpdateToken(context, config);
                             return context.buildResponse(
                                 #ok,
                                 #content(#Map([("token", #Text(token))])),
@@ -87,21 +114,18 @@ module {
                     case (null) {};
                 };
 
-                switch (await* handleCsrf(context, config)) {
-                    case (#proceed(tokenOrNull)) {
+                switch (validateCsrf(context, config)) {
+                    case (#proceed(needsTokenGeneration)) {
                         let response = await* next();
-                        switch (tokenOrNull) {
-                            case (null) {
-                                // No token to add, just return the response
-                                response;
+                        if (needsTokenGeneration) {
+                            // Generate new token and add to response headers
+                            let newToken = await* generateAndUpdateToken(context, config);
+                            {
+                                response with
+                                headers = Array.concat(response.headers, [(config.headerName, newToken)]);
                             };
-                            case (?token) {
-                                // Add new token to response headers
-                                {
-                                    response with
-                                    headers = Array.concat(response.headers, [(config.headerName, token)]);
-                                };
-                            };
+                        } else {
+                            response;
                         };
                     };
                     case (#forbidden(message)) {
@@ -119,12 +143,9 @@ module {
         new(defaultConfig(tokenStorage));
     };
 
-    // Main CSRF logic
-    private func handleCsrf(context : HttpContext.HttpContext, config : Config) : async* {
-        #proceed : ?Text;
-        #forbidden : Text;
-    } {
-        context.log(#info, "CSRF: handleCsrf called for method: " # HttpMethod.toText(context.method));
+    // Validation logic separated from token generation
+    private func validateCsrf(context : HttpContext.HttpContext, config : Config) : ValidationResult {
+        context.log(#info, "CSRF: validateCsrf called for method: " # HttpMethod.toText(context.method));
 
         // Skip CSRF check for non-protected methods
         let isProtectedMethod = Array.find(
@@ -135,15 +156,14 @@ module {
         context.log(#info, "CSRF: isProtectedMethod = " # Bool.toText(isProtectedMethod));
 
         if (not isProtectedMethod) {
-            context.log(#info, "CSRF: Method not protected, proceeding");
-            // Handle token rotation for non-protected methods if needed
+            context.log(#info, "CSRF: Method not protected, checking token rotation strategy");
+            // Check if token generation is needed for non-protected methods
             switch (config.tokenRotation) {
                 case (#perRequest) {
-                    let newToken = await* generateAndSetToken(context, config);
-                    return #proceed(?newToken);
+                    return #proceed(true); // Token generation needed
                 };
                 case (#perSession or #onSuccess) {
-                    return #proceed(null);
+                    return #proceed(false); // No token generation needed
                 };
             };
         };
@@ -156,27 +176,25 @@ module {
         for (exemptPath in config.exemptPaths.vals()) {
             if (Text.startsWith(path, #text(exemptPath))) {
                 context.log(#info, "CSRF: Path is exempt: " # exemptPath);
-                return #proceed(null);
+                return #proceed(false); // No token generation needed for exempt paths
             };
         };
 
         context.log(#info, "CSRF: Path not exempt, checking token");
 
-        // Get stored token - generate one if none exists
+        // Get stored token
         let storedToken = switch (config.tokenStorage.get()) {
             case (?token) {
                 context.log(#info, "CSRF: Found stored token");
                 token;
             };
             case (null) {
-                context.log(#info, "CSRF: No stored token, returning forbidden");
-                // No token exists, generate a new one
-                let newToken = await* generateAndSetToken(context, config);
-                context.log(#info, "Generated initial CSRF token");
+                context.log(#info, "CSRF: No stored token found");
                 return #forbidden("CSRF token required. Please obtain a token first.");
             };
         };
 
+        // Check if token is expired
         if (isTokenExpired(storedToken, config.tokenTTL)) {
             context.log(#warning, "CSRF token expired");
             config.tokenStorage.clear();
@@ -195,24 +213,20 @@ module {
             return #forbidden("CSRF token validation failed");
         };
 
-        // Handle token rotation based on strategy
+        context.log(#info, "CSRF: Token validation successful");
+
+        // Determine if token generation is needed based on rotation strategy
         switch (config.tokenRotation) {
-            case (#perRequest) {
-                let newToken = await* generateAndSetToken(context, config);
-                return #proceed(?newToken);
-            };
-            case (#onSuccess) {
-                let newToken = await* generateAndSetToken(context, config);
-                return #proceed(?newToken);
+            case (#perRequest or #onSuccess) {
+                return #proceed(true); // Token generation needed
             };
             case (#perSession) {
-                // Keep existing token for the session
-                return #proceed(null);
+                return #proceed(false); // No token generation needed
             };
         };
     };
 
-    private func generateAndSetToken(context : HttpContext.HttpContext, config : Config) : async* Text {
+    private func generateAndUpdateToken(context : HttpContext.HttpContext, config : Config) : async* Text {
         let randomPart = await Random.blob();
         let timestamp = Int.toText(Time.now());
         let encodedRandom = BaseX.toBase64(randomPart.vals(), #url({ includePadding = false }));
