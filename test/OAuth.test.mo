@@ -228,10 +228,10 @@ test(
             }];
             siteUrl = "https://example.com";
             store = oauthStore;
-            onLogin = func(context : Liminal.HttpContext, loginData : OAuth.LoginData) : async* Liminal.HttpResponse {
+            onLogin = func(context : Liminal.HttpContext, _ : OAuth.LoginData) : async* Liminal.HttpResponse {
                 context.buildResponse(#ok, #content(#Text("OAuth login completed")));
             };
-            onLogout = func(context : Liminal.HttpContext, logoutData : OAuth.LogoutData) : async* Liminal.HttpResponse {
+            onLogout = func(context : Liminal.HttpContext, _ : OAuth.LogoutData) : async* Liminal.HttpResponse {
                 context.buildResponse(#ok, #content(#Text("OAuth logout completed")));
             };
         };
@@ -301,10 +301,10 @@ test(
             }];
             siteUrl = "https://example.com";
             store = oauthStore;
-            onLogin = func(context : Liminal.HttpContext, loginData : OAuth.LoginData) : async* Liminal.HttpResponse {
+            onLogin = func(context : Liminal.HttpContext, _ : OAuth.LoginData) : async* Liminal.HttpResponse {
                 context.buildResponse(#ok, #content(#Text("Login success")));
             };
-            onLogout = func(context : Liminal.HttpContext, logoutData : OAuth.LogoutData) : async* Liminal.HttpResponse {
+            onLogout = func(context : Liminal.HttpContext, _ : OAuth.LogoutData) : async* Liminal.HttpResponse {
                 context.buildResponse(#ok, #content(#Text("Logout success")));
             };
         };

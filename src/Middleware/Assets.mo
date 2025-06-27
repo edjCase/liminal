@@ -8,6 +8,7 @@ module {
 
     public func new(options : Config) : App.Middleware {
         {
+            name = "Assets";
             handleQuery = func(httpContext : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (Assets.serve(httpContext, options)) {
                     case (#noMatch) next();

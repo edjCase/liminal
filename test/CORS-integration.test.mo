@@ -208,7 +208,7 @@ test(
         let response = app.http_request(request);
 
         // Should return success but without CORS headers for disallowed method
-        let statusCode = Nat16.toNat(response.status_code);
+        assert (Nat16.toNat(response.status_code) == 200);
 
         // Check that CORS headers are not present (method not allowed)
         let allowOriginHeader = getHeader(response.headers, "Access-Control-Allow-Origin");

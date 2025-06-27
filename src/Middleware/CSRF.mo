@@ -58,6 +58,7 @@ module {
     public func new(config : Config) : App.Middleware {
         // Handlers for middleware
         {
+            name = "CSRF";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 switch (handleCsrf(context, config)) {
                     case (#proceed) {

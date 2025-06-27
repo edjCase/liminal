@@ -11,7 +11,6 @@ import CSPMiddleware "../src/Middleware/CSP";
 import RouterMiddleware "../src/Middleware/Router";
 import Router "../src/Router";
 import HttpMethod "../src/HttpMethod";
-import Debug "mo:base/Debug";
 
 // Helper functions for testing assertions
 func assertStatusCode(actual : Nat16, expected : Nat) : () {
@@ -186,7 +185,7 @@ test(
 
         let cspHeader = getHeader(response.headers, "Content-Security-Policy");
         switch (cspHeader) {
-            case (?csp) {
+            case (?_) {
                 assertOptionText(cspHeader, "default-src 'self'", "CSP header should contain default-src 'self'");
                 assertOptionText(cspHeader, "script-src 'self'", "CSP header should contain script-src 'self'");
                 assertOptionText(cspHeader, "object-src 'none'", "CSP header should contain object-src 'none'");

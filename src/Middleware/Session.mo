@@ -78,6 +78,7 @@ module {
     // Create new session middleware with custom config
     public func new(config : Config) : App.Middleware {
         {
+            name = "Session";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 // Get or create session
                 switch (getSessionId(context, config)) {
