@@ -13,6 +13,7 @@ module {
     public type TokenStorage = {
         get : () -> ?Text;
         set : (Text) -> ();
+        clear : () -> (); // Added for token cleanup
     };
 
     // CSRF protection configuration
@@ -34,6 +35,9 @@ module {
 
         // Optional token rotation strategy
         tokenRotation : TokenRotation;
+
+        // Path to get CSRF token (for initial token retrieval)
+        tokenEndpoint : ?Text;
     };
 
     // Token rotation strategies
@@ -51,7 +55,8 @@ module {
             headerName = "X-CSRF-Token";
             protectedMethods = [#post, #put, #patch, #delete];
             exemptPaths = [];
-            tokenRotation = #perRequest;
+            tokenRotation = #perSession;
+            tokenEndpoint = ?"/csrf-token"; // Default endpoint for token retrieval
         };
     };
 
@@ -61,11 +66,25 @@ module {
         {
             name = "CSRF";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
-                // Query calls cant store CSRF tokens, so we skip them
-                next();
+                #upgrade; // CSRF middleware does not handle queries, has to upgrade
             };
 
             handleUpdate = func(context : HttpContext.HttpContext, next : App.NextAsync) : async* App.HttpResponse {
+                // Handle token endpoint for POST requests (alternative way to get tokens)
+                switch (config.tokenEndpoint) {
+                    case (?endpoint) {
+                        let path = Path.toText(context.getPath());
+                        if (path == endpoint) {
+                            let token = await* generateAndSetToken(context, config);
+                            return context.buildResponse(
+                                #ok,
+                                #content(#Map([("token", #Text(token))])),
+                            );
+                        };
+                    };
+                    case (null) {};
+                };
+
                 switch (await* handleCsrf(context, config)) {
                     case (#proceed(tokenOrNull)) {
                         let response = await* next();
@@ -75,6 +94,7 @@ module {
                                 response;
                             };
                             case (?token) {
+                                // Add new token to response headers
                                 {
                                     response with
                                     headers = Array.concat(response.headers, [(config.headerName, token)]);
@@ -109,7 +129,16 @@ module {
         ) != null;
 
         if (not isProtectedMethod) {
-            return #proceed(null);
+            // Handle token rotation for non-protected methods if needed
+            switch (config.tokenRotation) {
+                case (#perRequest) {
+                    let newToken = await* generateAndSetToken(context, config);
+                    return #proceed(?newToken);
+                };
+                case (#perSession or #onSuccess) {
+                    return #proceed(null);
+                };
+            };
         };
 
         // Check exempt paths
@@ -120,52 +149,103 @@ module {
             };
         };
 
-        // Validate CSRF token
+        // Get stored token - generate one if none exists
+        let storedToken = switch (config.tokenStorage.get()) {
+            case (?token) token;
+            case (null) {
+                // No token exists, generate a new one
+                let newToken = await* generateAndSetToken(context, config);
+                context.log(#info, "Generated initial CSRF token");
+                return #forbidden("CSRF token required. Please obtain a token first.");
+            };
+        };
+
+        // Validate stored token format and expiration first
+        if (not isValidTokenFormat(storedToken)) {
+            context.log(#warning, "Invalid CSRF token format in storage");
+            config.tokenStorage.clear();
+            return #forbidden("Invalid CSRF token format");
+        };
+
+        if (isTokenExpired(storedToken, config.tokenTTL)) {
+            context.log(#warning, "CSRF token expired");
+            config.tokenStorage.clear();
+            return #forbidden("CSRF token expired");
+        };
+
+        // Get request token
         let ?requestToken = context.getHeader(config.headerName) else {
             context.log(#warning, "CSRF token missing from header: " # config.headerName);
             return #forbidden("CSRF token missing from request header: " # config.headerName);
         };
-        let ?storedToken = config.tokenStorage.get() else {
-            context.log(#warning, "CSRF token not found in storage");
-            return #forbidden("CSRF token not found in storage");
+
+        // Validate request token format
+        if (not isValidTokenFormat(requestToken)) {
+            context.log(#warning, "Invalid CSRF token format in request");
+            return #forbidden("Invalid CSRF token format");
         };
 
-        if (requestToken != storedToken) {
+        // Secure token comparison (constant-time comparison to prevent timing attacks)
+        if (not secureCompare(requestToken, storedToken)) {
             context.log(#warning, "CSRF token validation failed");
             return #forbidden("CSRF token validation failed");
         };
 
-        // Check token expiration
-        if (isTokenExpired(storedToken, config.tokenTTL)) {
-            context.log(#warning, "CSRF token expired");
-            return #forbidden("CSRF token expired");
+        // Handle token rotation based on strategy
+        switch (config.tokenRotation) {
+            case (#perRequest) {
+                let newToken = await* generateAndSetToken(context, config);
+                return #proceed(?newToken);
+            };
+            case (#onSuccess) {
+                let newToken = await* generateAndSetToken(context, config);
+                return #proceed(?newToken);
+            };
+            case (#perSession) {
+                // Keep existing token for the session
+                return #proceed(null);
+            };
         };
-
-        // Handle token rotation if needed
-        if (config.tokenRotation == #onSuccess) {
-            let newToken = await* generateAndSetToken(context, config);
-            return #proceed(?newToken);
-        };
-
-        #proceed(null);
     };
 
     private func generateAndSetToken(context : HttpContext.HttpContext, config : Config) : async* Text {
-        // Generate a new CSRF token
-        let randomPart = await Random.blob(); // Would be actual random bytes
-        let token = Int.toText(Time.now()) # "-" # BaseX.toBase64(randomPart.vals(), #url({ includePadding = false }));
+        let randomPart = await Random.blob();
+        let timestamp = Int.toText(Time.now());
+        let encodedRandom = BaseX.toBase64(randomPart.vals(), #url({ includePadding = false }));
+        let token = timestamp # "-" # encodedRandom;
 
         // Store the token
         config.tokenStorage.set(token);
-
+        context.log(#debug_, "Generated new CSRF token");
         token;
+    };
+
+    // Validate token format before parsing
+    private func isValidTokenFormat(token : Text) : Bool {
+        let parts = Text.split(token, #char('-'));
+        let ?timePart = parts.next() else return false;
+        let ?randomPart = parts.next() else return false;
+
+        // Check if there are exactly 2 parts
+        switch (parts.next()) {
+            case (?_) false; // More than 2 parts
+            case (null) {
+                // Validate timestamp part is numeric
+                switch (Int.fromText(timePart)) {
+                    case (?_) {
+                        // Validate random part is not empty
+                        Text.size(randomPart) > 0;
+                    };
+                    case (null) false;
+                };
+            };
+        };
     };
 
     // Check if token is expired
     private func isTokenExpired(token : Text, ttl : Int) : Bool {
         let parts = Text.split(token, #char('-'));
-        let ?timePart = parts.next() else return true; // Invalid token format
-        let ?randomPart = parts.next() else return true; // Invalid token format
+        let ?timePart = parts.next() else return true;
 
         let ?timestamp = Int.fromText(timePart) else {
             return true; // Invalid timestamp
@@ -175,4 +255,31 @@ module {
         return (currentTime - timestamp) > ttl;
     };
 
+    // Secure comparison to prevent timing attacks
+    private func secureCompare(a : Text, b : Text) : Bool {
+        let aBytes = Text.encodeUtf8(a);
+        let bBytes = Text.encodeUtf8(b);
+
+        if (aBytes.size() != bBytes.size()) {
+            return false;
+        };
+
+        var result : Nat8 = 0;
+        for (i in aBytes.keys()) {
+            result |= (aBytes[i] ^ bBytes[i]);
+        };
+
+        result == 0;
+    };
+
+    // Utility function to create a simple in-memory token storage
+    public func createMemoryStorage() : TokenStorage {
+        var token : ?Text = null;
+
+        {
+            get = func() : ?Text { token };
+            set = func(newToken : Text) { token := ?newToken };
+            clear = func() { token := null };
+        };
+    };
 };

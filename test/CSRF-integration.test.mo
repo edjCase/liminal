@@ -90,12 +90,13 @@ class MockTokenStorage() {
 // Helper to create a basic app with CSRF middleware
 func createAppWithCSRF(csrfConfig : ?CSRFMiddleware.Config) : (Liminal.App, MockTokenStorage) {
     let tokenStorage = MockTokenStorage();
-    
+
     let config = switch (csrfConfig) {
         case (?cfg) cfg;
         case (null) CSRFMiddleware.defaultConfig({
             get = tokenStorage.get;
             set = tokenStorage.set;
+            clear = tokenStorage.clear;
         });
     };
 
@@ -282,7 +283,7 @@ test(
     "should allow POST request with valid CSRF token",
     func() : () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        
+
         // Set a token in storage
         tokenStorage.set("valid-token-123");
 
@@ -307,7 +308,7 @@ test(
     "should block POST request with invalid CSRF token",
     func() : () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        
+
         // Set a different token in storage
         tokenStorage.set("valid-token-123");
 
@@ -336,11 +337,12 @@ test(
             CSRFMiddleware.defaultConfig({
                 get = tokenStorage.get;
                 set = tokenStorage.set;
+                clear = tokenStorage.clear;
             }) with
             headerName = "X-Custom-CSRF-Token";
         };
         let (app, _) = createAppWithCSRF(?config);
-        
+
         tokenStorage.set("custom-token-789");
 
         let request = createRequest(
@@ -368,6 +370,7 @@ test(
             CSRFMiddleware.defaultConfig({
                 get = tokenStorage.get;
                 set = tokenStorage.set;
+                clear = tokenStorage.clear;
             }) with
             exemptPaths = ["/api/public"];
         };
@@ -395,6 +398,7 @@ test(
             CSRFMiddleware.defaultConfig({
                 get = tokenStorage.get;
                 set = tokenStorage.set;
+                clear = tokenStorage.clear;
             }) with
             protectedMethods = [#post]; // Only POST is protected
         };
@@ -547,6 +551,7 @@ test(
             CSRFMiddleware.defaultConfig({
                 get = tokenStorage.get;
                 set = tokenStorage.set;
+                clear = tokenStorage.clear;
             }) with
             exemptPaths = ["/api/public", "/webhooks"];
         };
@@ -583,6 +588,7 @@ test(
             CSRFMiddleware.defaultConfig({
                 get = tokenStorage.get;
                 set = tokenStorage.set;
+                clear = tokenStorage.clear;
             }) with
             exemptPaths = ["/api/public"];
         };
@@ -607,7 +613,7 @@ test(
     "should properly integrate with token storage",
     func() : () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        
+
         // Initially no token
         switch (tokenStorage.get()) {
             case (?_) Runtime.trap("Expected no token initially");
