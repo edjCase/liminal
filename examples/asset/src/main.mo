@@ -34,7 +34,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-        logger = Liminal.debugLogger;
+        logger = Liminal.buildDebugLogger(#info);
     });
 
     // Http server methods

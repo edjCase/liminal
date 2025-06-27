@@ -76,7 +76,7 @@ actor {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-        logger = Liminal.debugLogger;
+        logger = Liminal.buildDebugLogger(#info);
     });
 
     // Expose standard HTTP interface
@@ -166,7 +166,7 @@ actor {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-        logger = Liminal.debugLogger;
+        logger = Liminal.buildDebugLogger(#info);
     });
 
     // Expose standard HTTP interface

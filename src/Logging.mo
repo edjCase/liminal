@@ -35,11 +35,26 @@ module {
         };
     };
 
-    public let debugLogger : Logger = {
+    private func getLevelNat(level : LogLevel) : Nat {
+        switch (level) {
+            case (#verbose) 0;
+            case (#debug_) 1;
+            case (#info) 2;
+            case (#warning) 3;
+            case (#error) 4;
+            case (#fatal) 5;
+        };
+    };
+
+    public func buildDebugLogger(minLogLevel : LogLevel) : Logger = {
         log = func(level : LogLevel, message : Text) {
+
+            if (getLevelNat(level) < getLevelNat(minLogLevel)) {
+                return; // Skip logging if level is below minimum
+            };
             let logLevelText = levelToText(level);
             let maxLogLevelLength = 7; // Length of longest log level text ("WARNING")
-            let paddingSize = 7 - logLevelText.size();
+            let paddingSize = maxLogLevelLength - logLevelText.size();
             var padding = "";
             for (i in Nat.range(0, paddingSize)) {
                 padding := padding # " ";

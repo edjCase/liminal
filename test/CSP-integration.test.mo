@@ -149,7 +149,7 @@ func createAppWithCSP(cspOptions : ?CSPMiddleware.Options) : Liminal.App {
         ];
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-        logger = Liminal.debugLogger;
+        logger = Liminal.buildDebugLogger(#warning);
     });
 };
 

@@ -30,5 +30,5 @@ module {
 
     public let defaultCandidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator = CandidRepresentationNegotation.defaultNegotiator;
 
-    public let debugLogger : Logging.Logger = Logging.debugLogger;
+    public let buildDebugLogger = Logging.buildDebugLogger;
 };

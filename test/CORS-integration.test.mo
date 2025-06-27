@@ -44,7 +44,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -78,7 +78,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -112,7 +112,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -147,7 +147,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -192,7 +192,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -233,7 +233,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -279,7 +279,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -319,7 +319,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -353,7 +353,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -386,7 +386,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(
@@ -420,7 +420,7 @@ test(
             middleware = [CORSMiddleware.new(corsOptions)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         let request = createRequest(

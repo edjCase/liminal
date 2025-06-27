@@ -61,6 +61,7 @@ module {
             switch (config.skipIf) {
                 case (?skipFn) {
                     if (skipFn(context)) {
+                        context.log(#debug_, "Rate limiting skipped for request");
                         return #skipped; // Skip rate limiting
                     };
                 };
@@ -73,11 +74,14 @@ module {
                 case (#custom(extractor)) extractor(context);
             };
 
+            context.log(#verbose, "Rate limiting check for key: " # key);
+
             let now = Time.now();
             let windowNanos = config.windowSeconds * 1_000_000_000; // Convert seconds to nanoseconds
 
             if (now - lastCleanup > 60_000_000_000) {
                 // Cleanup every minute
+                context.log(#debug_, "Performing rate limiter cleanup of expired entries");
                 cleanupExpiredEntries();
                 lastCleanup := now;
             };
@@ -87,11 +91,13 @@ module {
                 case (?existingData) {
                     // If window has expired, reset the counter
                     if (existingData.resetAt < now) {
+                        context.log(#debug_, "Rate limit window expired for key: " # key # ", resetting counter");
                         {
                             count = 1;
                             resetAt = now + windowNanos;
                         };
                     } else {
+                        context.log(#verbose, "Incrementing rate limit counter for key: " # key # " (count: " # Nat.toText(existingData.count + 1) # "/" # Nat.toText(config.limit) # ")");
                         // Increment the counter
                         {
                             count = existingData.count + 1;
@@ -100,6 +106,7 @@ module {
                     };
                 };
                 case (null) {
+                    context.log(#debug_, "First request for rate limit key: " # key);
                     // First request for this key
                     {
                         count = 1;
@@ -116,6 +123,7 @@ module {
             let retryAfter = Int.abs(Int.max(1, secondsUntilReset)); // Ensure at least 1 second
             // Check if rate limit is exceeded
             if (newStoreData.count > config.limit) {
+                context.log(#warning, "Rate limit exceeded for key: " # key # " (" # Nat.toText(newStoreData.count) # "/" # Nat.toText(config.limit) # ")");
 
                 let message = Option.get(config.limitExceededMessage, "Rate limit exceeded");
                 let { body; headers = errorHeaders } = context.errorSerializer({
@@ -143,6 +151,8 @@ module {
 
             };
             let remaining : Nat = config.limit - newStoreData.count;
+
+            context.log(#debug_, "Rate limit check passed for key: " # key # " (remaining: " # Nat.toText(remaining) # "/" # Nat.toText(config.limit) # ")");
 
             let responseHeaders = if (config.includeResponseHeaders) {
                 Buffer.toArray(getHeaders(config.limit, remaining, newStoreData.resetAt));

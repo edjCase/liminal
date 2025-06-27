@@ -34,7 +34,7 @@ test(
             middleware = [OAuth.new(oauthConfig)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         // Helper to create HTTP requests
@@ -172,7 +172,7 @@ test(
             middleware = [OAuth.new(oauthConfig)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         func createRequest(method : Text, url : Text) : Liminal.RawQueryHttpRequest {
@@ -240,7 +240,7 @@ test(
             middleware = [OAuth.new(oauthConfig)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         // Test callback scenarios
@@ -313,7 +313,7 @@ test(
             middleware = [OAuth.new(oauthConfig)];
             errorSerializer = Liminal.defaultJsonErrorSerializer;
             candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
-            logger = Liminal.debugLogger;
+            logger = Liminal.buildDebugLogger(#warning);
         });
 
         // Test various error scenarios
