@@ -45,6 +45,19 @@ module {
         #delete;
     };
 
+    /// Parses a URL path string into structured path segments.
+    /// Supports text segments, parameters (prefixed with :), and wildcards (* and **).
+    ///
+    /// ```motoko
+    /// let result1 = Route.parsePathSegments("/users/:id/posts");
+    /// // result1 is #ok([#text("users"), #param("id"), #text("posts")])
+    ///
+    /// let result2 = Route.parsePathSegments("/api/*/files/**");
+    /// // result2 is #ok([#text("api"), #wildcard(#single), #text("files"), #wildcard(#multi)])
+    ///
+    /// let invalid = Route.parsePathSegments("/users/:id:");
+    /// // invalid is #err("Invalid parameter syntax")
+    /// ```
     public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {
         let textSegments = path
         |> Text.trim(_, #char('/'))
@@ -86,6 +99,14 @@ module {
         #ok(List.toArray(pathSegments));
     };
 
+    /// Converts path segments back to a text representation.
+    /// Parameters are wrapped in braces for clarity, wildcards use * notation.
+    ///
+    /// ```motoko
+    /// let segments = [#text("users"), #param("id"), #wildcard(#single)];
+    /// let path = Route.pathSegmentsToText(segments);
+    /// // path is "users/{id}/*"
+    /// ```
     public func pathSegmentsToText(segments : [PathSegment]) : Text {
         let path = segments.vals()
         |> Iter.map(
@@ -103,6 +124,19 @@ module {
         "/" # path;
     };
 
+    /// Compares two path segments for equality.
+    /// Considers parameter names and wildcard types when determining equality.
+    ///
+    /// ```motoko
+    /// let equal1 = Route.pathSegmentEqual(#text("users"), #text("users"));
+    /// // equal1 is true
+    ///
+    /// let equal2 = Route.pathSegmentEqual(#param("id"), #param("userId"));
+    /// // equal2 is false (different parameter names)
+    ///
+    /// let equal3 = Route.pathSegmentEqual(#wildcard(#single), #wildcard(#single));
+    /// // equal3 is true
+    /// ```
     public func pathSegmentEqual(s1 : PathSegment, s2 : PathSegment) : Bool {
         switch (s1, s2) {
             case ((#text(t1), #text(t2))) t1 == t2;

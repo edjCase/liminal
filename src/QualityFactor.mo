@@ -4,6 +4,23 @@ import NatX "mo:xtended-numbers/NatX";
 module {
     public type QualityFactor = Nat;
 
+    /// Parses a quality factor (q-value) from text as used in HTTP Accept headers.
+    /// Quality factors range from 0.0 to 1.0 and are represented as integers from 0 to 1000.
+    /// This allows for precise decimal representation without floating point arithmetic.
+    ///
+    /// ```motoko
+    /// let q1 = QualityFactor.fromText("1.0");
+    /// // q1 is ?1000
+    ///
+    /// let q2 = QualityFactor.fromText("0.8");
+    /// // q2 is ?800
+    ///
+    /// let q3 = QualityFactor.fromText("0.123");
+    /// // q3 is ?123
+    ///
+    /// let invalid = QualityFactor.fromText("1.5");
+    /// // invalid is null (values > 1.0 are invalid)
+    /// ```
     // Returns integer value between 0 and 1000, where 1000 is the highest quality
     public func fromText(text : Text) : ?Nat {
         let trimmed = Text.trim(text, #char(' '));

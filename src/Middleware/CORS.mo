@@ -11,10 +11,41 @@ module {
 
     public let defaultOptions = CORS.defaultOptions;
 
+    /// Creates a CORS middleware with default options.
+    /// Uses permissive defaults suitable for development but should be configured for production.
+    ///
+    /// ```motoko
+    /// import CORSMiddleware "mo:liminal/Middleware/CORS";
+    ///
+    /// let app = Liminal.App({
+    ///     middleware = [CORSMiddleware.default()];
+    ///     // other config
+    /// });
+    /// ```
     public func default() : App.Middleware {
         new(defaultOptions);
     };
 
+    /// Creates a CORS middleware with custom options.
+    /// Allows fine-grained control over CORS behavior including allowed origins, methods, and headers.
+    ///
+    /// ```motoko
+    /// import CORSMiddleware "mo:liminal/Middleware/CORS";
+    ///
+    /// let corsOptions = {
+    ///     allowedOrigins = #whitelist(["https://example.com"]);
+    ///     allowedMethods = ["GET", "POST"];
+    ///     allowedHeaders = ["Content-Type", "Authorization"];
+    ///     maxAge = ?3600;
+    ///     allowCredentials = true;
+    ///     exposeHeaders = ["X-Custom-Header"];
+    /// };
+    ///
+    /// let app = Liminal.App({
+    ///     middleware = [CORSMiddleware.new(corsOptions)];
+    ///     // other config
+    /// });
+    /// ```
     public func new(options : Options) : App.Middleware {
         {
             name = "CORS";

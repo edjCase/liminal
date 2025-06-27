@@ -26,6 +26,25 @@ module {
         allowCredentials = false;
         exposeHeaders = [];
     };
+
+    /// Handles CORS preflight requests (OPTIONS method).
+    /// Validates the request against CORS policy and returns appropriate headers or continues processing.
+    /// Preflight requests are sent by browsers for complex CORS requests to check permissions.
+    ///
+    /// ```motoko
+    /// import CORS "mo:liminal/CORS";
+    ///
+    /// let options = CORS.defaultOptions();
+    /// let result = CORS.handlePreflight(httpContext, options);
+    /// switch (result) {
+    ///     case (#complete(response)) {
+    ///         // Preflight handled, return response
+    ///     };
+    ///     case (#next({ corsHeaders })) {
+    ///         // Continue processing with CORS headers
+    ///     };
+    /// }
+    /// ```
     public func handlePreflight(context : HttpContext.HttpContext, options : Options) : {
         #complete : Types.HttpResponse;
         #next : { corsHeaders : [(Text, Text)] };

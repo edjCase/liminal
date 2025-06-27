@@ -23,6 +23,29 @@ module {
         response : Types.HttpResponse;
     };
 
+    /// Serves static assets through an asset canister integration.
+    /// Attempts to serve the requested path from the configured asset store and returns
+    /// an appropriate response or indicates no match was found.
+    ///
+    /// ```motoko
+    /// import Assets "mo:liminal/Assets";
+    ///
+    /// let config = {
+    ///     store = assetCanister; // Your asset canister reference
+    ///     fallbackPath = ?"/index.html"; // SPA fallback
+    /// };
+    ///
+    /// switch (Assets.serve(httpContext, config)) {
+    ///     case (#response(response)) {
+    ///         // Asset found and served
+    ///         response
+    ///     };
+    ///     case (#noMatch) {
+    ///         // No asset found, continue to other handlers
+    ///         httpContext.buildResponse(#notFound, #error(#message("Not found")))
+    ///     };
+    /// }
+    /// ```
     public func serve(
         httpContext : HttpContext.HttpContext,
         options : Config,

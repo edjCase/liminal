@@ -58,6 +58,15 @@ module {
 
     public class App(data : Data) = self {
 
+        /// Handles HTTP query requests (read-only operations).
+        /// Query requests cannot modify state and are processed synchronously.
+        /// Used for GET requests and other read operations that don't change application state.
+        ///
+        /// ```motoko
+        /// let app = Liminal.App({ middleware = []; /* other config */ });
+        /// let request = { method = "GET"; url = "/users"; headers = []; body = ""; certificate_version = null };
+        /// let response = app.http_request(request);
+        /// ```
         public func http_request(req : HttpTypes.QueryRequest) : HttpTypes.QueryResponse {
             let httpContext = HttpContext.HttpContext(
                 req,
@@ -124,6 +133,15 @@ module {
             };
         };
 
+        /// Handles HTTP update requests (state-changing operations).
+        /// Update requests can modify application state and support async operations.
+        /// Used for POST, PUT, PATCH, DELETE requests and other operations that change state.
+        ///
+        /// ```motoko
+        /// let app = Liminal.App({ middleware = []; /* other config */ });
+        /// let request = { method = "POST"; url = "/users"; headers = []; body = "{\"name\": \"John\"}"; certificate_version = null };
+        /// let response = await* app.http_request_update(request);
+        /// ```
         public func http_request_update(req : HttpTypes.UpdateRequest) : async* HttpTypes.UpdateResponse {
             let httpContext = HttpContext.HttpContext(
                 req,
@@ -210,6 +228,16 @@ module {
         };
     };
 
+    /// Default JSON error serializer for HTTP errors.
+    /// Converts HTTP errors into JSON format with appropriate error structure.
+    /// Supports various error data types including validation errors and generic messages.
+    ///
+    /// ```motoko
+    /// let app = Liminal.App({
+    ///     errorSerializer = Liminal.defaultJsonErrorSerializer;
+    ///     // other config
+    /// });
+    /// ```
     public func defaultJsonErrorSerializer(
         error : HttpContext.HttpError
     ) : HttpContext.ErrorSerializerResponse {

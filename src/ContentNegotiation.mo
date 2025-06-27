@@ -36,6 +36,14 @@ module {
     };
 
     // === PARSE ACCEPT-ENCODING HEADER ===
+    /// Parses the Accept-Encoding header to determine client encoding preferences.
+    /// Returns a list of supported encodings ordered by client preference (quality values).
+    /// Handles quality factors (q-values) and common encodings like gzip, deflate, br.
+    ///
+    /// ```motoko
+    /// let preferences = ContentNegotiation.parseEncodingTypes("gzip, deflate;q=0.8, br;q=0.9");
+    /// // Returns encodings ordered by preference: br (0.9), gzip (1.0), deflate (0.8)
+    /// ```
     public func parseEncodingTypes(headerText : Text) : EncodingPreference {
         // Split by comma and trim each entry
         let entries = headerText
@@ -85,6 +93,14 @@ module {
     };
 
     // === PARSE ACCEPT HEADER ===
+    /// Parses the Accept header to determine client content type preferences.
+    /// Returns a list of MIME types ordered by client preference, including quality factors.
+    /// Supports wildcard types and complex Accept header syntax.
+    ///
+    /// ```motoko
+    /// let preferences = ContentNegotiation.parseContentTypes("application/json, text/html;q=0.9, */*;q=0.8");
+    /// // Returns content types ordered by preference: application/json (1.0), text/html (0.9), */* (0.8)
+    /// ```
     public func parseContentTypes(headerText : Text) : ContentPreference {
         if (headerText == "") {
             return {

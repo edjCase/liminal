@@ -100,6 +100,14 @@ module {
         #other : RawMimeType;
     };
 
+    /// Converts a structured MimeType to its raw representation.
+    /// The raw representation contains the type, subtype, and parameters as separate fields.
+    ///
+    /// ```motoko
+    /// let mimeType = #text_html({ charset = ?"utf-8"; level = null; version = null });
+    /// let raw = MimeType.toRaw(mimeType);
+    /// // raw is { type_ = "text"; subType = "html"; parameters = [("charset", "utf-8")] }
+    /// ```
     public func toRaw(mimeType : MimeType) : RawMimeType {
         switch (mimeType) {
             case (#text_html(params)) {
@@ -399,6 +407,19 @@ module {
         };
     };
 
+    /// Converts a raw MIME type representation to a structured MimeType.
+    /// Recognizes common MIME types and provides structured access to their parameters.
+    /// Falls back to #other for unrecognized types.
+    ///
+    /// ```motoko
+    /// let raw = { type_ = "application"; subType = "json"; parameters = [("charset", "utf-8")] };
+    /// let mimeType = MimeType.fromRaw(raw);
+    /// // mimeType is #application_json({ charset = ?"utf-8"; schema = null })
+    ///
+    /// let unknown = { type_ = "custom"; subType = "format"; parameters = [] };
+    /// let unknownType = MimeType.fromRaw(unknown);
+    /// // unknownType is #other({ type_ = "custom"; subType = "format"; parameters = [] })
+    /// ```
     public func fromRaw(raw : RawMimeType) : MimeType {
         // Helper function to find a parameter value
         func getParam(name : Text) : ?Text {
@@ -613,10 +634,32 @@ module {
         };
     };
 
+    /// Converts a structured MimeType to its string representation.
+    /// Optionally includes parameters in the output string.
+    ///
+    /// ```motoko
+    /// let mimeType = #application_json({ charset = ?"utf-8"; schema = null });
+    /// let basic = MimeType.toText(mimeType, false);
+    /// // basic is "application/json"
+    ///
+    /// let withParams = MimeType.toText(mimeType, true);
+    /// // withParams is "application/json; charset=utf-8"
+    /// ```
     public func toText(mimeType : MimeType, includeParameters : Bool) : Text {
         toRaw(mimeType) |> toTextRaw(_, includeParameters);
     };
 
+    /// Converts a raw MIME type to its string representation.
+    /// Optionally includes parameters in the output string.
+    ///
+    /// ```motoko
+    /// let raw = { type_ = "text"; subType = "html"; parameters = [("charset", "utf-8")] };
+    /// let basic = MimeType.toTextRaw(raw, false);
+    /// // basic is "text/html"
+    ///
+    /// let withParams = MimeType.toTextRaw(raw, true);
+    /// // withParams is "text/html; charset=utf-8"
+    /// ```
     public func toTextRaw(mimeType : RawMimeType, includeParameters : Bool) : Text {
         let type_ = mimeType.type_ # "/" # mimeType.subType;
         if (not includeParameters) {
@@ -633,12 +676,35 @@ module {
         return type_ # paramsText;
     };
 
+    /// Parses a MIME type string into a structured MimeType and quality factor.
+    /// Supports quality factors (q-values) in Accept headers.
+    ///
+    /// ```motoko
+    /// let result = MimeType.fromText("application/json; charset=utf-8");
+    /// // result is ?(#application_json({ charset = ?"utf-8"; schema = null }), 1.0)
+    ///
+    /// let withQuality = MimeType.fromText("text/html; q=0.8");
+    /// // withQuality is ?(#text_html({ charset = null; level = null; version = null }), 0.8)
+    ///
+    /// let invalid = MimeType.fromText("invalid");
+    /// // invalid is null
+    /// ```
     public func fromText(text : Text) : ?(MimeType, QualityFactor.QualityFactor) {
         let ?(raw, qualityFactor) = fromTextRaw(text) else return null;
         let mimeType = fromRaw(raw);
         ?(mimeType, qualityFactor);
     };
 
+    /// Parses a MIME type string into a raw MIME type representation and quality factor.
+    /// This provides access to the unstructured MIME type data.
+    ///
+    /// ```motoko
+    /// let result = MimeType.fromTextRaw("custom/type; param=value; q=0.5");
+    /// // result is ?({ type_ = "custom"; subType = "type"; parameters = [("param", "value")] }, 0.5)
+    ///
+    /// let invalid = MimeType.fromTextRaw("malformed");
+    /// // invalid is null
+    /// ```
     public func fromTextRaw(text : Text) : ?(RawMimeType, QualityFactor.QualityFactor) {
         let parts = Text.split(text, #char(';'));
         let ?mediaTypeText = parts.next() else return null;

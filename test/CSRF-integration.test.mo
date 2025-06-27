@@ -198,9 +198,13 @@ func createRequest(
     };
 };
 
+// ================================
+// UPDATE CALL TESTS (EXISTING)
+// ================================
+
 // Test 1: GET requests are allowed without CSRF token
 await test(
-    "should allow GET requests without CSRF token",
+    "UPDATE: should allow GET requests without CSRF token",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
@@ -219,7 +223,7 @@ await test(
 
 // Test 2: POST requests are blocked without CSRF token
 await test(
-    "should block POST requests without CSRF token",
+    "UPDATE: should block POST requests without CSRF token",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
@@ -238,7 +242,7 @@ await test(
 
 // Test 3: PUT requests are blocked without CSRF token
 await test(
-    "should block PUT requests without CSRF token",
+    "UPDATE: should block PUT requests without CSRF token",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
@@ -257,7 +261,7 @@ await test(
 
 // Test 4: DELETE requests are blocked without CSRF token
 await test(
-    "should block DELETE requests without CSRF token",
+    "UPDATE: should block DELETE requests without CSRF token",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
@@ -276,7 +280,7 @@ await test(
 
 // Test 5: POST request with valid CSRF token is allowed
 await test(
-    "should allow POST request with valid CSRF token",
+    "UPDATE: should allow POST request with valid CSRF token",
     func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
@@ -302,7 +306,7 @@ await test(
 
 // Test 6: POST request with invalid CSRF token is blocked
 await test(
-    "should block POST request with invalid CSRF token",
+    "UPDATE: should block POST request with invalid CSRF token",
     func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
@@ -328,7 +332,7 @@ await test(
 
 // Test 7: Custom header name for CSRF token
 await test(
-    "should support custom header name for CSRF token",
+    "UPDATE: should support custom header name for CSRF token",
     func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
@@ -362,7 +366,7 @@ await test(
 
 // Test 8: Exempt paths are not protected
 await test(
-    "should allow POST to exempt paths without CSRF token",
+    "UPDATE: should allow POST to exempt paths without CSRF token",
     func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
@@ -390,7 +394,7 @@ await test(
 
 // Test 9: Custom protected methods
 await test(
-    "should only protect specified HTTP methods",
+    "UPDATE: should only protect specified HTTP methods",
     func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
@@ -429,7 +433,7 @@ await test(
 
 // Test 10: Missing token in storage
 await test(
-    "should block request when token not found in storage",
+    "UPDATE: should block request when token not found in storage",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
         // Don't set any token in storage
@@ -450,11 +454,283 @@ await test(
     },
 );
 
-// Test 11: Token validation for different HTTP methods
+// ================================
+// QUERY CALL TESTS (NEW)
+// ================================
+
+// Test 11: Query - GET requests are allowed without CSRF token
 await test(
-    "should validate CSRF token for all protected methods",
+    "QUERY: should allow GET requests without CSRF token",
+    func() : async () {
+        let (app, _) = createAppWithCSRF(null);
+
+        let request = createRequest(
+            #get,
+            "/",
+            [],
+            Text.encodeUtf8(""),
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 12: Query - POST requests are blocked without CSRF token
+await test(
+    "QUERY: should block POST requests without CSRF token",
+    func() : async () {
+        let (app, _) = createAppWithCSRF(null);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 13: Query - PUT requests are blocked without CSRF token
+await test(
+    "QUERY: should block PUT requests without CSRF token",
+    func() : async () {
+        let (app, _) = createAppWithCSRF(null);
+
+        let request = createRequest(
+            #put,
+            "/update",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"updated\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 14: Query - DELETE requests are blocked without CSRF token
+await test(
+    "QUERY: should block DELETE requests without CSRF token",
+    func() : async () {
+        let (app, _) = createAppWithCSRF(null);
+
+        let request = createRequest(
+            #delete,
+            "/delete",
+            [],
+            "",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 15: Query - POST request with valid CSRF token (per-session rotation)
+await test(
+    "QUERY: should allow POST request with valid CSRF token and per-session rotation",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession; // No token generation needed
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", token),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 16: Query - POST request with invalid CSRF token
+await test(
+    "QUERY: should block POST request with invalid CSRF token",
     func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", createToken(Time.now(), "efgh")),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 17: Query - Exempt paths are not protected
+await test(
+    "QUERY: should allow POST to exempt paths without CSRF token",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            exemptPaths = ["/submit"];
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"public\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 18: Query - Custom protected methods
+await test(
+    "QUERY: should only protect specified HTTP methods",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            protectedMethods = [#post]; // Only POST is protected
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        // PUT should be allowed without token
+        let putRequest = createRequest(
+            #put,
+            "/update",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"updated\"}",
+        );
+
+        let putResponse = app.http_request(putRequest);
+        assertStatusCode(putResponse.status_code, 200);
+
+        // POST should still be blocked without token
+        let postRequest = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"test\"}",
+        );
+
+        let postResponse = app.http_request(postRequest);
+        assertStatusCode(postResponse.status_code, 403);
+    },
+);
+
+// Test 19: Query - Missing token in storage
+await test(
+    "QUERY: should block request when token not found in storage",
+    func() : async () {
+        let (app, _) = createAppWithCSRF(null);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", "some-token"),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 20: Query - Custom header name for CSRF token
+await test(
+    "QUERY: should support custom header name for CSRF token",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            headerName = "X-Custom-CSRF-Token";
+            tokenRotation = #perSession;
+        };
+        let (app, _) = createAppWithCSRF(?config);
+        let token = createToken(Time.now(), "abcd");
+
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-Custom-CSRF-Token", token),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 21: Query - Token validation for different HTTP methods
+await test(
+    "QUERY: should validate CSRF token for all protected methods",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession;
+        };
+        let (app, _) = createAppWithCSRF(?config);
 
         let token = createToken(Time.now(), "abcd");
         tokenStorage.set(token);
@@ -469,7 +745,7 @@ await test(
             ],
             "{\"data\": \"test\"}",
         );
-        let postResponse = await* app.http_request_update(postRequest);
+        let postResponse = app.http_request(postRequest);
         assertStatusCode(postResponse.status_code, 200);
 
         // Test PUT
@@ -482,7 +758,7 @@ await test(
             ],
             "{\"data\": \"updated\"}",
         );
-        let putResponse = await* app.http_request_update(putRequest);
+        let putResponse = app.http_request(putRequest);
         assertStatusCode(putResponse.status_code, 200);
 
         // Test DELETE
@@ -492,159 +768,14 @@ await test(
             [("X-CSRF-Token", token)],
             "",
         );
-        let deleteResponse = await* app.http_request_update(deleteRequest);
+        let deleteResponse = app.http_request(deleteRequest);
         assertStatusCode(deleteResponse.status_code, 200);
     },
 );
 
-// Test 12: Empty CSRF token header
+// Test 22: Query - PATCH method protection
 await test(
-    "should block request with empty CSRF token header",
-    func() : async () {
-        let (app, tokenStorage) = createAppWithCSRF(null);
-        let token = createToken(Time.now(), "abcd");
-        tokenStorage.set(token);
-
-        let request = createRequest(
-            #post,
-            "/submit",
-            [
-                ("Content-Type", "application/json"),
-                ("X-CSRF-Token", ""),
-            ],
-            "{\"data\": \"test\"}",
-        );
-
-        let response = await* app.http_request_update(request);
-
-        assertStatusCode(response.status_code, 403);
-    },
-);
-
-// Test 13: Case-sensitive token validation
-await test(
-    "should perform case-sensitive token validation",
-    func() : async () {
-        let (app, tokenStorage) = createAppWithCSRF(null);
-
-        let token = createToken(Time.now(), "abcd");
-        tokenStorage.set(token);
-
-        let request = createRequest(
-            #post,
-            "/submit",
-            [
-                ("Content-Type", "application/json"),
-                ("X-CSRF-Token", createToken(Time.now(), "ABCD")), // Different case
-            ],
-            "{\"data\": \"test\"}",
-        );
-
-        let response = await* app.http_request_update(request);
-
-        assertStatusCode(response.status_code, 403);
-    },
-);
-
-// Test 14: Multiple exempt paths
-await test(
-    "should handle multiple exempt paths",
-    func() : async () {
-        let tokenStorage = MockTokenStorage();
-        let config = {
-            CSRFMiddleware.defaultConfig({
-                get = tokenStorage.get;
-                set = tokenStorage.set;
-                clear = tokenStorage.clear;
-            }) with
-            exemptPaths = ["/submit", "/webhooks"];
-        };
-        let (app, _) = createAppWithCSRF(?config);
-
-        // Both paths should be exempt
-        let request1 = createRequest(
-            #post,
-            "/submit",
-            [("Content-Type", "application/json")],
-            "{\"data\": \"public\"}",
-        );
-        let response1 = await* app.http_request_update(request1);
-        assertStatusCode(response1.status_code, 200);
-    },
-);
-
-// Test 15: Non-exempt path requires token
-await test(
-    "should require token for non-exempt paths",
-    func() : async () {
-        let tokenStorage = MockTokenStorage();
-        let config = {
-            CSRFMiddleware.defaultConfig({
-                get = tokenStorage.get;
-                set = tokenStorage.set;
-                clear = tokenStorage.clear;
-            }) with
-            exemptPaths = ["/api/public"];
-        };
-        let (app, _) = createAppWithCSRF(?config);
-
-        // This path is not exempt, so should require token
-        let request = createRequest(
-            #post,
-            "/submit",
-            [("Content-Type", "application/json")],
-            "{\"data\": \"test\"}",
-        );
-
-        let response = await* app.http_request_update(request);
-
-        assertStatusCode(response.status_code, 403);
-    },
-);
-
-// Test 16: Token storage integration
-await test(
-    "should properly integrate with token storage",
-    func() : async () {
-        let (app, tokenStorage) = createAppWithCSRF(null);
-
-        // Initially no token
-        switch (tokenStorage.get()) {
-            case (?_) Runtime.trap("Expected no token initially");
-            case (null) {}; // Expected
-        };
-
-        let token = createToken(Time.now(), "abcd");
-        // Set token and verify it's stored
-        tokenStorage.set(token);
-        switch (tokenStorage.get()) {
-            case (?t) {
-                if (t != token) {
-                    Runtime.trap("Token not stored correctly");
-                };
-            };
-            case (null) Runtime.trap("Token should be stored");
-        };
-
-        // Use the stored token in a request
-        let request = createRequest(
-            #post,
-            "/submit",
-            [
-                ("Content-Type", "application/json"),
-                ("X-CSRF-Token", token),
-            ],
-            "{\"data\": \"test\"}",
-        );
-
-        let response = await* app.http_request_update(request);
-        assertStatusCode(response.status_code, 200);
-    },
-);
-
-// Test 17: PATCH method protection
-await test(
-    "should protect PATCH requests by default",
+    "QUERY: should protect PATCH requests by default",
     func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
@@ -655,17 +786,26 @@ await test(
             "{\"data\": \"patched\"}",
         );
 
-        let response = await* app.http_request_update(request);
+        let response = app.http_request(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
-// Test 18: Valid token for PATCH request
+// Test 23: Query - Valid token for PATCH request
 await test(
-    "should allow PATCH request with valid CSRF token",
+    "QUERY: should allow PATCH request with valid CSRF token",
     func() : async () {
-        let (app, tokenStorage) = createAppWithCSRF(null);
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession;
+        };
+        let (app, _) = createAppWithCSRF(?config);
         let token = createToken(Time.now(), "abcd");
         tokenStorage.set(token);
 
@@ -679,15 +819,15 @@ await test(
             "{\"data\": \"patched\"}",
         );
 
-        let response = await* app.http_request_update(request);
+        let response = app.http_request(request);
 
         assertStatusCode(response.status_code, 200);
     },
 );
 
-// Test 19: Request with wrong header name
+// Test 24: Query - Request with wrong header name
 await test(
-    "should block request with token in wrong header",
+    "QUERY: should block request with token in wrong header",
     func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
@@ -704,17 +844,107 @@ await test(
             "{\"data\": \"test\"}",
         );
 
-        let response = await* app.http_request_update(request);
+        let response = app.http_request(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
-// Test 20: CSRF middleware preserves other response headers
+// Test 25: Query - Empty CSRF token header
 await test(
-    "should preserve response headers from downstream middleware",
+    "QUERY: should block request with empty CSRF token header",
     func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", ""),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 26: Query - Case-sensitive token validation
+await test(
+    "QUERY: should perform case-sensitive token validation",
+    func() : async () {
+        let (app, tokenStorage) = createAppWithCSRF(null);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", createToken(Time.now(), "ABCD")), // Different case
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// ================================
+// QUERY UPGRADE TESTS (CRITICAL)
+// ================================
+
+// Test 27: Query should upgrade when per-request token rotation is needed for GET
+await test(
+    "QUERY: should upgrade GET request when per-request token rotation is configured",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perRequest; // This should cause upgrade
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #get,
+            "/",
+            [],
+            Text.encodeUtf8(""),
+        );
+
+        let response = app.http_request(request);
+
+        assert (response.upgrade == true);
+    },
+);
+
+// Test 28: Query should upgrade when per-request token rotation is needed for POST
+await test(
+    "QUERY: should upgrade POST request when per-request token rotation is configured",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perRequest; // This should cause upgrade
+        };
+        let (app, _) = createAppWithCSRF(?config);
 
         let token = createToken(Time.now(), "abcd");
         tokenStorage.set(token);
@@ -729,9 +959,284 @@ await test(
             "{\"data\": \"test\"}",
         );
 
-        let response = await* app.http_request_update(request);
+        let response = app.http_request(request);
 
+        assert (response.upgrade == true);
+    },
+);
+
+// Test 29: Query should upgrade when onSuccess token rotation is needed
+await test(
+    "QUERY: should upgrade POST request when onSuccess token rotation is configured",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #onSuccess; // This should cause upgrade after successful validation
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", token),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        assert (response.upgrade == true);
+    },
+);
+
+// Test 30: Query should NOT upgrade when per-session token rotation is used
+await test(
+    "QUERY: should NOT upgrade POST request when per-session token rotation is configured",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession; // This should NOT cause upgrade
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", token),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        // With per-session rotation, this should complete as a query without upgrade
         assertStatusCode(response.status_code, 200);
-        assertArrayContains(response.headers, "Content-Type", "application/json", "Should preserve Content-Type header");
+
+        // Verify that it did NOT upgrade
+        assert (response.upgrade == false);
+
+        // Check that NO new CSRF token was generated (no X-CSRF-Token header in response)
+        let hasCSRFHeader = Array.any<(Text, Text)>(
+            response.headers,
+            func((name, value)) {
+                name == config.headerName;
+            },
+        );
+        if (hasCSRFHeader) {
+            Runtime.trap("CSRF token should NOT be generated for per-session rotation in query mode");
+        };
+    },
+);
+
+// Test 31: Query - Token storage integration
+await test(
+    "QUERY: should properly integrate with token storage",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession;
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        // Verify token is stored
+        switch (tokenStorage.get()) {
+            case (?t) {
+                if (t != token) {
+                    Runtime.trap("Token not stored correctly");
+                };
+            };
+            case (null) Runtime.trap("Token should be stored");
+        };
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", token),
+            ],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 32: Query - Multiple exempt paths
+await test(
+    "QUERY: should handle multiple exempt paths",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            exemptPaths = ["/submit", "/webhooks"];
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"public\"}",
+        );
+
+        let response = app.http_request(request);
+        assertStatusCode(response.status_code, 200);
+    },
+);
+
+// Test 33: Query - Non-exempt path requires token
+await test(
+    "QUERY: should require token for non-exempt paths",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            exemptPaths = ["/api/public"];
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+        assertStatusCode(response.status_code, 403);
+    },
+);
+
+// Test 34: Query should NOT upgrade for GET requests with per-session rotation
+await test(
+    "QUERY: should NOT upgrade GET request when per-session token rotation is configured",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perSession; // This should NOT cause upgrade for non-protected methods
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #get,
+            "/",
+            [],
+            Text.encodeUtf8(""),
+        );
+
+        let response = app.http_request(request);
+
+        // GET with per-session rotation should complete as query without upgrade
+        assertStatusCode(response.status_code, 200);
+        assert (response.upgrade == false);
+    },
+);
+
+// Test 35: Query should upgrade for onSuccess rotation with valid token
+await test(
+    "QUERY: should upgrade for onSuccess rotation even with valid token",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #onSuccess; // Should upgrade after successful validation
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
+
+        let request = createRequest(
+            #put,
+            "/update",
+            [
+                ("Content-Type", "application/json"),
+                ("X-CSRF-Token", token),
+            ],
+            "{\"data\": \"updated\"}",
+        );
+
+        let response = app.http_request(request);
+
+        // Should upgrade because onSuccess needs token generation after validation
+        assert (response.upgrade == true);
+    },
+);
+
+// Test 36: Query should NOT upgrade for exempt paths even with per-request rotation
+await test(
+    "QUERY: should NOT upgrade for exempt paths even with per-request rotation",
+    func() : async () {
+        let tokenStorage = MockTokenStorage();
+        let config = {
+            CSRFMiddleware.defaultConfig({
+                get = tokenStorage.get;
+                set = tokenStorage.set;
+                clear = tokenStorage.clear;
+            }) with
+            tokenRotation = #perRequest; // Would normally cause upgrade
+            exemptPaths = ["/submit"]; // But this path is exempt
+        };
+        let (app, _) = createAppWithCSRF(?config);
+
+        let request = createRequest(
+            #post,
+            "/submit",
+            [("Content-Type", "application/json")],
+            "{\"data\": \"test\"}",
+        );
+
+        let response = app.http_request(request);
+
+        // Exempt paths should not upgrade regardless of rotation strategy
+        assertStatusCode(response.status_code, 200);
+        assert (response.upgrade == false);
     },
 );
