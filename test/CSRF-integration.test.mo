@@ -1,8 +1,7 @@
-import { test } "mo:test";
+import { test } "mo:test/async";
 import Array "mo:new-base/Array";
 import Text "mo:new-base/Text";
 import Blob "mo:new-base/Blob";
-import Iter "mo:new-base/Iter";
 import Runtime "mo:new-base/Runtime";
 import Nat "mo:new-base/Nat";
 import Nat16 "mo:new-base/Nat16";
@@ -11,25 +10,14 @@ import CSRFMiddleware "../src/Middleware/CSRF";
 import RouterMiddleware "../src/Middleware/Router";
 import Router "../src/Router";
 import HttpMethod "../src/HttpMethod";
+import Int "mo:new-base/Int";
+import Time "mo:new-base/Time";
 
 // Helper functions for testing assertions
 func assertStatusCode(actual : Nat16, expected : Nat) : () {
     let actualNat = Nat16.toNat(actual);
     if (actualNat != expected) {
         Runtime.trap("Status Code check failed\nExpected: " # Nat.toText(expected) # "\nActual: " # Nat.toText(actualNat));
-    };
-};
-
-func assertOptionText(actual : ?Text, expectedContains : Text, message : Text) : () {
-    switch (actual) {
-        case (?text) {
-            if (not Text.contains(text, #text(expectedContains))) {
-                Runtime.trap(message # "\nExpected to contain: '" # expectedContains # "'\nActual: '" # text # "'");
-            };
-        };
-        case (null) {
-            Runtime.trap(message # "\nExpected header with content '" # expectedContains # "'\nbut header was null");
-        };
     };
 };
 
@@ -62,12 +50,9 @@ func assertArrayContains(headers : [(Text, Text)], expectedName : Text, expected
     };
 };
 
-// Helper function to find header value
-func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
-    for ((k, v) in headers.vals()) {
-        if (k == key) return ?v;
-    };
-    null;
+func createToken(timestamp : Int, suffix : Text) : Text {
+    let base = Int.toText(timestamp);
+    return base # "-" # suffix;
 };
 
 // Mock token storage for testing
@@ -159,6 +144,17 @@ func createAppWithCSRF(csrfConfig : ?CSRFMiddleware.Config) : (Liminal.App, Mock
                     };
                 },
             ),
+            Router.patchQuery(
+                "/update",
+                func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+                    {
+                        statusCode = 200;
+                        headers = [("Content-Type", "application/json")];
+                        body = ?"{\"patched\": true}";
+                        streamingStrategy = null;
+                    };
+                },
+            ),
             Router.getQuery(
                 "/api/public",
                 func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
@@ -203,16 +199,16 @@ func createRequest(
 };
 
 // Test 1: GET requests are allowed without CSRF token
-test(
+await test(
     "should allow GET requests without CSRF token",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
         let request = createRequest(
             #get,
             "/",
             [],
-            "",
+            Text.encodeUtf8(""),
         );
 
         let response = app.http_request(request);
@@ -222,9 +218,9 @@ test(
 );
 
 // Test 2: POST requests are blocked without CSRF token
-test(
+await test(
     "should block POST requests without CSRF token",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
         let request = createRequest(
@@ -234,16 +230,16 @@ test(
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 3: PUT requests are blocked without CSRF token
-test(
+await test(
     "should block PUT requests without CSRF token",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
         let request = createRequest(
@@ -253,16 +249,16 @@ test(
             "{\"data\": \"updated\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 4: DELETE requests are blocked without CSRF token
-test(
+await test(
     "should block DELETE requests without CSRF token",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
         let request = createRequest(
@@ -272,66 +268,68 @@ test(
             "",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 5: POST request with valid CSRF token is allowed
-test(
+await test(
     "should allow POST request with valid CSRF token",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
+        let token = createToken(Time.now(), "abcd");
         // Set a token in storage
-        tokenStorage.set("valid-token-123");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "valid-token-123"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
     },
 );
 
 // Test 6: POST request with invalid CSRF token is blocked
-test(
+await test(
     "should block POST request with invalid CSRF token",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
+        let token = createToken(Time.now(), "abcd");
         // Set a different token in storage
-        tokenStorage.set("valid-token-123");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "invalid-token-456"),
+                ("X-CSRF-Token", createToken(Time.now(), "efgh")),
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 7: Custom header name for CSRF token
-test(
+await test(
     "should support custom header name for CSRF token",
-    func() : () {
+    func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
             CSRFMiddleware.defaultConfig({
@@ -342,29 +340,30 @@ test(
             headerName = "X-Custom-CSRF-Token";
         };
         let (app, _) = createAppWithCSRF(?config);
+        let token = createToken(Time.now(), "abcd");
 
-        tokenStorage.set("custom-token-789");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-Custom-CSRF-Token", "custom-token-789"),
+                ("X-Custom-CSRF-Token", token),
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
     },
 );
 
 // Test 8: Exempt paths are not protected
-test(
+await test(
     "should allow POST to exempt paths without CSRF token",
-    func() : () {
+    func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
             CSRFMiddleware.defaultConfig({
@@ -372,27 +371,27 @@ test(
                 set = tokenStorage.set;
                 clear = tokenStorage.clear;
             }) with
-            exemptPaths = ["/api/public"];
+            exemptPaths = ["/submit"];
         };
         let (app, _) = createAppWithCSRF(?config);
 
         let request = createRequest(
             #post,
-            "/api/public",
+            "/submit",
             [("Content-Type", "application/json")],
             "{\"data\": \"public\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
     },
 );
 
 // Test 9: Custom protected methods
-test(
+await test(
     "should only protect specified HTTP methods",
-    func() : () {
+    func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
             CSRFMiddleware.defaultConfig({
@@ -412,7 +411,7 @@ test(
             "{\"data\": \"updated\"}",
         );
 
-        let putResponse = app.http_request(putRequest);
+        let putResponse = await* app.http_request_update(putRequest);
         assertStatusCode(putResponse.status_code, 200);
 
         // POST should still be blocked without token
@@ -423,15 +422,15 @@ test(
             "{\"data\": \"test\"}",
         );
 
-        let postResponse = app.http_request(postRequest);
+        let postResponse = await* app.http_request_update(postRequest);
         assertStatusCode(postResponse.status_code, 403);
     },
 );
 
 // Test 10: Missing token in storage
-test(
+await test(
     "should block request when token not found in storage",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
         // Don't set any token in storage
 
@@ -445,18 +444,20 @@ test(
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 11: Token validation for different HTTP methods
-test(
+await test(
     "should validate CSRF token for all protected methods",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("valid-token-123");
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         // Test POST
         let postRequest = createRequest(
@@ -464,11 +465,11 @@ test(
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "valid-token-123"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"test\"}",
         );
-        let postResponse = app.http_request(postRequest);
+        let postResponse = await* app.http_request_update(postRequest);
         assertStatusCode(postResponse.status_code, 200);
 
         // Test PUT
@@ -477,31 +478,32 @@ test(
             "/update",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "valid-token-123"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"updated\"}",
         );
-        let putResponse = app.http_request(putRequest);
+        let putResponse = await* app.http_request_update(putRequest);
         assertStatusCode(putResponse.status_code, 200);
 
         // Test DELETE
         let deleteRequest = createRequest(
             #delete,
             "/delete",
-            [("X-CSRF-Token", "valid-token-123")],
+            [("X-CSRF-Token", token)],
             "",
         );
-        let deleteResponse = app.http_request(deleteRequest);
+        let deleteResponse = await* app.http_request_update(deleteRequest);
         assertStatusCode(deleteResponse.status_code, 200);
     },
 );
 
 // Test 12: Empty CSRF token header
-test(
+await test(
     "should block request with empty CSRF token header",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("valid-token-123");
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
@@ -513,39 +515,41 @@ test(
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 13: Case-sensitive token validation
-test(
+await test(
     "should perform case-sensitive token validation",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("ValidToken123");
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "validtoken123"), // Different case
+                ("X-CSRF-Token", createToken(Time.now(), "ABCD")), // Different case
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 14: Multiple exempt paths
-test(
+await test(
     "should handle multiple exempt paths",
-    func() : () {
+    func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
             CSRFMiddleware.defaultConfig({
@@ -580,9 +584,9 @@ test(
 );
 
 // Test 15: Non-exempt path requires token
-test(
+await test(
     "should require token for non-exempt paths",
-    func() : () {
+    func() : async () {
         let tokenStorage = MockTokenStorage();
         let config = {
             CSRFMiddleware.defaultConfig({
@@ -602,16 +606,16 @@ test(
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 16: Token storage integration
-test(
+await test(
     "should properly integrate with token storage",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
 
         // Initially no token
@@ -620,11 +624,12 @@ test(
             case (null) {}; // Expected
         };
 
+        let token = createToken(Time.now(), "abcd");
         // Set token and verify it's stored
-        tokenStorage.set("stored-token-456");
+        tokenStorage.set(token);
         switch (tokenStorage.get()) {
-            case (?token) {
-                if (token != "stored-token-456") {
+            case (?t) {
+                if (t != token) {
                     Runtime.trap("Token not stored correctly");
                 };
             };
@@ -637,20 +642,20 @@ test(
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "stored-token-456"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
         assertStatusCode(response.status_code, 200);
     },
 );
 
 // Test 17: PATCH method protection
-test(
+await test(
     "should protect PATCH requests by default",
-    func() : () {
+    func() : async () {
         let (app, _) = createAppWithCSRF(null);
 
         let request = createRequest(
@@ -660,76 +665,81 @@ test(
             "{\"data\": \"patched\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 18: Valid token for PATCH request
-test(
+await test(
     "should allow PATCH request with valid CSRF token",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("patch-token-789");
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #patch,
             "/update",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "patch-token-789"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"patched\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
     },
 );
 
 // Test 19: Request with wrong header name
-test(
+await test(
     "should block request with token in wrong header",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("correct-token");
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-Wrong-Header", "correct-token"), // Wrong header name
+                ("X-Wrong-Header", token), // Wrong header name
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 403);
     },
 );
 
 // Test 20: CSRF middleware preserves other response headers
-test(
+await test(
     "should preserve response headers from downstream middleware",
-    func() : () {
+    func() : async () {
         let (app, tokenStorage) = createAppWithCSRF(null);
-        tokenStorage.set("header-test-token");
+
+        let token = createToken(Time.now(), "abcd");
+        tokenStorage.set(token);
 
         let request = createRequest(
             #post,
             "/submit",
             [
                 ("Content-Type", "application/json"),
-                ("X-CSRF-Token", "header-test-token"),
+                ("X-CSRF-Token", token),
             ],
             "{\"data\": \"test\"}",
         );
 
-        let response = app.http_request(request);
+        let response = await* app.http_request_update(request);
 
         assertStatusCode(response.status_code, 200);
         assertArrayContains(response.headers, "Content-Type", "application/json", "Should preserve Content-Type header");

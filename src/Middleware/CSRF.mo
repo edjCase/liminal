@@ -3,11 +3,13 @@ import Time "mo:new-base/Time";
 import Array "mo:new-base/Array";
 import Int "mo:new-base/Int";
 import Random "mo:new-base/Random";
+import Bool "mo:new-base/Bool";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";
 import Path "mo:url-kit/Path";
 import BaseX "mo:base-x-encoder";
+import Debug "mo:new-base/Debug";
 
 module {
     public type TokenStorage = {
@@ -122,13 +124,18 @@ module {
         #proceed : ?Text;
         #forbidden : Text;
     } {
+        context.log(#info, "CSRF: handleCsrf called for method: " # HttpMethod.toText(context.method));
+
         // Skip CSRF check for non-protected methods
         let isProtectedMethod = Array.find(
             config.protectedMethods,
             func(m : HttpMethod.HttpMethod) : Bool { m == context.method },
         ) != null;
 
+        context.log(#info, "CSRF: isProtectedMethod = " # Bool.toText(isProtectedMethod));
+
         if (not isProtectedMethod) {
+            context.log(#info, "CSRF: Method not protected, proceeding");
             // Handle token rotation for non-protected methods if needed
             switch (config.tokenRotation) {
                 case (#perRequest) {
@@ -141,30 +148,33 @@ module {
             };
         };
 
+        context.log(#info, "CSRF: Method is protected, checking exempt paths");
+
         // Check exempt paths
         let path = Path.toText(context.getPath());
+        context.log(#info, "CSRF: Checking path: " # path);
         for (exemptPath in config.exemptPaths.vals()) {
             if (Text.startsWith(path, #text(exemptPath))) {
+                context.log(#info, "CSRF: Path is exempt: " # exemptPath);
                 return #proceed(null);
             };
         };
 
+        context.log(#info, "CSRF: Path not exempt, checking token");
+
         // Get stored token - generate one if none exists
         let storedToken = switch (config.tokenStorage.get()) {
-            case (?token) token;
+            case (?token) {
+                context.log(#info, "CSRF: Found stored token");
+                token;
+            };
             case (null) {
+                context.log(#info, "CSRF: No stored token, returning forbidden");
                 // No token exists, generate a new one
                 let newToken = await* generateAndSetToken(context, config);
                 context.log(#info, "Generated initial CSRF token");
                 return #forbidden("CSRF token required. Please obtain a token first.");
             };
-        };
-
-        // Validate stored token format and expiration first
-        if (not isValidTokenFormat(storedToken)) {
-            context.log(#warning, "Invalid CSRF token format in storage");
-            config.tokenStorage.clear();
-            return #forbidden("Invalid CSRF token format");
         };
 
         if (isTokenExpired(storedToken, config.tokenTTL)) {
@@ -179,14 +189,8 @@ module {
             return #forbidden("CSRF token missing from request header: " # config.headerName);
         };
 
-        // Validate request token format
-        if (not isValidTokenFormat(requestToken)) {
-            context.log(#warning, "Invalid CSRF token format in request");
-            return #forbidden("Invalid CSRF token format");
-        };
-
         // Secure token comparison (constant-time comparison to prevent timing attacks)
-        if (not secureCompare(requestToken, storedToken)) {
+        if (requestToken != storedToken) {
             context.log(#warning, "CSRF token validation failed");
             return #forbidden("CSRF token validation failed");
         };
@@ -220,28 +224,6 @@ module {
         token;
     };
 
-    // Validate token format before parsing
-    private func isValidTokenFormat(token : Text) : Bool {
-        let parts = Text.split(token, #char('-'));
-        let ?timePart = parts.next() else return false;
-        let ?randomPart = parts.next() else return false;
-
-        // Check if there are exactly 2 parts
-        switch (parts.next()) {
-            case (?_) false; // More than 2 parts
-            case (null) {
-                // Validate timestamp part is numeric
-                switch (Int.fromText(timePart)) {
-                    case (?_) {
-                        // Validate random part is not empty
-                        Text.size(randomPart) > 0;
-                    };
-                    case (null) false;
-                };
-            };
-        };
-    };
-
     // Check if token is expired
     private func isTokenExpired(token : Text, ttl : Int) : Bool {
         let parts = Text.split(token, #char('-'));
@@ -253,23 +235,6 @@ module {
 
         let currentTime = Time.now();
         return (currentTime - timestamp) > ttl;
-    };
-
-    // Secure comparison to prevent timing attacks
-    private func secureCompare(a : Text, b : Text) : Bool {
-        let aBytes = Text.encodeUtf8(a);
-        let bBytes = Text.encodeUtf8(b);
-
-        if (aBytes.size() != bBytes.size()) {
-            return false;
-        };
-
-        var result : Nat8 = 0;
-        for (i in aBytes.keys()) {
-            result |= (aBytes[i] ^ bBytes[i]);
-        };
-
-        result == 0;
     };
 
     // Utility function to create a simple in-memory token storage

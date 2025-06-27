@@ -54,7 +54,7 @@ module {
             };
             let logLevelText = levelToText(level);
             let maxLogLevelLength = 7; // Length of longest log level text ("WARNING")
-            let paddingSize = maxLogLevelLength - logLevelText.size();
+            let paddingSize : Nat = maxLogLevelLength - logLevelText.size();
             var padding = "";
             for (i in Nat.range(0, paddingSize)) {
                 padding := padding # " ";
