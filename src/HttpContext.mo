@@ -201,10 +201,24 @@ module {
 
         private var identity : ?Identity.Identity = null;
 
+        /// Logs a message at the specified log level using the context's logger.
+        /// Messages are automatically scoped to the current middleware context.
+        ///
+        /// ```motoko
+        /// httpContext.log(#info, "Processing user request");
+        /// httpContext.log(#error, "Authentication failed");
+        /// ```
         public func log(level : Logging.LogLevel, message : Text) : () {
             logger.log(level, message);
         };
 
+        /// Sets the user identity using a JWT token and validation status.
+        /// The identity is extracted from the JWT payload's "sub" field.
+        ///
+        /// ```motoko
+        /// let jwt = JWT.decode(tokenString);
+        /// httpContext.setIdentityJWT(jwt, true); // Valid token
+        /// ```
         public func setIdentityJWT(jwt : JWT.Token, isValid : Bool) {
             let id = switch (JWT.getPayloadValue(jwt, "sub")) {
                 case (?#string(sub)) ?sub;
@@ -217,14 +231,48 @@ module {
             };
         };
 
+        /// Sets the user identity directly with a custom Identity object.
+        /// Use this when authentication is handled outside of JWT tokens.
+        ///
+        /// ```motoko
+        /// let customIdentity = {
+        ///     kind = #custom("session");
+        ///     getId = func() : ?Text = ?"user123";
+        ///     isAuthenticated = func() : Bool = true;
+        /// };
+        /// httpContext.setIdentity(customIdentity);
+        /// ```
         public func setIdentity(identity_ : Identity.Identity) {
             identity := ?identity_;
         };
 
+        /// Returns the current user identity if set, null otherwise.
+        /// Check the identity's isAuthenticated() method to verify authentication status.
+        ///
+        /// ```motoko
+        /// switch (httpContext.getIdentity()) {
+        ///     case (?identity) {
+        ///         if (identity.isAuthenticated()) {
+        ///             // User is authenticated
+        ///         };
+        ///     };
+        ///     case (null) {
+        ///         // No identity set
+        ///     };
+        /// };
+        /// ```
         public func getIdentity() : ?Identity.Identity {
             return identity;
         };
 
+        /// Returns the parsed URL data including path, query parameters, and fragments.
+        /// The URL is parsed and cached on first access for performance.
+        ///
+        /// ```motoko
+        /// let url = httpContext.getUrlData();
+        /// let path = url.path;
+        /// let params = url.queryParams;
+        /// ```
         public func getUrlData() : UrlKit.Url {
             switch (urlCache) {
                 case (?v) v;
@@ -250,6 +298,13 @@ module {
             url.queryParams;
         };
 
+        /// Returns the value of a specific query parameter, or null if not found.
+        /// Parameter lookup is case-insensitive.
+        ///
+        /// ```motoko
+        /// let searchQuery = httpContext.getQueryParam("q");
+        /// // For URL "/search?q=motoko", returns ?"motoko"
+        /// ```
         public func getQueryParam(key : Text) : ?Text {
             let url = getUrlData();
 
@@ -262,6 +317,13 @@ module {
             ?queryKeyValue.1;
         };
 
+        /// Returns the value of a specific HTTP header, or null if not found.
+        /// Header lookup is case-insensitive following HTTP standards.
+        ///
+        /// ```motoko
+        /// let contentType = httpContext.getHeader("Content-Type");
+        /// let userAgent = httpContext.getHeader("User-Agent");
+        /// ```
         public func getHeader(key : Text) : ?Text {
             let ?kv = Array.find(
                 request.headers,
@@ -270,6 +332,13 @@ module {
             ?kv.1;
         };
 
+        /// Returns the value of a specific cookie, or null if not found.
+        /// Parses the Cookie header and extracts individual cookie values.
+        ///
+        /// ```motoko
+        /// let sessionId = httpContext.getCookie("session_id");
+        /// let preferences = httpContext.getCookie("user_prefs");
+        /// ```
         public func getCookie(key : Text) : ?Text {
             // Get the Cookie header
             let ?cookieHeader = getHeader("Cookie") else return null;
@@ -301,6 +370,13 @@ module {
             return null;
         };
 
+        /// Returns the client's content type preferences based on the Accept header.
+        /// Used for content negotiation to determine response format.
+        ///
+        /// ```motoko
+        /// let preference = httpContext.getContentPreference();
+        /// // Check if client accepts JSON: preference.requestedTypes
+        /// ```
         public func getContentPreference() : ContentNegotiation.ContentPreference {
             let ?acceptHeader = getHeader("Accept") else return {
                 requestedTypes = [];
@@ -309,6 +385,19 @@ module {
             ContentNegotiation.parseContentTypes(acceptHeader);
         };
 
+        /// Parses the request body as JSON and returns the parsed JSON object.
+        /// Returns an error if the body is not valid UTF-8 or valid JSON.
+        ///
+        /// ```motoko
+        /// switch (httpContext.parseRawJsonBody()) {
+        ///     case (#ok(json)) {
+        ///         // Process JSON object
+        ///     };
+        ///     case (#err(error)) {
+        ///         // Handle parsing error
+        ///     };
+        /// };
+        /// ```
         public func parseRawJsonBody() : Result.Result<Json.Json, Text> {
             let ?jsonText = Text.decodeUtf8(request.body) else return #err("Body is not valid UTF-8");
             switch (Json.parse(jsonText)) {
@@ -317,6 +406,22 @@ module {
             };
         };
 
+        /// Parses the request body as JSON and applies a transformation function.
+        /// Combines JSON parsing with custom deserialization in one step.
+        ///
+        /// ```motoko
+        /// let parseUser = func(json : Json.Json) : Result.Result<User, Text> {
+        ///     // Custom parsing logic
+        /// };
+        /// switch (httpContext.parseJsonBody(parseUser)) {
+        ///     case (#ok(user)) {
+        ///         // Use parsed user object
+        ///     };
+        ///     case (#err(error)) {
+        ///         // Handle parsing/transformation error
+        ///     };
+        /// };
+        /// ```
         public func parseJsonBody<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> {
             switch (parseRawJsonBody()) {
                 case (#ok(json)) f(json);
@@ -324,6 +429,19 @@ module {
             };
         };
 
+        /// Builds an HTTP response with the specified status code and content.
+        /// Handles content negotiation and serialization automatically.
+        ///
+        /// ```motoko
+        /// // Return JSON response
+        /// let response = httpContext.buildResponse(#ok, #content(#json(userJson)));
+        ///
+        /// // Return custom response
+        /// let customResponse = httpContext.buildResponse(#created, #custom({
+        ///     headers = [("Location", "/users/123")];
+        ///     body = Text.encodeUtf8("User created");
+        /// }));
+        /// ```
         public func buildResponse(statusCode : HttpStatusCodeOrCustom, value : ResponseKind) : Types.HttpResponse {
             let statusCodeNat = getStatusCodeNat(statusCode);
             switch (value) {
@@ -384,6 +502,16 @@ module {
             };
         };
 
+        /// Builds an HTTP redirect response to the specified URL.
+        /// Supports both temporary (307) and permanent (308) redirects.
+        ///
+        /// ```motoko
+        /// // Temporary redirect
+        /// let response = httpContext.buildRedirectResponse("/login", false);
+        ///
+        /// // Permanent redirect
+        /// let response = httpContext.buildRedirectResponse("/new-path", true);
+        /// ```
         public func buildRedirectResponse(url : Text, permanent : Bool) : Types.HttpResponse {
             {
                 statusCode = if (permanent) 308 else 307;
@@ -397,6 +525,13 @@ module {
 
     };
 
+    /// Converts an HTTP status code enum to its numeric representation.
+    /// Supports both standard status codes and custom numeric codes.
+    ///
+    /// ```motoko
+    /// let code = HttpContext.getStatusCodeNat(#ok); // Returns 200
+    /// let customCode = HttpContext.getStatusCodeNat(#custom(418)); // Returns 418
+    /// ```
     public func getStatusCodeNat(code : HttpStatusCodeOrCustom) : Nat = switch (code) {
         case (#ok) 200;
         case (#created) 201;
@@ -463,6 +598,13 @@ module {
         case (#custom(code)) code;
     };
 
+    /// Returns the human-readable label for an HTTP status code.
+    /// Provides standard descriptions for common HTTP status codes.
+    ///
+    /// ```motoko
+    /// let label = HttpContext.getStatusCodeLabel(404); // Returns "Not Found"
+    /// let successLabel = HttpContext.getStatusCodeLabel(200); // Returns "OK"
+    /// ```
     public func getStatusCodeLabel(code : Nat) : Text = switch (code) {
         // 2xx Success
         case (200) "OK";
@@ -530,7 +672,7 @@ module {
         case (510) "Not Extended";
         case (511) "Network Authentication Required";
 
-        case (_) "Unknown Error"; // Default case for unknown status codes
+        case (_) "Unknown Status Code: " # Nat.toText(code); // Default case for unknown status codes
     };
 
 };

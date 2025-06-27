@@ -77,9 +77,9 @@ test(
             (502, "Bad Gateway", "502 Bad Gateway"),
             (503, "Service Unavailable", "503 Service Unavailable"),
 
-            // Unknown codes should return "Unknown Error"
-            (999, "Unknown Error", "999 Unknown Error"),
-            (123, "Unknown Error", "123 Unknown Error"),
+            // Unknown codes should return "Unknown Status Code: X"
+            (999, "Unknown Status Code: 999", "999 Unknown Status Code: 999"),
+            (123, "Unknown Status Code: 123", "123 Unknown Status Code: 123"),
         ];
 
         for ((statusCode, expectedLabel, description) in testCases.vals()) {

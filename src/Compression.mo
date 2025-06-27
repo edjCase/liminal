@@ -39,6 +39,20 @@ module {
         #zstd;
     };
 
+    /// Compresses an HTTP response based on client preferences and configuration.
+    /// Automatically selects the best compression encoding supported by both client and server.
+    /// Skips compression for small responses, incompressible content types, or when custom skip conditions are met.
+    ///
+    /// ```motoko
+    /// import Compression "mo:liminal/Compression";
+    ///
+    /// let config = {
+    ///     minSize = 1024;
+    ///     mimeTypes = ["text/html", "application/json"];
+    ///     skipCompressionIf = null;
+    /// };
+    /// let compressedResponse = Compression.compressResponse(httpContext, response, config);
+    /// ```
     public func compressResponse(
         context : HttpContext.HttpContext,
         response : App.HttpResponse,

@@ -55,7 +55,25 @@ module {
 
         var lastCleanup : Int = Time.now();
 
-        // Function to check rate limit and update counter
+        /// Checks if the current request should be rate limited and updates counters.
+        /// Returns the result of rate limit evaluation: allowed, limited, or skipped.
+        /// Automatically handles cleanup of expired rate limit data.
+        ///
+        /// ```motoko
+        /// let rateLimiter = RateLimiter.RateLimiter(config);
+        /// switch (rateLimiter.check(httpContext)) {
+        ///     case (#allowed({ responseHeaders })) {
+        ///         // Request is allowed, responseHeaders contain rate limit info
+        ///     };
+        ///     case (#limited(response)) {
+        ///         // Request is rate limited, return the response
+        ///         return response;
+        ///     };
+        ///     case (#skipped) {
+        ///         // Rate limiting was skipped for this request
+        ///     };
+        /// };
+        /// ```
         public func check(context : HttpContext.HttpContext) : CheckResult {
             // Check if we should skip rate limiting
             switch (config.skipIf) {

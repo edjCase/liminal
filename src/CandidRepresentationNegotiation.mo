@@ -40,6 +40,16 @@ module {
 
     public type CatchAllSerializer = (candid : Candid, type_ : Text, subType : Text) -> ?HttpContext.CandidNegotiatedContent;
 
+    /// Default content negotiator that supports JSON, CBOR, Candid, and XML formats.
+    /// Automatically selects the best response format based on client Accept headers.
+    /// Uses standard serialization functions for each supported format.
+    ///
+    /// ```motoko
+    /// let app = Liminal.App({
+    ///     candidRepresentationNegotiator = CandidRepresentationNegotiation.defaultNegotiator;
+    ///     // other config
+    /// });
+    /// ```
     public func defaultNegotiator(
         candid : Candid,
         contentPreference : ContentPreference,
@@ -55,6 +65,18 @@ module {
         );
     };
 
+    /// Builds a custom content negotiator with override functions for specific formats.
+    /// Allows customization of serialization logic while maintaining content negotiation.
+    ///
+    /// ```motoko
+    /// let customNegotiator = CandidRepresentationNegotiation.buildCustomNegotiator({
+    ///     toJsonOverride = ?myCustomJsonSerializer;
+    ///     toCborOverride = null;
+    ///     toCandidOverride = null;
+    ///     toXmlOverride = null;
+    ///     catchAll = null;
+    /// });
+    /// ```
     public func buildCustomNegotiator(options : CustomNegotiatorOptions) : (Candid, ContentPreference) -> ?HttpContext.CandidNegotiatedContent {
         let toJson = Option.get(options.toJsonOverride, toJsonFromCandid);
         let toCbor = Option.get(options.toCborOverride, toCborFromCandid);
@@ -73,6 +95,20 @@ module {
         };
     };
 
+    /// Custom content negotiator with full control over serialization functions.
+    /// Provides fine-grained control over how each content type is serialized.
+    ///
+    /// ```motoko
+    /// let result = CandidRepresentationNegotiation.customNegotiator(
+    ///     candidData,
+    ///     contentPreference,
+    ///     myJsonSerializer,
+    ///     myCborSerializer,
+    ///     myCandidSerializer,
+    ///     myXmlSerializer,
+    ///     ?myCatchAllHandler
+    /// );
+    /// ```
     public func customNegotiator(
         candid : Candid,
         contentPreference : ContentPreference,

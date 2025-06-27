@@ -34,6 +34,16 @@ module {
         upgradeInsecureRequests = true;
     };
 
+    /// Adds Content Security Policy headers to an HTTP response.
+    /// Modifies the response by adding the CSP header based on the provided options.
+    ///
+    /// ```motoko
+    /// import CSP "mo:liminal/CSP";
+    ///
+    /// let options = CSP.defaultOptions();
+    /// let response = { statusCode = 200; headers = []; body = ?content; streamingStrategy = null };
+    /// let secureResponse = CSP.addHeadersToResponse(response, options);
+    /// ```
     public func addHeadersToResponse(response : Types.HttpResponse, options : Options) : Types.HttpResponse {
         let cspValue = buildHeaderValue(options);
         let headers = List.fromArray<(Text, Text)>(response.headers);
@@ -45,6 +55,16 @@ module {
         };
     };
 
+    /// Builds the Content Security Policy header value from the provided options.
+    /// Constructs a properly formatted CSP string with all directives and policies.
+    ///
+    /// ```motoko
+    /// import CSP "mo:liminal/CSP";
+    ///
+    /// let options = CSP.defaultOptions();
+    /// let cspValue = CSP.buildHeaderValue(options);
+    /// // Returns something like: "default-src 'self'; script-src 'self' 'unsafe-inline';"
+    /// ```
     public func buildHeaderValue(options : Options) : Text {
         let cspParts = List.empty<Text>();
 

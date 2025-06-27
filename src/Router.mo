@@ -146,64 +146,154 @@ module Module {
     };
 
     /// Creates a PUT route configuration with automatic handler type detection.
+    /// The handler type is determined by the RouteHandler variant passed.
+    ///
+    /// ```motoko
+    /// let route = Router.put("/users/:id", #syncUpdate(updateUserHandler));
+    /// ```
     public func put(path : Text, handler : Route.RouteHandler) : RouteConfig {
         route(path, #put, handler);
     };
 
     /// Creates a PUT route for query operations.
+    /// Use for idempotent operations that don't modify state.
+    ///
+    /// ```motoko
+    /// let route = Router.putQuery("/users/:id/validate", func(ctx) {
+    ///     // Validate user data without modification
+    ///     ctx.buildResponse(#ok, #content(#Text("Valid")))
+    /// });
+    /// ```
     public func putQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncQuery(handler));
     };
 
     /// Creates a PUT route for synchronous update operations.
-    /// Ideal for updating or replacing resources.
+    /// Ideal for updating or replacing resources entirely.
+    ///
+    /// ```motoko
+    /// let route = Router.putUpdate("/users/:id", func(ctx) {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     // Update user and return response
+    ///     ctx.buildResponse(#ok, #content(#Text("User updated")))
+    /// });
+    /// ```
     public func putUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #put, #syncUpdate(handler));
     };
 
     /// Creates a PUT route for asynchronous update operations.
+    /// Use when updating resources requires external calls or complex async logic.
+    ///
+    /// ```motoko
+    /// let route = Router.putAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     await* userService.updateUser(userId, userData);
+    ///     ctx.buildResponse(#ok, #content(#Text("User updated")))
+    /// });
+    /// ```
     public func putAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #put, #asyncUpdate(handler));
     };
 
     /// Creates a PATCH route configuration with automatic handler type detection.
+    /// The handler type is determined by the RouteHandler variant passed.
+    ///
+    /// ```motoko
+    /// let route = Router.patch("/users/:id", #syncUpdate(partialUpdateHandler));
+    /// ```
     public func patch(path : Text, handler : Route.RouteHandler) : RouteConfig {
         route(path, #patch, handler);
     };
 
     /// Creates a PATCH route for query operations.
+    /// Use for validation or preview of partial updates without modification.
+    ///
+    /// ```motoko
+    /// let route = Router.patchQuery("/users/:id/preview", func(ctx) {
+    ///     // Preview what the patch would do
+    ///     ctx.buildResponse(#ok, #content(#Text("Preview")))
+    /// });
+    /// ```
     public func patchQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncQuery(handler));
     };
 
     /// Creates a PATCH route for synchronous update operations.
-    /// Ideal for partial updates to resources.
+    /// Ideal for partial updates to existing resources.
+    ///
+    /// ```motoko
+    /// let route = Router.patchUpdate("/users/:id", func(ctx) {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     // Apply partial update and return response
+    ///     ctx.buildResponse(#ok, #content(#Text("User partially updated")))
+    /// });
+    /// ```
     public func patchUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #patch, #syncUpdate(handler));
     };
 
     /// Creates a PATCH route for asynchronous update operations.
+    /// Use when partial updates require external calls or complex async logic.
+    ///
+    /// ```motoko
+    /// let route = Router.patchAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     await* userService.partialUpdateUser(userId, patchData);
+    ///     ctx.buildResponse(#ok, #content(#Text("User partially updated")))
+    /// });
+    /// ```
     public func patchAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #patch, #asyncUpdate(handler));
     };
 
     /// Creates a DELETE route configuration with automatic handler type detection.
+    /// The handler type is determined by the RouteHandler variant passed.
+    ///
+    /// ```motoko
+    /// let route = Router.delete("/users/:id", #syncUpdate(deleteUserHandler));
+    /// ```
     public func delete(path : Text, handler : Route.RouteHandler) : RouteConfig {
         route(path, #delete, handler);
     };
 
     /// Creates a DELETE route for query operations.
+    /// Use for previewing what would be deleted without actually deleting.
+    ///
+    /// ```motoko
+    /// let route = Router.deleteQuery("/users/:id/preview", func(ctx) {
+    ///     // Show what would be deleted
+    ///     ctx.buildResponse(#ok, #content(#Text("Would delete user")))
+    /// });
+    /// ```
     public func deleteQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncQuery(handler));
     };
 
     /// Creates a DELETE route for synchronous update operations.
-    /// Ideal for removing resources.
+    /// Standard approach for deleting resources.
+    ///
+    /// ```motoko
+    /// let route = Router.deleteUpdate("/users/:id", func(ctx) {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     // Delete user and return response
+    ///     ctx.buildResponse(#noContent, #empty)
+    /// });
+    /// ```
     public func deleteUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
         route(path, #delete, #syncUpdate(handler));
     };
 
     /// Creates a DELETE route for asynchronous update operations.
+    /// Use when deleting resources requires external calls or complex async logic.
+    ///
+    /// ```motoko
+    /// let route = Router.deleteAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
+    ///     let userId = ctx.getRouteParam("id");
+    ///     await* userService.deleteUser(userId);
+    ///     ctx.buildResponse(#noContent, #empty)
+    /// });
+    /// ```
     public func deleteAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
         route(path, #delete, #asyncUpdate(handler));
     };
@@ -361,6 +451,18 @@ module Module {
             func(routeConfig : RouteConfig) : Iter.Iter<Route.Route> = buildRoutesFromConfig(routeConfig, prefix),
         );
 
+        /// Routes an HTTP query request (read-only operation) to the appropriate handler.
+        /// Returns response directly for query handlers, or upgrade directive for update handlers.
+        /// Query operations cannot modify state and execute synchronously.
+        ///
+        /// ```motoko
+        /// let result = router.routeQuery(httpContext);
+        /// switch (result) {
+        ///     case (#response(response)) response;
+        ///     case (#upgrade) // Route requires update call
+        ///     case (#noMatch) // No matching route found
+        /// };
+        /// ```
         public func routeQuery(httpContext : HttpContext.HttpContext) : SyncRouteResult {
             let ?routeContext = findRoute(httpContext) else return #noMatch;
 
@@ -372,6 +474,17 @@ module Module {
             #response(response);
         };
 
+        /// Routes an HTTP update request (state-changing operation) to the appropriate handler.
+        /// Handles all handler types including query, sync update, and async update handlers.
+        /// Update operations can modify state and support async execution.
+        ///
+        /// ```motoko
+        /// let result = await* router.routeUpdate(httpContext);
+        /// switch (result) {
+        ///     case (#response(response)) response;
+        ///     case (#noMatch) // No matching route found
+        /// };
+        /// ```
         public func routeUpdate<system>(httpContext : HttpContext.HttpContext) : async* AsyncRouteResult {
             let ?routeContext = findRoute(httpContext) else return #noMatch;
             let response = switch (routeContext.handler) {
@@ -409,13 +522,10 @@ module Module {
     /// Supports text segments, parameters (:param), and wildcards (* and **).
     ///
     /// ```motoko
-    /// let expected = [#text("users"), #param("id"), #text("posts")];
-    /// let actual = ["users", "123", "posts"];
-    /// let result = Router.matchPath(expected, actual);
-    /// // result is ?{ params = [("id", "123")] }
-    ///
-    /// let noMatch = Router.matchPath(expected, ["products", "456"]);
-    /// // noMatch is null
+    /// let pattern = [#text("users"), #param("id")];
+    /// let path = ["users", "123"];
+    /// let ?{ params } = Router.matchPath(pattern, path) else return null;
+    /// // params contains [("id", "123")]
     /// ```
     public func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
         params : [(Text, Text)];
