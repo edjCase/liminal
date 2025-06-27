@@ -69,7 +69,10 @@ module {
         };
     };
 
-    // CSRF middleware generator
+    /// Creates a new CSRF protection middleware with custom configuration
+    /// Validates CSRF tokens on protected HTTP methods to prevent cross-site request forgery
+    /// - Parameter config: CSRF configuration defining protection behavior
+    /// - Returns: A middleware that validates CSRF tokens and rejects invalid requests
     public func new(config : Config) : App.Middleware {
         // Handlers for middleware
         {
@@ -140,6 +143,9 @@ module {
         };
     };
 
+    /// Creates a CSRF protection middleware with default configuration
+    /// - Parameter tokenStorage: The storage mechanism for CSRF tokens
+    /// - Returns: A middleware with standard CSRF protection settings
     public func default(tokenStorage : TokenStorage) : App.Middleware {
         new(defaultConfig(tokenStorage));
     };
@@ -252,7 +258,9 @@ module {
         return (currentTime - timestamp) > ttl;
     };
 
-    // Utility function to create a simple in-memory token storage
+    /// Creates a simple in-memory token storage for CSRF tokens
+    /// This storage is not persistent across canister upgrades - use for development only
+    /// - Returns: A TokenStorage implementation using in-memory storage
     public func createMemoryStorage() : TokenStorage {
         var token : ?Text = null;
 

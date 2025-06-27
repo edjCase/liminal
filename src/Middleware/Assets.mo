@@ -6,6 +6,10 @@ module {
 
     public type Config = Assets.Config;
 
+    /// Creates a new static assets middleware with the specified configuration
+    /// Serves static files from configured asset sources
+    /// - Parameter options: Asset configuration defining sources and serving behavior
+    /// - Returns: A middleware that serves static assets
     public func new(options : Config) : App.Middleware {
         {
             name = "Assets";

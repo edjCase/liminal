@@ -6,6 +6,10 @@ module Module {
 
     public type Config = Router.Config;
 
+    /// Creates a new router middleware with the specified configuration
+    /// Routes incoming requests to appropriate handlers based on path and method
+    /// - Parameter config: Router configuration defining routes and behaviors
+    /// - Returns: A middleware that handles request routing
     public func new(config : Config) : App.Middleware {
         let router = Router.Router(config);
         {

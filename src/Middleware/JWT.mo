@@ -23,6 +23,10 @@ module {
         #queryString("token"),
     ];
 
+    /// Creates a new JWT authentication middleware
+    /// Extracts and validates JWT tokens from requests, making them available in the HttpContext
+    /// - Parameter options: JWT options including validation settings and token locations
+    /// - Returns: A middleware that processes JWT tokens from requests
     public func new(options : Options) : App.Middleware {
         {
             name = "JWT";

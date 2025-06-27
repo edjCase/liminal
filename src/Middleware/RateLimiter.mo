@@ -5,6 +5,10 @@ import Array "mo:new-base/Array";
 module {
 
     public type Config = RateLimiter.Config;
+    /// Creates a new rate limiting middleware with the specified configuration
+    /// Enforces rate limits on incoming requests to prevent abuse and ensure fair usage
+    /// - Parameter config: Rate limiter configuration defining limits and behaviors
+    /// - Returns: A middleware that tracks and enforces request rate limits
     public func new(config : Config) : App.Middleware {
         let rateLimiter = RateLimiter.RateLimiter(config);
 

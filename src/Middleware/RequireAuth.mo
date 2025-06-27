@@ -6,6 +6,10 @@ import Text "mo:new-base/Text";
 
 module {
 
+    /// Creates a new authentication requirement middleware
+    /// Checks that requests have authenticated identities that meet the specified requirement
+    /// - Parameter requirement: The identity requirement to enforce (authenticated or custom)
+    /// - Returns: A middleware that validates authentication and authorization requirements
     public func new(requirement : Identity.IdentityRequirement) : App.Middleware {
         let checkRequirement = func(
             httpContext : HttpContext.HttpContext
