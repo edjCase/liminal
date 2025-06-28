@@ -1,7 +1,5 @@
 import HttpContext "./HttpContext";
 import Gzip "mo:compression/Gzip";
-// import Brotli "mo:compression/Brotli";
-import Deflate "mo:compression/Deflate";
 import Lzss "mo:compression/LZSS";
 import Blob "mo:new-base/Blob";
 import Text "mo:new-base/Text";
@@ -11,8 +9,10 @@ import List "mo:new-base/List";
 import TextX "mo:xtended-text/TextX";
 import Nat "mo:new-base/Nat";
 import Iter "mo:new-base/Iter";
-import App "App";
-import ContentNegotiation "ContentNegotiation";
+import App "./App";
+import ContentNegotiation "./ContentNegotiation";
+import Types "./Types";
+import Result "mo:new-base/Result";
 
 module {
 
@@ -26,6 +26,9 @@ module {
 
         // Whether to skip compression for certain requests
         skipCompressionIf : ?SkipFunction;
+
+        // Maximum size in bytes for request decompression (security limit)
+        maxDecompressedSize : ?Nat;
     };
 
     // Skip function determines if a request should skip compression
@@ -33,10 +36,61 @@ module {
 
     public type Encoding = {
         #gzip;
-        #deflate;
-        #br;
-        #compress;
-        #zstd;
+        // #deflate; TODO there is a bug in the Deflate library
+    };
+
+    public type DecompressionResult = {
+        #success : Types.HttpRequest;
+        #error : Text;
+        #unsupportedEncoding : Text;
+        #sizeLimitExceeded;
+    };
+
+    // Compress with specified encoding
+    public func compress(encoding : Encoding, data : [Nat8]) : [Nat8] {
+        switch (encoding) {
+            case (#gzip) {
+                let encoder = Gzip.EncoderBuilder().build();
+                encoder.encode(data);
+                let encoded = encoder.finish();
+                compressedBlobFromChunks(encoded.chunks);
+            };
+            // case (#deflate) {
+            //     let encoder = Deflate.buildEncoder({
+            //         block_size = 1048576; // 1MB
+            //         dynamic_huffman = true; // Better compression
+            //         lzss = ?Lzss.Encoder(null);
+            //     });
+            //     encoder.encode(data);
+            //     let encoded = encoder.finish();
+            //     Iter.toArray(encoded.bytes());
+            // };
+        };
+    };
+
+    // Decompress with specified encoding
+    public func decompress(encoding : Encoding, data : [Nat8]) : Result.Result<[Nat8], Text> {
+        switch (encoding) {
+            case (#gzip) {
+                let decoder = Gzip.Decoder();
+                decoder.decode(data);
+                let response = decoder.finish();
+                #ok(Buffer.toArray(response.buffer));
+            };
+            // case (#deflate) {
+            //     let buffer = Buffer.fromArray<Nat8>(data);
+            //     let decoder = Deflate.buildDecoder(?buffer);
+            //     switch (decoder.decode()) {
+            //         case (#ok) ();
+            //         case (#err(e)) return #err("Decompression failed: " # e);
+            //     };
+            //     switch (decoder.finish()) {
+            //         case (#ok) ();
+            //         case (#err(e)) return #err("Decompression failed: " # e);
+            //     };
+            //     #ok(Buffer.toArray(buffer));
+            // };
+        };
     };
 
     /// Compresses an HTTP response based on client preferences and configuration.
@@ -50,6 +104,7 @@ module {
     ///     minSize = 1024;
     ///     mimeTypes = ["text/html", "application/json"];
     ///     skipCompressionIf = null;
+    ///     maxDecompressedSize = ?(10 * 1024 * 1024); // 10MB
     /// };
     /// let compressedResponse = Compression.compressResponse(httpContext, response, config);
     /// ```
@@ -98,14 +153,13 @@ module {
             let encoding : Encoding = switch (requestedEncoding) {
                 case (#identity) return response;
                 case (#gzip) #gzip;
-                case (#deflate) #deflate;
-                case (#br) #br;
-                case (#compress) #compress;
-                case (#zstd) #zstd;
+                case (#deflate) continue f; // Deflate is not supported yet
+                case (#br) continue f; // Brotli is not supported yet
+                case (#compress) continue f; // Compress is not supported
+                case (#zstd) continue f; // Zstandard is not supported
                 case (#wildcard) {
                     let supportedEncodings = [
                         #gzip,
-                        #deflate,
                     ]; // TODO make this dynamic
                     label f for (encoding in supportedEncodings.vals()) {
                         for (disallowedEncoding in acceptedEncodings.disallowedEncodings.vals()) {
@@ -146,13 +200,93 @@ module {
         return response;
     };
 
+    /// Decompresses an HTTP request if it has a Content-Encoding header.
+    /// Handles encodings automatically.
+    /// Returns a result indicating success, error, or unsupported encoding.
+    ///
+    /// ```motoko
+    /// import Compression "mo:liminal/Compression";
+    ///
+    /// let config = {
+    ///     minSize = 1024;
+    ///     mimeTypes = ["text/html", "application/json"];
+    ///     skipCompressionIf = null;
+    ///     maxDecompressedSize = ?(10 * 1024 * 1024); // 10MB
+    /// };
+    ///
+    /// switch (Compression.decompressRequest(request, config)) {
+    ///     case (#success(decompressedRequest)) {
+    ///         // Process decompressed request
+    ///     };
+    ///     case (#error(message)) {
+    ///         // Handle decompression error
+    ///     };
+    ///     case (#unsupportedEncoding(encoding)) {
+    ///         // Handle unsupported encoding
+    ///     };
+    ///     case (#sizeLimitExceeded) {
+    ///         // Handle size limit exceeded
+    ///     };
+    /// };
+    /// ```
+    public func decompressRequest(
+        request : Types.HttpRequest,
+        config : Config,
+    ) : DecompressionResult {
+        if (request.body.size() == 0) {
+            // No body to decompress, return original request
+            return #success(request);
+        };
+
+        // Check for Content-Encoding header
+        let ?encodingHeader = getContentEncoding(request.headers) else {
+            // No Content-Encoding header, return original request
+            return #success(request);
+        };
+
+        // Skip if already identity encoding
+        if (TextX.equalIgnoreCase(encodingHeader, "identity")) {
+            return #success(request);
+        };
+
+        // Parse the encoding
+        let encoding : Encoding = switch (Text.toLower(encodingHeader)) {
+            case ("gzip") #gzip;
+            // case ("deflate") #deflate;
+            case (_) return #unsupportedEncoding(encodingHeader);
+        };
+
+        // Try to decompress
+        switch (tryDecompress(request.body, encoding, config.maxDecompressedSize)) {
+            case (#success(decompressedBody)) {
+                // Update headers - remove Content-Encoding and update Content-Length
+                let headers = request.headers
+                |> removeHeader(_, "content-encoding")
+                |> removeHeader(_, "content-length")
+                |> List.fromArray<(Text, Text)>(_);
+
+                List.add(headers, ("Content-Length", Nat.toText(decompressedBody.size())));
+
+                // Return decompressed request
+                return #success({
+                    request with
+                    headers = List.toArray(headers);
+                    body = decompressedBody;
+                });
+            };
+            case (#error(message)) return #error(message);
+            case (#sizeLimitExceeded) return #sizeLimitExceeded;
+            case (#unsupportedEncoding) return #unsupportedEncoding(encodingHeader);
+        };
+    };
+
     private func tryCompress(
         response : App.HttpResponse,
         body : Blob,
         encoding : Encoding,
     ) : ?App.HttpResponse {
         let bytes = Blob.toArray(body);
-        let ?compressedBody = compressWithEncoding(encoding, bytes) else return null;
+        let compressedBody = compress(encoding, bytes);
         // Skip if compression didn't reduce size
         if (compressedBody.size() >= body.size()) {
             return null;
@@ -179,7 +313,41 @@ module {
         return ?{
             response with
             headers = List.toArray(headers);
-            body = ?compressedBody;
+            body = ?Blob.fromArray(compressedBody);
+        };
+    };
+
+    private type DecompressResult = {
+        #success : Blob;
+        #error : Text;
+        #sizeLimitExceeded;
+        #unsupportedEncoding;
+    };
+
+    private func tryDecompress(
+        body : Blob,
+        encoding : Encoding,
+        maxSize : ?Nat,
+    ) : DecompressResult {
+        let bytes = Blob.toArray(body);
+
+        switch (decompress(encoding, bytes)) {
+            case (#ok(decompressedBytes)) {
+                let decompressed = Blob.fromArray(decompressedBytes);
+
+                // Check size limit if specified
+                switch (maxSize) {
+                    case (?limit) {
+                        if (decompressed.size() > limit) {
+                            return #sizeLimitExceeded;
+                        };
+                    };
+                    case (null) {};
+                };
+
+                return #success(decompressed);
+            };
+            case (#err(e)) return #error("Decompression failed for encoding '" # encodingToText(encoding) # "': " # e);
         };
     };
 
@@ -187,38 +355,12 @@ module {
     private func encodingToText(encoding : Encoding) : Text {
         switch (encoding) {
             case (#gzip) "gzip";
-            case (#deflate) "deflate";
-            case (#br) "br";
-            case (#compress) "compress";
-            case (#zstd) "zstd";
-        };
-    };
-
-    // Compress with specified encoding
-    private func compressWithEncoding(encoding : Encoding, data : [Nat8]) : ?Blob {
-        switch (encoding) {
-            case (#gzip) {
-                let encoder = Gzip.EncoderBuilder().build();
-                encoder.encode(data);
-                let encoded = encoder.finish();
-                return ?compressedBlobFromChunks(encoded.chunks);
-            };
-            case (#deflate) {
-                let encoder = Deflate.buildEncoder({
-                    block_size = 1048576; // 1MB
-                    dynamic_huffman = false;
-                    lzss = ?Lzss.Encoder(null);
-                });
-                encoder.encode(data);
-                let encoded = encoder.finish();
-                return ?Blob.fromArray(Iter.toArray(encoded.bytes()));
-            };
-            case (_) return null; // Unsupported encoding
+            // case (#deflate) "deflate";
         };
     };
 
     // Helper to convert encoder output chunks to blob
-    private func compressedBlobFromChunks(chunks : [[Nat8]]) : Blob {
+    private func compressedBlobFromChunks(chunks : [[Nat8]]) : [Nat8] {
         var totalSize = 0;
         for (chunk in chunks.vals()) {
             totalSize += chunk.size();
@@ -231,7 +373,7 @@ module {
             };
         };
 
-        return Blob.fromArray(Buffer.toArray(buffer));
+        return Buffer.toArray(buffer);
     };
 
     // Check if a response already has compression
@@ -253,6 +395,16 @@ module {
     private func getContentType(headers : [(Text, Text)]) : ?Text {
         for ((key, value) in headers.vals()) {
             if (TextX.equalIgnoreCase(key, "content-type")) {
+                return ?value;
+            };
+        };
+        return null;
+    };
+
+    // Get the content encoding from request headers
+    private func getContentEncoding(headers : [(Text, Text)]) : ?Text {
+        for ((key, value) in headers.vals()) {
+            if (TextX.equalIgnoreCase(key, "content-encoding")) {
                 return ?value;
             };
         };

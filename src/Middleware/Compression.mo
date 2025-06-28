@@ -22,6 +22,7 @@ module {
                 "image/svg+xml",
             ];
             skipCompressionIf = null;
+            maxDecompressedSize = null;
         };
     };
 

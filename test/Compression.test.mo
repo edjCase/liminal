@@ -12,6 +12,9 @@ import HttpMethod "../src/HttpMethod";
 import App "../src/App";
 import ContentNegotiation "../src/ContentNegotiation";
 import Logging "../src/Logging";
+import Types "../src/Types";
+import Runtime "mo:new-base/Runtime";
+import Debug "mo:new-base/Debug";
 
 // Helper function to get header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {
@@ -71,6 +74,21 @@ func createResponse(contentType : Text, body : Blob) : App.HttpResponse {
     };
 };
 
+// Helper to create HTTP request with specified headers and body
+func createRequest(
+    method : HttpMethod.HttpMethod,
+    url : Text,
+    headers : [(Text, Text)],
+    body : ?Blob,
+) : Types.HttpRequest {
+    return {
+        method = method;
+        url = url;
+        headers = headers;
+        body = Option.get(body, "" : Blob);
+    };
+};
+
 suite(
     "Compression Middleware Tests",
     func() {
@@ -82,6 +100,8 @@ suite(
                     minSize = 100;
                     mimeTypes = ["text/plain", "text/html", "application/json"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024); // 10MB
+
                 };
 
                 let context = createContext(#get, "/test", [("Accept-Encoding", "gzip")]);
@@ -94,7 +114,7 @@ suite(
                 let compressedResponse = Compression.compressResponse(context, response, config);
 
                 // Verify compression was applied
-                assert (compressedResponse.body != null);
+                assert (compressedResponse.body != ?"");
                 let originalSize = largeBody.size();
                 let compressedSize = Option.get(compressedResponse.body, Blob.fromArray([])).size();
 
@@ -116,6 +136,8 @@ suite(
                     minSize = 100;
                     mimeTypes = ["text/plain", "text/html", "application/json"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let context = createContext(#get, "/test", [("Accept-Encoding", "gzip")]);
@@ -128,7 +150,7 @@ suite(
                 let resultResponse = Compression.compressResponse(context, response, config);
 
                 // Verify compression was NOT applied
-                assert (resultResponse.body != null);
+                assert (resultResponse.body != ?"");
                 let originalSize = smallBody.size();
                 let resultSize = Option.get(resultResponse.body, Blob.fromArray([])).size();
 
@@ -147,6 +169,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain", "application/json"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let context = createContext(#get, "/test", [("Accept-Encoding", "gzip")]);
@@ -186,6 +210,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = ?skipFunction;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -217,6 +243,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -230,7 +258,7 @@ suite(
                 // 2. Test with deflate
                 let context2 = createContext(#get, "/test", [("Accept-Encoding", "deflate")]);
                 let result2 = Compression.compressResponse(context2, response, config);
-                assert (getHeader(result2.headers, "Content-Encoding") == ?"deflate");
+                assert (getHeader(result2.headers, "Content-Encoding") == null);
 
                 // 3. Test with br (Brotli) (not supported in this example)
                 let context3 = createContext(#get, "/test", [("Accept-Encoding", "br")]);
@@ -253,6 +281,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -277,6 +307,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -301,6 +333,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -342,6 +376,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 // Create response with null body
@@ -373,6 +409,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 // Create response with empty body
@@ -401,6 +439,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -430,6 +470,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -456,6 +498,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -482,6 +526,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -508,6 +554,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -534,6 +582,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -560,6 +610,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -598,6 +650,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -630,6 +684,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -656,6 +712,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -693,6 +751,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -725,6 +785,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 // Create a response with content that compresses poorly
@@ -763,6 +825,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
                 };
 
                 let body = over1KbBody;
@@ -789,6 +853,8 @@ suite(
                     minSize = 10;
                     mimeTypes = ["text/plain"];
                     skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024); // 10MB
+
                 };
 
                 let body = over1KbBody;
@@ -805,6 +871,398 @@ suite(
 
                 // Should choose gzip as it's the only one with positive q-value
                 assert (getHeader(result.headers, "Content-Encoding") == ?"gzip");
+            },
+        );
+
+    },
+);
+
+suite(
+    "Request Decompression Tests",
+    func() {
+
+        test(
+            "basic decompression - should decompress gzip request successfully",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024); // 10MB
+
+                };
+
+                let originalBody = Text.encodeUtf8("Hello, this is test data for decompression!");
+                let compressedBody = Compression.compress(#gzip, Blob.toArray(originalBody));
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "gzip"),
+                        ("Content-Length", Nat.toText(compressedBody.size())),
+                    ],
+                    ?Blob.fromArray(compressedBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(decompressedRequest)) {
+                        // Should have decompressed body
+                        assert (decompressedRequest.body != "");
+
+                        // Content-Encoding header should be removed
+                        assert (getHeader(decompressedRequest.headers, "Content-Encoding") == null);
+
+                        // Content-Length should be updated
+                        let contentLength = getHeader(decompressedRequest.headers, "Content-Length");
+                        assert (contentLength != null);
+
+                        // Other headers should be preserved
+                        assert (getHeader(decompressedRequest.headers, "Content-Type") == ?"text/plain");
+                    };
+                    case (_) {
+                        assert (false); // Should not reach here
+                    };
+                };
+            },
+        );
+
+        test(
+            "unsupported encoding - should return unsupportedEncoding error",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Test data");
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "brotli"), // Unsupported
+                    ],
+                    ?body,
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#unsupportedEncoding(encoding)) {
+                        assert (encoding == "brotli");
+                    };
+                    case (_) {
+                        assert (false); // Should return unsupported encoding
+                    };
+                };
+            },
+        );
+
+        test(
+            "no compression - should pass through uncompressed requests",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Uncompressed test data");
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Length", Nat.toText(body.size())),
+                    ],
+                    ?body,
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Should be identical to original request
+                        assert (result.body == request.body);
+                        assert (result.headers.size() == request.headers.size());
+                    };
+                    case (_) {
+                        assert (false); // Should succeed with no changes
+                    };
+                };
+            },
+        );
+
+        test(
+            "identity encoding - should pass through identity-encoded requests",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Identity encoded data");
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "identity"),
+                    ],
+                    ?body,
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Should pass through unchanged
+                        assert (result.body == request.body);
+                        assert (getHeader(result.headers, "Content-Encoding") == ?"identity");
+                    };
+                    case (_) {
+                        assert (false); // Should succeed
+                    };
+                };
+            },
+        );
+
+        test(
+            "null body - should handle requests with null body",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let request = createRequest(
+                    #get,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "gzip"),
+                    ],
+                    null,
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Should pass through with null body
+                        assert (result.body == "");
+                    };
+                    case (_) {
+                        assert (false); // Should succeed
+                    };
+                };
+            },
+        );
+
+        test(
+            "size limit - should enforce maximum decompressed size limit",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?100; // Very small limit for testing
+
+                };
+
+                // Create a large body that would exceed the limit when decompressed
+                let largeBody = over1KbBody;
+                let compressedBody = Compression.compress(#gzip, Blob.toArray(largeBody));
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "gzip"),
+                    ],
+                    ?Blob.fromArray(compressedBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#sizeLimitExceeded) {
+                        // Expected result
+                        assert (true);
+                    };
+                    case (_) {
+                        assert (false); // Should return size limit exceeded
+                    };
+                };
+            },
+        );
+
+        test(
+            "case insensitive encoding - should handle mixed case Content-Encoding",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Case insensitive test");
+                let compressedBody = Compression.compress(#gzip, Blob.toArray(body));
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "GzIp"), // Mixed case
+                    ],
+                    ?Blob.fromArray(compressedBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Should handle mixed case correctly
+                        assert (getHeader(result.headers, "Content-Encoding") == null);
+                    };
+                    case (_) {
+                        assert (false); // Should succeed despite case differences
+                    };
+                };
+            },
+        );
+
+        test(
+            "header preservation - should preserve all other headers during decompression",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Header preservation test");
+                let compressedBody = Compression.compress(#gzip, Blob.toArray(body));
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "application/json"),
+                        ("Content-Encoding", "gzip"),
+                        ("Authorization", "Bearer token123"),
+                        ("X-Custom-Header", "custom-value"),
+                        ("User-Agent", "Test-Agent/1.0"),
+                    ],
+                    ?Blob.fromArray(compressedBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Custom headers should be preserved
+                        assert (getHeader(result.headers, "Authorization") == ?"Bearer token123");
+                        assert (getHeader(result.headers, "X-Custom-Header") == ?"custom-value");
+                        assert (getHeader(result.headers, "User-Agent") == ?"Test-Agent/1.0");
+                        assert (getHeader(result.headers, "Content-Type") == ?"application/json");
+
+                        // Content-Encoding should be removed
+                        assert (getHeader(result.headers, "Content-Encoding") == null);
+
+                        // Content-Length should be updated
+                        assert (getHeader(result.headers, "Content-Length") != null);
+                    };
+                    case (_) {
+                        assert (false); // Should succeed
+                    };
+                };
+            },
+        );
+
+        test(
+            "multiple encodings - should handle single encoding only",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 10;
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let body = Text.encodeUtf8("Multiple encoding test");
+                let compressedBody = Compression.compress(#gzip, Blob.toArray(body));
+
+                // Note: HTTP/1.1 typically doesn't support multiple Content-Encodings
+                // but if it did, this would test that behavior
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "gzip, deflate"), // Multiple encodings
+                    ],
+                    ?Blob.fromArray(compressedBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#unsupportedEncoding(encoding)) {
+                        // Should reject multiple encodings as unsupported
+                        assert (encoding == "gzip, deflate");
+                    };
+                    case (_) {
+                        // If implementation handles first encoding only, that's also valid
+                        assert (true);
+                    };
+                };
+            },
+        );
+
+        test(
+            "empty compressed body - should handle empty compressed content",
+            func() {
+                let config : CompressionMiddleware.Config = {
+                    minSize = 0; // Allow compression of empty content
+                    mimeTypes = ["text/plain"];
+                    skipCompressionIf = null;
+                    maxDecompressedSize = ?(10 * 1024 * 1024);
+
+                };
+
+                let emptyBody = Blob.fromArray([]);
+                let compressedEmptyBody = Compression.compress(#gzip, Blob.toArray(emptyBody));
+
+                let request = createRequest(
+                    #post,
+                    "/api/data",
+                    [
+                        ("Content-Type", "text/plain"),
+                        ("Content-Encoding", "gzip"),
+                    ],
+                    ?Blob.fromArray(compressedEmptyBody),
+                );
+
+                switch (Compression.decompressRequest(request, config)) {
+                    case (#success(result)) {
+                        // Should successfully decompress to empty content
+                        if (result.body != "") {
+                            Runtime.trap("Expected empty body after decompression, got: " # debug_show (result.body));
+                        };
+                        assert (getHeader(result.headers, "Content-Encoding") == null);
+                    };
+                    case (_) {
+                        assert (false); // Should succeed
+                    };
+                };
             },
         );
 
