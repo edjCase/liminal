@@ -39,16 +39,16 @@ module {
     /// let handler = func(routeContext : RouteContext.RouteContext) : HttpResponse {
     ///     // Access route parameters
     ///     let userId = routeContext.getRouteParam("id");
-    ///     
+    ///
     ///     // Access query parameters
     ///     let sortBy = routeContext.getQueryParam("sort");
-    ///     
+    ///
     ///     // Parse request body
     ///     switch (routeContext.parseRawJsonBody()) {
     ///         case (#ok(json)) { /* process JSON */ };
     ///         case (#err(e)) { /* handle error */ };
     ///     };
-    ///     
+    ///
     ///     // Build response
     ///     routeContext.buildResponse(#ok, #content(#text("Success")));
     /// };
