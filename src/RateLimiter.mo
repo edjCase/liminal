@@ -48,7 +48,36 @@ module {
         #skipped;
     };
 
-    // Create a new rate limiter middleware
+    /// Rate limiter class for tracking and enforcing request rate limits.
+    /// Maintains an in-memory store of request counters with automatic cleanup of expired entries.
+    /// Supports flexible key extraction strategies and configurable limits and time windows.
+    ///
+    /// ```motoko
+    /// let config = {
+    ///     limit = 100; // 100 requests
+    ///     windowSeconds = 3600; // per hour
+    ///     includeResponseHeaders = true;
+    ///     limitExceededMessage = ?"Rate limit exceeded";
+    ///     keyExtractor = #identityIdOrIp; // Rate limit by user ID or IP
+    ///     skipIf = null; // No skip conditions
+    /// };
+    ///
+    /// let rateLimiter = RateLimiter.RateLimiter(config);
+    ///
+    /// // In middleware or handler
+    /// switch (rateLimiter.check(httpContext)) {
+    ///     case (#allowed({ responseHeaders })) {
+    ///         // Continue processing, add headers to response
+    ///     };
+    ///     case (#limited(response)) {
+    ///         // Return rate limit error response
+    ///         return response;
+    ///     };
+    ///     case (#skipped) {
+    ///         // Rate limiting was skipped
+    ///     };
+    /// };
+    /// ```
     public class RateLimiter(config : Config) {
         // Store for tracking rate limit data
         let rateLimitStore = Map.empty<Text, RateLimitData>();

@@ -46,7 +46,15 @@ module {
         #sizeLimitExceeded;
     };
 
-    // Compress with specified encoding
+    /// Compresses raw byte data using the specified encoding algorithm.
+    /// Currently supports gzip compression with more encodings planned for future releases.
+    /// Returns the compressed data as a byte array.
+    ///
+    /// ```motoko
+    /// let originalData = [72, 101, 108, 108, 111]; // "Hello" as bytes
+    /// let compressed = Compression.compress(#gzip, originalData);
+    /// // compressed contains the gzip-compressed version of the input
+    /// ```
     public func compress(encoding : Encoding, data : [Nat8]) : [Nat8] {
         switch (encoding) {
             case (#gzip) {
@@ -68,7 +76,21 @@ module {
         };
     };
 
-    // Decompress with specified encoding
+    /// Decompresses raw byte data using the specified encoding algorithm.
+    /// Currently supports gzip decompression with more encodings planned for future releases.
+    /// Returns either the decompressed data or an error message.
+    ///
+    /// ```motoko
+    /// let compressedData = [/* gzip compressed bytes */];
+    /// switch (Compression.decompress(#gzip, compressedData)) {
+    ///     case (#ok(decompressed)) {
+    ///         // Successfully decompressed data
+    ///     };
+    ///     case (#err(errorMessage)) {
+    ///         // Handle decompression error
+    ///     };
+    /// };
+    /// ```
     public func decompress(encoding : Encoding, data : [Nat8]) : Result.Result<[Nat8], Text> {
         switch (encoding) {
             case (#gzip) {

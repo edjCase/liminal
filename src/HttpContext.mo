@@ -183,6 +183,25 @@ module {
         logger : Logging.Logger;
     };
 
+    /// HTTP context class that provides access to request data and response building utilities.
+    /// This is the main interface for handling HTTP requests in the Liminal framework.
+    /// Contains the parsed request, utilities for extracting data, and methods for building responses.
+    ///
+    /// ```motoko
+    /// let context = HttpContext.HttpContext(request, certificateVersion, {
+    ///     errorSerializer = App.defaultJsonErrorSerializer;
+    ///     candidRepresentationNegotiator = App.defaultCandidRepresentationNegotiator;
+    ///     logger = Logging.buildDebugLogger(#info);
+    /// });
+    ///
+    /// // Access request data
+    /// let method = context.method;
+    /// let path = context.getPath();
+    /// let headers = context.getHeader("Content-Type");
+    ///
+    /// // Build responses
+    /// let response = context.buildResponse(#ok, #content(#text("Hello")));
+    /// ```
     public class HttpContext(
         r : HttpTypes.UpdateRequest,
         certificateVersion_ : ?Nat16,
@@ -288,11 +307,25 @@ module {
             };
         };
 
+        /// Returns the parsed path component of the request URL.
+        /// Provides structured access to the URL path for routing and navigation.
+        ///
+        /// ```motoko
+        /// let path = httpContext.getPath();
+        /// // For URL "/users/123", path contains parsed segments
+        /// ```
         public func getPath() : Path.Path {
             let url = getUrlData();
             url.path;
         };
 
+        /// Returns all query parameters as key-value pairs.
+        /// Extracts parameters from the URL query string for processing.
+        ///
+        /// ```motoko
+        /// let params = httpContext.getQueryParams();
+        /// // For URL "/search?q=motoko&sort=date", returns [("q", "motoko"), ("sort", "date")]
+        /// ```
         public func getQueryParams() : [(Text, Text)] {
             let url = getUrlData();
             url.queryParams;

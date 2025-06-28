@@ -4,6 +4,35 @@ import Runtime "mo:new-base/Runtime";
 
 module {
 
+    /// Asset canister wrapper class that provides a simplified interface for managing static assets.
+    /// Wraps the http-assets library with error handling and provides both sync and async methods.
+    /// All methods trap on error for simplified error handling - use the underlying assets directly for Result-based APIs.
+    ///
+    /// ```motoko
+    /// import HttpAssets "mo:http-assets";
+    /// import AssetCanister "mo:liminal/AssetCanister";
+    ///
+    /// // Initialize the underlying assets store
+    /// let assets = HttpAssets.Assets(/* config */);
+    ///
+    /// // Create the wrapper
+    /// let assetCanister = AssetCanister.AssetCanister(assets);
+    ///
+    /// // Retrieve assets
+    /// let asset = assetCanister.get({
+    ///     key = "/index.html";
+    ///     accept_encodings = ["gzip", "identity"];
+    /// });
+    ///
+    /// // Store new assets
+    /// assetCanister.store(callerPrincipal, {
+    ///     key = "/new-file.txt";
+    ///     content_type = "text/plain";
+    ///     content_encoding = "identity";
+    ///     content = fileBlob;
+    ///     sha256 = null;
+    /// });
+    /// ```
     public class AssetCanister(assets : HttpAssets.Assets) = self {
 
         /// Returns the API version of the asset canister.

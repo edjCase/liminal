@@ -436,6 +436,35 @@ module Module {
         };
     };
 
+    /// HTTP router class that handles route matching and dispatching for web applications.
+    /// Processes HTTP requests by matching them against configured routes and executing handlers.
+    /// Supports path parameters, route groups, prefix matching, and various handler types.
+    ///
+    /// ```motoko
+    /// let config = {
+    ///     routes = [
+    ///         Router.get("/users", #syncQuery(getUsersHandler)),
+    ///         Router.get("/users/{id}", #syncQuery(getUserHandler)),
+    ///         Router.post("/users", #asyncUpdate(createUserHandler)),
+    ///         Router.group({
+    ///             prefix = [#text("api"), #text("v1")];
+    ///             routes = [/* nested routes */];
+    ///             identityRequirement = ?#authenticated;
+    ///         }),
+    ///     ];
+    ///     identityRequirement = null; // No global auth requirement
+    ///     prefix = ?"/api"; // Global prefix for all routes
+    /// };
+    ///
+    /// let router = Router.Router(config);
+    ///
+    /// // In middleware
+    /// switch (router.routeQuery(httpContext)) {
+    ///     case (#response(response)) response;
+    ///     case (#noMatch) { /* handle no match */ };
+    ///     case (#upgrade) { /* upgrade to update call */ };
+    /// };
+    /// ```
     public class Router(config : Config) = self {
         let prefix = switch (config.prefix) {
             case (?prefix) ?(

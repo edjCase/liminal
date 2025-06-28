@@ -30,6 +30,29 @@ module {
         #asyncUpdate : RouteContext -> async* HttpResponse;
     };
 
+    /// Route-specific context that extends HttpContext with route parameters and utilities.
+    /// Provides access to parsed route parameters, query parameters, and all HTTP context functionality.
+    /// This is the primary interface used within route handlers.
+    ///
+    /// ```motoko
+    /// // In a route handler function
+    /// let handler = func(routeContext : RouteContext.RouteContext) : HttpResponse {
+    ///     // Access route parameters
+    ///     let userId = routeContext.getRouteParam("id");
+    ///     
+    ///     // Access query parameters
+    ///     let sortBy = routeContext.getQueryParam("sort");
+    ///     
+    ///     // Parse request body
+    ///     switch (routeContext.parseRawJsonBody()) {
+    ///         case (#ok(json)) { /* process JSON */ };
+    ///         case (#err(e)) { /* handle error */ };
+    ///     };
+    ///     
+    ///     // Build response
+    ///     routeContext.buildResponse(#ok, #content(#text("Success")));
+    /// };
+    /// ```
     public class RouteContext(
         httpContext_ : HttpContext.HttpContext,
         handler_ : RouteHandler,
