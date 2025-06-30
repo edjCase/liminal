@@ -68,6 +68,7 @@ module {
             context.log(#debug_, prefix # "HTTP Response: " # responseText);
         };
         {
+            name = "Request Logging";
             handleQuery = func(context : HttpContext.HttpContext, next : App.Next) : App.QueryResult {
                 logRequest(#query_, context);
                 let result = next();
