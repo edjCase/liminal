@@ -20,6 +20,7 @@ xml = "1.0.0"
 http-assets = "0.0.7"
 sha2 = "0.1.4"
 url-kit = "0.0.9"
+cbor = "2.0.0"
 
 [dev-dependencies]
 test = "2.1.1"
