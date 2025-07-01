@@ -1,5 +1,7 @@
 # Liminal
 
+![Logo](logo.svg)
+
 [![MOPS](https://img.shields.io/badge/MOPS-liminal-blue)](https://mops.one/liminal)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/edjcase/motoko_http/blob/main/LICENSE)
 
