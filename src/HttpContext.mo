@@ -158,6 +158,7 @@ module {
         #content : CandidValue;
         #text : Text;
         #html : Text;
+        #json : Json.Json;
         #error : HttpErrorDataKind;
     };
 
@@ -508,6 +509,20 @@ module {
                     body = ?Text.encodeUtf8(text);
                     streamingStrategy = null;
                 });
+                case (#json(json)) {
+                    let jsonText = Json.stringify(json, null);
+                    let jsonBytes = Text.encodeUtf8(jsonText);
+                    let contentLength = Nat.toText(Blob.size(jsonBytes));
+                    {
+                        statusCode = statusCodeNat;
+                        headers = [
+                            ("content-type", "application/json"),
+                            ("content-length", contentLength),
+                        ];
+                        body = ?jsonBytes;
+                        streamingStrategy = null;
+                    };
+                };
                 case (#html(text)) ({
                     statusCode = statusCodeNat;
                     headers = [("content-type", "text/html")];

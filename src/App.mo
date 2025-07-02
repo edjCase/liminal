@@ -256,18 +256,19 @@ module {
     public func defaultJsonErrorSerializer(
         error : HttpContext.HttpError
     ) : HttpContext.ErrorSerializerResponse {
-        let jsonBody : Json.Json = switch (error.data) {
+        let (jsonBody, contentTypeOrNull) : (Json.Json, ?Text) = switch (error.data) {
             case (#none) return {
                 headers = [];
                 body = null;
             };
             case (#message(message)) {
                 let statusCodeText = HttpContext.getStatusCodeLabel(error.statusCode);
-                #object_([
+                let json = #object_([
                     ("status", #number(#int(error.statusCode))),
                     ("error", #string(statusCodeText)),
                     ("message", #string(message)),
                 ]);
+                (json, null);
             };
             case (#rfc9457(rfc)) {
                 let fields = Buffer.Buffer<(Text, Json.Json)>(10);
@@ -290,13 +291,14 @@ module {
                     fields.add((extension.name, mapExtensionToJson(extension.value)));
                 };
 
-                #object_(Buffer.toArray(fields));
+                let json = #object_(Buffer.toArray(fields));
+                (json, ?"application/problem+json");
             };
         };
         let body = Text.encodeUtf8(Json.stringify(jsonBody, null));
         {
             headers = [
-                ("Content-Type", "application/json"),
+                ("Content-Type", Option.get(contentTypeOrNull, "application/json")),
                 ("Content-Length", Nat.toText(body.size())),
             ];
             body = ?body;

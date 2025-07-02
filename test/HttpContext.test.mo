@@ -1,6 +1,13 @@
 import { test } "mo:test";
 import HttpContext "../src/HttpContext";
 import Runtime "mo:new-base/Runtime";
+import Text "mo:new-base/Text";
+import Blob "mo:new-base/Blob";
+import Json "mo:json";
+import Serde "mo:serde";
+import Liminal "../src/lib";
+import Char "mo:new-base/Char";
+import Types "../src/Types";
 
 test(
     "HttpContext.getStatusCodeNat - converts status codes to numbers correctly",
@@ -116,6 +123,197 @@ test(
             if (statusLabel == "Unknown Error") {
                 Runtime.trap("Roundtrip failed for " # debug_show (statusCode) # ": got 'Unknown Error' label for standard status code " # debug_show (nat));
             };
+        };
+    },
+);
+
+// Helper function to create a test HttpContext instance
+func createTestHttpContext() : HttpContext.HttpContext {
+    let testRequest = {
+        method = "GET";
+        url = "/test";
+        headers = [("Accept", "application/json,text/html")];
+        body = Blob.fromArray([]);
+    };
+
+    let options = {
+        errorSerializer = Liminal.defaultJsonErrorSerializer;
+        candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+        logger = Liminal.buildDebugLogger(#warning);
+    };
+
+    HttpContext.HttpContext(testRequest, null, options);
+};
+
+test(
+    "HttpContext.buildResponse - comprehensive test for all ResponseKind variants",
+    func() : () {
+        let httpContext = createTestHttpContext();
+
+        // Define test case type
+        type TestCase = {
+            name : Text;
+            statusCode : HttpContext.HttpStatusCodeOrCustom;
+            responseKind : HttpContext.ResponseKind;
+            expected : Types.HttpResponse;
+        };
+
+        let testCases : [TestCase] = [
+            // #empty response
+            {
+                name = "#empty response";
+                statusCode = #ok;
+                responseKind = #empty;
+                expected = {
+                    statusCode = 200;
+                    headers = [];
+                    body = null;
+                    streamingStrategy = null;
+                };
+            },
+
+            // #custom response
+            {
+                name = "#custom response";
+                statusCode = #created;
+                responseKind = #custom({
+                    headers = [("X-Custom-Header", "custom-value"), ("Content-Type", "text/custom")];
+                    body = "Custom response body";
+                });
+                expected = {
+                    statusCode = 201;
+                    headers = [("X-Custom-Header", "custom-value"), ("Content-Type", "text/custom")];
+                    body = ?"Custom response body";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #text response
+            {
+                name = "#text response";
+                statusCode = #ok;
+                responseKind = #text("Hello, world!");
+                expected = {
+                    statusCode = 200;
+                    headers = [("content-type", "text/plain")];
+                    body = ?"Hello, world!";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #html response
+            {
+                name = "#html response";
+                statusCode = #ok;
+                responseKind = #html("<html><body><h1>Hello World</h1></body></html>");
+                expected = {
+                    statusCode = 200;
+                    headers = [("content-type", "text/html")];
+                    body = ?"<html><body><h1>Hello World</h1></body></html>";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #json response
+            {
+                name = "#json response";
+                statusCode = #ok;
+                responseKind = #json(
+                    #object_([
+                        ("message", #string("Hello")),
+                        ("status", #string("success")),
+                        ("count", #number(#int(42))),
+                    ])
+                );
+                expected = {
+                    statusCode = 200;
+                    headers = [
+                        ("content-type", "application/json"),
+                        ("content-length", "49"),
+                    ];
+                    body = ?"{\"message\":\"Hello\",\"status\":\"success\",\"count\":42}";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #content response - This will depend on the candidRepresentationNegotiator
+            {
+                name = "#content response";
+                statusCode = #ok;
+                responseKind = #content(#Text("Hello from Candid"));
+                expected = {
+                    statusCode = 200;
+                    headers = [
+                        ("content-type", "application/json"),
+                        ("content-length", "19"),
+                    ];
+                    body = ?"\"Hello from Candid\"";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #error with #none - This will depend on the errorSerializer
+            {
+                name = "#error with #none";
+                statusCode = #badRequest;
+                responseKind = #error(#none);
+                expected = {
+                    statusCode = 400;
+                    headers = [];
+                    body = null;
+                    streamingStrategy = null;
+                };
+            },
+
+            // #error with #message
+            {
+                name = "#error with #message";
+                statusCode = #unprocessableContent;
+                responseKind = #error(#message("Invalid request parameters"));
+                expected = {
+                    statusCode = 422;
+                    headers = [("Content-Type", "application/json"), ("Content-Length", "84")];
+                    body = ?"{\"status\":422,\"error\":\"Unprocessable Entity\",\"message\":\"Invalid request parameters\"}";
+                    streamingStrategy = null;
+                };
+            },
+
+            // #error with #rfc9457
+            {
+                name = "#error with #rfc9457";
+                statusCode = #badRequest;
+                responseKind = #error(#rfc9457({ type_ = "https://example.com/problems/validation-error"; title = ?"Validation Error"; detail = ?"The request body contains invalid data"; instance = ?"/users/123"; extensions = [{ name = "invalid_fields"; value = #array([#text("email"), #text("age")]) }] }));
+                expected = {
+                    statusCode = 400;
+                    headers = [("Content-Type", "application/problem+json"), ("Content-Length", "203")]; // RFC 9457 content type
+                    body = ?"{\"type\":\"https://example.com/problems/validation-error\",\"status\":400,\"title\":\"Validation Error\",\"detail\":\"The request body contains invalid data\",\"instance\":\"/users/123\",\"invalid_fields\":[\"email\",\"age\"]}";
+                    streamingStrategy = null;
+                };
+            },
+
+            // Test different status codes with same response type
+            {
+                name = "custom status code";
+                statusCode = #custom(418);
+                responseKind = #text("I'm a teapot");
+                expected = {
+                    statusCode = 418;
+                    headers = [("content-type", "text/plain")];
+                    body = ?"I'm a teapot";
+                    streamingStrategy = null;
+                };
+            },
+        ];
+
+        // Run all test cases
+        for (testCase in testCases.vals()) {
+            let response = httpContext.buildResponse(testCase.statusCode, testCase.responseKind);
+
+            // Check status code
+            if (response != testCase.expected) {
+                Runtime.trap(testCase.name # ":\nExpected: " # debug_show ({ body = testCase.expected.body; statusCode = testCase.expected.statusCode; headers = testCase.expected.headers }) # "\nActual:   " # debug_show ({ body = response.body; statusCode = response.statusCode; headers = response.headers }));
+            };
+
         };
     },
 );
