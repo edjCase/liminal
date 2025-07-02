@@ -3,10 +3,7 @@ import HttpContext "../src/HttpContext";
 import Runtime "mo:new-base/Runtime";
 import Text "mo:new-base/Text";
 import Blob "mo:new-base/Blob";
-import Json "mo:json";
-import Serde "mo:serde";
 import Liminal "../src/lib";
-import Char "mo:new-base/Char";
 import Types "../src/Types";
 
 test(
