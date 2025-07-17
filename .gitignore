@@ -5,3 +5,5 @@ build/
 .mops/
 .dfx
 .env
+**/canister_ids.json
+**/*.pem
