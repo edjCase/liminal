@@ -59,7 +59,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
                     });
                     let hashJson = switch (result.module_hash) {
                         case (null) #Null;
-                        case (?hash) #Text(debug_show (Blob.toArray(hash)));
+                        case (?hash) #Text(debug_show (hash));
                     };
                     routeContext.buildResponse(#ok, #content(#Record([("hash", hashJson)])));
                 },
