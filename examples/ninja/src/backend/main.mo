@@ -1,7 +1,4 @@
 import Liminal "mo:liminal";
-import Principal "mo:new-base/Principal";
-import Blob "mo:new-base/Blob";
-import { ic } "mo:ic";
 import CORSMiddleware "mo:liminal/Middleware/CORS";
 import RouterMiddleware "mo:liminal/Middleware/Router";
 import CompressionMiddleware "mo:liminal/Middleware/Compression";
@@ -12,6 +9,7 @@ import GhostStore "GhostStore";
 shared ({ caller = initializer }) actor class Actor() = self {
   stable var ghostStableData : GhostStore.StableData = {
     ghosts = [];
+    nextId = 1;
   };
 
   var ghostStore = GhostStore.Store(ghostStableData);
@@ -38,6 +36,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
           Router.getQuery("/", ghostRouter.get),
           Router.postUpdate("/", ghostRouter.create),
           Router.getQuery("/{id}", ghostRouter.getById),
+          Router.getQuery("/{id}/image", ghostRouter.getImageById),
           Router.postUpdate("/{id}", ghostRouter.update),
           Router.deleteUpdate("/{id}", ghostRouter.delete),
         ],

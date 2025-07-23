@@ -13,6 +13,6 @@
   },
   "type": "module",
   "workspaces": [
-    "src/ninja_frontend"
+    "src/frontend"
   ]
 }

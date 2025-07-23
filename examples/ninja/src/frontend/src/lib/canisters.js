@@ -1,4 +1,4 @@
-import { createActor, canisterId } from 'declarations/ninja_backend';
+import { createActor, canisterId } from 'declarations/backend';
 import { building } from '$app/environment';
 
 function dummyActor() {
@@ -10,3 +10,6 @@ const buildingOrTesting = building || process.env.NODE_ENV === "test";
 export const backend = buildingOrTesting
     ? dummyActor()
     : createActor(canisterId);
+
+// Export canisterId for use in other modules
+export { canisterId };

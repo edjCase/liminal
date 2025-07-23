@@ -23,15 +23,36 @@ module {
             routeContext.buildResponse(#ok, #content(toCandid(to_candid (ghost))));
         };
 
+        public func getImageById(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+            let idText = routeContext.getRouteParam("id");
+            let ?id = Nat.fromText(idText) else return routeContext.buildResponse(#badRequest, #error(#message("Invalid id '" # idText # "', must be a positive integer")));
+
+            let ?image = store.getImageById(id) else return routeContext.buildResponse(#notFound, #error(#none));
+
+            routeContext.buildResponse(
+                #ok,
+                #custom({
+                    body = image.data;
+                    headers = [
+                        ("Content-Type", image.mimeType),
+                        ("Content-Length", Nat.toText(image.data.size())),
+                    ];
+                }),
+            );
+        };
+
         public func create<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+            Debug.print("Creating ghost...");
+
             let createRequest : GhostStore.CreateRequest = switch (routeContext.parseJsonBody<GhostStore.CreateRequest>(Serializer.deserializeCreateRequest)) {
                 case (#err(e)) return routeContext.buildResponse(#badRequest, #error(#message("Failed to parse Json. Error: " # e)));
                 case (#ok(req)) req;
             };
 
-            let newGhost = store.create(createRequest);
-
-            routeContext.buildResponse(#created, #content(toCandid(to_candid (newGhost))));
+            switch (store.create(createRequest)) {
+                case (#ok(newGhost)) routeContext.buildResponse(#created, #content(toCandid(to_candid (newGhost))));
+                case (#err(e)) routeContext.buildResponse(#badRequest, #error(#message("Failed to update ghost. Error: " # e)));
+            };
         };
 
         public func update<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
@@ -43,16 +64,21 @@ module {
                 case (#ok(req)) req;
             };
 
-            let existed = store.update(id, updateRequest) else return routeContext.buildResponse(#notFound, #error(#none));
-            if (not existed) {
-                return routeContext.buildResponse(#notFound, #error(#none));
+            switch (store.update(id, updateRequest)) {
+                case (#ok(existed)) {
+                    if (not existed) {
+                        return routeContext.buildResponse(#notFound, #error(#none));
+                    };
+                    routeContext.buildResponse(#noContent, #empty);
+                };
+                case (#err(e)) routeContext.buildResponse(#badRequest, #error(#message("Failed to update ghost. Error: " # e)));
             };
-            routeContext.buildResponse(#noContent, #empty);
         };
 
         public func delete<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
             let idText = routeContext.getRouteParam("id");
             let ?id = Nat.fromText(idText) else return routeContext.buildResponse(#badRequest, #error(#message("Invalid id '" # idText # "', must be a positive integer")));
+
             let existed = store.delete(id);
             if (not existed) {
                 return routeContext.buildResponse(#notFound, #error(#none));
@@ -70,11 +96,16 @@ module {
                 types = null;
                 use_icrc_3_value_type = false;
             };
+            Debug.print("Encoding ghost Candid");
             switch (Serde.Candid.decode(value, ghostKeys, options)) {
-                case (#err(e)) Debug.trap("Failed to decode ghost Candid. Error: " # e);
+                case (#err(e)) {
+                    Debug.print("Failed to decode ghost Candid. Error: " # e);
+                    Debug.trap("Failed to decode ghost Candid. Error: " # e);
+                };
                 case (#ok(candid)) {
                     if (candid.size() != 1) {
-                        return Debug.trap("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
+                        Debug.print("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
+                        Debug.trap("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
                     };
                     candid[0];
                 };
