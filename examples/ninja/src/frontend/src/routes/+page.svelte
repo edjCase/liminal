@@ -2,6 +2,7 @@
     import "../index.scss";
     import { onMount } from "svelte";
     import UrlApi from "$lib/urlApi.js";
+    import { canisterId } from "$lib/canisters.js";
 
     let urls = [];
     let loading = false;
@@ -10,6 +11,37 @@
     let newUrl = "";
     let customSlug = "";
     let copiedShortUrl = "";
+
+    // Get the base URL for curl examples
+    function getBaseUrl(raw = true) {
+        let canisterIdAndRaw = raw ? `${canisterId}.raw` : canisterId;
+        if (typeof window !== "undefined") {
+            const isLocal =
+                window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1";
+            if (isLocal) {
+                return `http://${canisterIdAndRaw}.localhost:4943`;
+            } else {
+                return `https://${canisterIdAndRaw}.ic0.app`;
+            }
+        }
+        return `http://${canisterIdAndRaw}.localhost:4943`; // fallback for SSR
+    }
+
+    // Get the base URL for dynamic usage;
+
+    // Generate dynamic curl command based on current input
+    $: curlCommand = (() => {
+        if (!newUrl.trim()) {
+            return `curl -X POST -d "https://example.com" ${getBaseUrl()}/shorten`;
+        }
+
+        if (customSlug.trim()) {
+            return `curl -X POST -d "url=${encodeURIComponent(newUrl)}&slug=${encodeURIComponent(customSlug)}" ${getBaseUrl()}/shorten`;
+        } else {
+            return `curl -X POST -d "${newUrl}" ${getBaseUrl()}/shorten`;
+        }
+    })();
 
     async function loadUrls() {
         loading = true;
@@ -135,7 +167,9 @@
     }
 
     function formatDate(timestamp) {
-        return new Date(timestamp).toLocaleString();
+        // Convert nanoseconds to milliseconds for JavaScript Date
+        const milliseconds = Math.floor(timestamp / 1000000);
+        return new Date(milliseconds).toLocaleString();
     }
 
     function isValidUrl(string) {
@@ -221,86 +255,35 @@
                 >
             </div>
 
-            <button
-                type="submit"
-                disabled={loading || !newUrl.trim() || !isValidUrl(newUrl)}
-                class="shorten-btn"
-            >
-                {loading ? "Shortening..." : "🔗 Shorten URL"}
-            </button>
+            <!-- Action buttons side by side -->
+            <div class="action-row">
+                <button
+                    type="submit"
+                    disabled={loading || !newUrl.trim() || !isValidUrl(newUrl)}
+                    class="shorten-btn"
+                >
+                    {loading ? "Shortening..." : "🔗 Shorten URL"}
+                </button>
+
+                <div
+                    class="curl-alternative"
+                    class:disabled={!newUrl.trim() || !isValidUrl(newUrl)}
+                >
+                    <p class="curl-label">Or use curl:</p>
+                    <div class="curl-command-container">
+                        <code class="curl-command dynamic">{curlCommand}</code>
+                        <button
+                            type="button"
+                            class="copy-btn"
+                            disabled={!newUrl.trim() || !isValidUrl(newUrl)}
+                            on:click={() => copyToClipboard(curlCommand)}
+                        >
+                            📋 Copy curl
+                        </button>
+                    </div>
+                </div>
+            </div>
         </form>
-    </div>
-
-    <!-- Curl Examples -->
-    <div class="curl-section">
-        <h2>📋 Try with curl</h2>
-        <div class="curl-examples">
-            <div class="curl-example">
-                <h3>Create a short URL</h3>
-                <code class="curl-command"
-                    >curl -X POST -d "https://example.com"
-                    http://localhost:8000/shorten</code
-                >
-                <button
-                    class="copy-btn"
-                    on:click={() =>
-                        copyToClipboard(
-                            'curl -X POST -d "https://example.com" http://localhost:8000/shorten'
-                        )}
-                >
-                    📋 Copy
-                </button>
-            </div>
-
-            <div class="curl-example">
-                <h3>Create with custom slug</h3>
-                <code class="curl-command"
-                    >curl -X POST -d "url=https://example.com&slug=my-link"
-                    http://localhost:8000/shorten</code
-                >
-                <button
-                    class="copy-btn"
-                    on:click={() =>
-                        copyToClipboard(
-                            'curl -X POST -d "url=https://example.com&slug=my-link" http://localhost:8000/shorten'
-                        )}
-                >
-                    📋 Copy
-                </button>
-            </div>
-
-            <div class="curl-example">
-                <h3>Follow a redirect</h3>
-                <code class="curl-command"
-                    >curl -L http://localhost:8000/s/abc123</code
-                >
-                <button
-                    class="copy-btn"
-                    on:click={() =>
-                        copyToClipboard(
-                            "curl -L http://localhost:8000/s/abc123"
-                        )}
-                >
-                    📋 Copy
-                </button>
-            </div>
-
-            <div class="curl-example">
-                <h3>Get redirect info (no follow)</h3>
-                <code class="curl-command"
-                    >curl -I http://localhost:8000/s/abc123</code
-                >
-                <button
-                    class="copy-btn"
-                    on:click={() =>
-                        copyToClipboard(
-                            "curl -I http://localhost:8000/s/abc123"
-                        )}
-                >
-                    📋 Copy
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- URLs List -->
@@ -346,7 +329,11 @@
                                     <button
                                         class="visit-btn"
                                         on:click={() =>
-                                            openUrl(url.originalUrl)}
+                                            openUrl(
+                                                UrlApi.getShortUrl(
+                                                    url.shortCode
+                                                )
+                                            )}
                                     >
                                         🔗 Visit
                                     </button>

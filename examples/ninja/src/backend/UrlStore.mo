@@ -9,11 +9,13 @@ import Time "mo:base/Time";
 import Int "mo:base/Int";
 import Random "mo:base/Random";
 import Char "mo:base/Char";
+import BTree "mo:stableheapbtreemap/BTree";
+import UrlKit "mo:url-kit";
+import Debug "mo:base/Debug";
 
 module {
   public type StableData = {
-    urls : [Url];
-    slugMap : [(Text, Nat)];
+    urls : BTree.BTree<Nat, Url>;
     nextId : Nat;
   };
 
@@ -42,57 +44,46 @@ module {
 
     var nextId = stableData.nextId;
 
-    var urlMap = stableData.urls.vals()
-    |> Iter.map<Url, (Nat, Url)>(
+    let slugToIdMap : HashMap.HashMap<Text, Nat> = stableData.urls
+    |> BTree.entries(_)
+    |> Iter.map<(Nat, Url), (Text, Nat)>(
       _,
-      func(url : Url) : (Nat, Url) {
-        (url.id, url);
-      },
+      func((_, url) : (Nat, Url)) : (Text, Nat) = (url.shortCode, url.id),
     )
-    |> HashMap.fromIter<Nat, Url>(
-      _,
-      stableData.urls.size(),
-      Nat.equal,
-      func(nat : Nat) : Nat32 {
-        Nat32.fromIntWrap(nat);
-      },
-    );
-
-    var slugToIdMap = HashMap.fromIter<Text, Nat>(
-      stableData.slugMap.vals(),
-      stableData.slugMap.size(),
-      Text.equal,
-      Text.hash,
-    );
+    |> HashMap.fromIter<Text, Nat>(_, BTree.size(stableData.urls), Text.equal, Text.hash);
 
     public func getAllUrls() : [Url] {
-      urlMap.vals() |> Iter.toArray(_);
+      BTree.entries(stableData.urls)
+      |> Iter.map(
+        _,
+        func((_, url) : (Nat, Url)) : Url = url,
+      )
+      |> Iter.toArray(_);
     };
 
     public func getUrlByShortCode(shortCode : Text) : ?Url {
       let ?id = slugToIdMap.get(shortCode) else return null;
-      urlMap.get(id);
+      BTree.get(stableData.urls, Nat.compare, id);
     };
 
     public func incrementClicks(shortCode : Text) : ?Text {
       let ?url = getUrlByShortCode(shortCode) else return null;
 
+      Debug.print("Incrementing clicks for shortCode: " # shortCode # " (ID: " # Nat.toText(url.id) # "), current clicks: " # Nat.toText(url.clicks));
+
       let updatedUrl : Url = {
-        id = url.id;
-        originalUrl = url.originalUrl;
-        shortCode = url.shortCode;
+        url with
         clicks = url.clicks + 1;
-        createdAt = url.createdAt;
       };
 
-      urlMap.put(url.id, updatedUrl);
+      ignore BTree.insert(stableData.urls, Nat.compare, url.id, updatedUrl);
       ?url.originalUrl;
     };
 
     public func create(request : CreateRequest) : Result.Result<Url, Text> {
       // Validate original URL
       if (not isValidUrl(request.originalUrl)) {
-        return #err("Invalid URL format");
+        return #err("Invalid URL format: " # request.originalUrl);
       };
 
       // Generate or validate short code
@@ -120,27 +111,21 @@ module {
       };
 
       nextId += 1;
-      urlMap.put(newUrl.id, newUrl);
+      ignore BTree.insert(stableData.urls, Nat.compare, newUrl.id, newUrl);
       slugToIdMap.put(shortCode, newUrl.id);
 
       #ok(newUrl);
     };
 
     public func delete(id : Nat) : Bool {
-      switch (urlMap.get(id)) {
-        case null false;
-        case (?url) {
-          urlMap.delete(id);
-          slugToIdMap.delete(url.shortCode);
-          true;
-        };
-      };
+      let ?url = BTree.delete(stableData.urls, Nat.compare, id) else return false;
+      slugToIdMap.delete(url.shortCode);
+      true;
     };
 
     public func toStableData() : StableData {
       {
-        urls = urlMap.vals() |> Iter.toArray(_);
-        slugMap = slugToIdMap.entries() |> Iter.toArray(_);
+        urls = stableData.urls;
         nextId = nextId;
       };
     };

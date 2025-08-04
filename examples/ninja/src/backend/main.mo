@@ -5,17 +5,17 @@ import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import Router "mo:liminal/Router";
 import UrlRouter "UrlRouter";
 import UrlStore "UrlStore";
+import BTree "mo:stableheapbtreemap/BTree";
 
 shared ({ caller = initializer }) actor class Actor() = self {
   stable var urlStableData : UrlStore.StableData = {
-    urls = [];
-    slugMap = [];
+    urls = BTree.init<Nat, UrlStore.Url>(null);
     nextId = 1;
   };
 
   var urlStore = UrlStore.Store(urlStableData);
 
-  let urlRouter = UrlRouter.Router(urlStore);
+  let urlRouter = UrlRouter.Router(urlStore, certs);
 
   // Upgrade methods
 
@@ -37,7 +37,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
       Router.deleteUpdate("/urls/{id}", urlRouter.deleteUrl),
 
       // Short URL redirect and stats
-      Router.getQuery("/s/{shortCode}", urlRouter.redirect),
+      Router.getUpdate("/s/{shortCode}", urlRouter.redirect),
       Router.getQuery("/s/{shortCode}/stats", urlRouter.getStats),
     ];
   };

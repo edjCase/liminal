@@ -8,19 +8,20 @@ const isLocal = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 // Build the base URL based on environment
-const getBaseUrl = () => {
+const getBaseUrl = (raw = true) => {
   if (building || process.env.NODE_ENV === "test") {
     return '/'; // Fallback for build/test
   }
+
+  let canisterIdAndRaw = raw ? `${canisterId}.raw` : canisterId;
   
   if (isLocal) {
-    return `http://${canisterId}.raw.localhost:4943`;
+    return `http://${canisterIdAndRaw}.localhost:4943`;
   } else {
-    return `https://${canisterId}.ic0.app`;
+    return `https://${canisterIdAndRaw}.ic0.app`;
   }
 };
 
-const API_BASE = getBaseUrl();
 
 export class UrlApi {
   /**
@@ -28,7 +29,7 @@ export class UrlApi {
    * @returns {Promise<Array>} Array of URL objects
    */
   static async getAllUrls() {
-    const response = await fetch(`${API_BASE}/urls`, {
+    const response = await fetch(`${getBaseUrl()}/urls`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -64,7 +65,7 @@ export class UrlApi {
       ? `url=${encodeURIComponent(originalUrl)}&slug=${encodeURIComponent(customSlug)}`
       : originalUrl;
 
-    const response = await fetch(`${API_BASE}/shorten`, {
+    const response = await fetch(`${getBaseUrl()}/shorten`, {
       method: 'POST',
       headers: {
         'Content-Type': customSlug ? 'application/x-www-form-urlencoded' : 'text/plain',
@@ -86,7 +87,7 @@ export class UrlApi {
    * @returns {Promise<void>}
    */
   static async deleteUrl(id) {
-    const response = await fetch(`${API_BASE}/urls/${id}`, {
+    const response = await fetch(`${getBaseUrl()}/urls/${id}`, {
       method: 'DELETE',
     });
     
@@ -104,7 +105,7 @@ export class UrlApi {
    * @returns {string} Full short URL
    */
   static getShortUrl(shortCode) {
-    return `${API_BASE}/s/${shortCode}`;
+    return `${getBaseUrl(false)}/s/${shortCode}`;
   }
 
   /**
@@ -113,7 +114,7 @@ export class UrlApi {
    * @returns {Promise<Object>} URL statistics
    */
   static async getUrlStats(shortCode) {
-    const response = await fetch(`${API_BASE}/s/${shortCode}/stats`, {
+    const response = await fetch(`${getBaseUrl()}/s/${shortCode}/stats`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

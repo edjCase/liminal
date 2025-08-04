@@ -8,21 +8,24 @@ import RouteContext "mo:liminal/RouteContext";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
 import Iter "mo:base/Iter";
+import UrlKit "mo:url-kit";
 
 module {
 
-  public class Router(store : UrlStore.Store) = self {
+  public class Router(
+    store : UrlStore.Store
+  ) = self {
 
     public func getAllUrls(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       let urls = store.getAllUrls();
       routeContext.buildResponse(#ok, #content(toCandid(to_candid (urls))));
     };
 
-    public func redirect(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+    public func redirect<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       let shortCode = routeContext.getRouteParam("shortCode");
 
       switch (store.incrementClicks(shortCode)) {
-        case null {
+        case (null) {
           routeContext.buildResponse(#notFound, #error(#message("Short URL not found")));
         };
         case (?originalUrl) {
@@ -44,7 +47,7 @@ module {
       let shortCode = routeContext.getRouteParam("shortCode");
 
       switch (store.getUrlByShortCode(shortCode)) {
-        case null {
+        case (null) {
           routeContext.buildResponse(#notFound, #error(#message("Short URL not found")));
         };
         case (?url) {
@@ -111,8 +114,14 @@ module {
         let keyValue = Text.split(pair, #char('='));
         let keyValueArray = Iter.toArray(keyValue);
         if (keyValueArray.size() == 2) {
-          let key = urlDecode(keyValueArray[0]);
-          let value = urlDecode(keyValueArray[1]);
+          let key = switch (UrlKit.decodeText(keyValueArray[0])) {
+            case (#ok(decoded)) decoded;
+            case (#err(e)) Debug.trap("Failed to decode key: " # e);
+          };
+          let value = switch (UrlKit.decodeText(keyValueArray[1])) {
+            case (#ok(decoded)) decoded;
+            case (#err(e)) Debug.trap("Failed to decode value: " # e);
+          };
 
           if (key == "url") {
             originalUrl := value;
@@ -125,14 +134,6 @@ module {
       { originalUrl = originalUrl; customSlug = customSlug };
     };
 
-    // Simple URL decode function
-    private func urlDecode(text : Text) : Text {
-      // For now, just handle basic cases
-      let decoded = Text.replace(text, #text("+"), " ");
-      let decoded2 = Text.replace(decoded, #text("%20"), " ");
-      decoded2;
-    };
-
     func toCandid(value : Blob) : Serde.Candid.Candid {
       let urlKeys = ["id", "originalUrl", "shortCode", "clicks", "createdAt"];
       let renamedUrlKeys = [];
@@ -142,7 +143,6 @@ module {
         types = null;
         use_icrc_3_value_type = false;
       };
-      Debug.print("Encoding URL Candid");
       switch (Serde.Candid.decode(value, urlKeys, options)) {
         case (#err(e)) {
           Debug.print("Failed to decode URL Candid. Error: " # e);
