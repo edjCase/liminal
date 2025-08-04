@@ -13,7 +13,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
 
   var urlStore = UrlStore.Store(urlStableData);
 
-  let urlRouter = UrlRouter.Router(urlStore, certs);
+  let urlRouter = UrlRouter.Router(urlStore);
 
   // Upgrade methods
 

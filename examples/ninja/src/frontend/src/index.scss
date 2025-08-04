@@ -251,8 +251,32 @@ main {
   word-break: break-all;
   line-height: 1.4;
   margin: 0;
-  white-space: pre-wrap;
+  white-space: pre;
+  overflow-x: auto;
   border: 1px solid #00ff00;
+}
+
+/* Custom scrollbar for curl command box */
+.curl-command.dynamic::-webkit-scrollbar {
+  height: 8px;
+}
+
+.curl-command.dynamic::-webkit-scrollbar-track {
+  background: #000;
+  border: 1px solid #00ff00;
+}
+
+.curl-command.dynamic::-webkit-scrollbar-thumb {
+  background: #00ff00;
+  border-radius: 0;
+}
+
+.curl-command.dynamic::-webkit-scrollbar-thumb:hover {
+  background: #00ffff;
+}
+
+.curl-command.dynamic::-webkit-scrollbar-corner {
+  background: #000;
 }
 
 @media (max-width: 768px) {

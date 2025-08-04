@@ -1,155 +1,249 @@
-# 👻 Motoko Ghost Manager
+# Liminal URL Shortener
 
-A beautiful CRUD (Create, Read, Update, Delete) demo application for managing Motoko Ghosts on the Internet Computer. This demo showcases how to build a modern web interface that interacts with a Motoko backend using the Liminal HTTP framework.
+A retro terminal-styled URL shortener demo showcasing HTTP-native features on the Internet Computer. This demo demonstrates how to build a functional web service using the Liminal HTTP framework with Motoko, emphasizing curl usage and proper HTTP semantics.
 
 ## Features
 
-- 🎨 **Beautiful UI**: Modern, responsive design with smooth animations
-- 👻 **Ghost Management**: Create, view, edit, and delete ghosts
-- 🔄 **Real-time Updates**: Live data synchronization with the backend
-- ⚡ **Fast & Responsive**: Built with SvelteKit for optimal performance
-- 🎯 **Type-safe API**: Structured API client for reliable data handling
-- ♿ **Accessible**: Keyboard shortcuts and screen reader friendly
-- 📱 **Mobile Friendly**: Responsive design that works on all devices
+-   🖥️ **Retro Terminal UI**: Old-school green-on-black terminal aesthetic
+-   � **URL Shortening**: Create short, memorable links from long URLs
+-   🎯 **Custom Short Codes**: Optional custom slugs for branded links
+-   📊 **Click Tracking**: Monitor usage statistics for your links
+-   � **HTTP-Native**: Full REST API with proper status codes and redirects
+-   📋 **Dynamic curl Examples**: Live curl commands that update with your input
+-   ⚡ **Real-time Updates**: Instant feedback and live data synchronization
+-   📱 **Responsive Design**: Terminal theme that works on all devices
 
 ## Backend API
 
-The backend provides a RESTful API for ghost management:
+The backend provides a RESTful HTTP API for URL shortening:
 
-- `GET /ghosts` - Get all ghosts
-- `POST /ghosts` - Create a new ghost
-- `GET /ghosts/{id}` - Get a specific ghost
-- `POST /ghosts/{id}` - Update a ghost
-- `DELETE /ghosts/{id}` - Delete a ghost
+-   `POST /shorten` - Create a short URL (accepts form data or plain text)
+-   `GET /s/{shortCode}` - Redirect to original URL (HTTP 302)
+-   `GET /urls` - Get all short URLs with metadata
+-   `DELETE /urls/{id}` - Delete a short URL
+-   `GET /s/{shortCode}/stats` - Get click statistics (optional)
 
-### Ghost Data Structure
+### URL Data Structure
 
 ```motoko
-type Ghost = {
+type ShortenedUrl = {
     id: Nat;
-    name: Text;
+    shortCode: Text;
+    originalUrl: Text;
+    clicks: Nat;
+    createdAt: Int;
 };
+```
+
+### HTTP Content Types
+
+The API supports multiple content types for creating short URLs:
+
+```bash
+# Plain text body
+curl -X POST -d "https://example.com" http://canister.localhost:4943/shorten
+
+# Form data with custom slug
+curl -X POST -d "url=https://example.com&slug=my-link" http://canister.localhost:4943/shorten
+
+# Returns JSON response
+{"id":1,"shortCode":"abc123","originalUrl":"https://example.com","clicks":0,"createdAt":1625097600000000000}
 ```
 
 ## Frontend Architecture
 
 ### Components
 
-- **+page.svelte**: Main application component with full CRUD interface
-- **ghostApi.js**: API client for backend communication
-- **index.scss**: Modern styling with CSS Grid and Flexbox
+-   **+page.svelte**: Main URL shortener interface with dynamic curl examples
+-   **urlApi.js**: HTTP client for backend communication
+-   **index.scss**: Retro terminal styling with green-on-black theme
 
 ### Key Features
 
-- **State Management**: Reactive Svelte stores for real-time UI updates
-- **Error Handling**: User-friendly error messages with retry functionality
-- **Loading States**: Visual feedback during API operations
-- **Form Validation**: Client-side validation with server-side backup
-- **Success Feedback**: Confirmation messages for successful operations
+-   **Dynamic curl Commands**: Interactive curl examples that update based on user input
+-   **Terminal Aesthetics**: Monospace fonts, green text, and square brackets for buttons
+-   **HTTP Awareness**: Emphasizes the HTTP nature of the service with curl integration
+-   **Form Validation**: URL validation with user-friendly error messages
+-   **Copy to Clipboard**: Easy copying of short URLs and curl commands
 
 ## Getting Started
 
 1. **Start the backend**:
 
-   ```bash
-   cd examples/ninja
-   dfx start --background
-   dfx deploy
-   ```
+    ```bash
+    cd examples/ninja
+    dfx start --background
+    dfx deploy
+    ```
 
 2. **Start the frontend**:
 
-   ```bash
-   cd src/frontend
-   npm install
-   npm run start
-   ```
+    ```bash
+    cd src/frontend
+    npm install
+    npm run start
+    ```
 
 3. **Open your browser** and navigate to `http://localhost:3000`
 
 ## Usage
 
-### Adding a Ghost
+### Creating Short URLs
 
-1. Enter a name in the "Add New Ghost" section
-2. Click "👻 Add Ghost" or press Enter
-3. The ghost will appear in your collection
+#### Via Web Interface
 
-### Editing a Ghost
+1. Enter a long URL in the "Long URL" field
+2. Optionally add a custom short code (letters, numbers, hyphens, underscores)
+3. Click "[>] Shorten URL"
+4. Copy the generated short URL or use the provided curl command
 
-1. Click "✏️ Edit" on any ghost card
-2. Modify the name in the input field
-3. Click "💾 Save" or press Enter to confirm
-4. Click "❌ Cancel" or press Escape to cancel
+#### Via curl (HTTP API)
 
-### Deleting a Ghost
+```bash
+# Simple URL shortening
+curl -X POST -d "https://example.com/very/long/url" http://canister.localhost:4943/shorten
 
-1. Click "🗑️ Delete" on any ghost card
-2. Confirm the deletion in the popup dialog
-3. The ghost will be removed from your collection
+# Custom short code
+curl -X POST -d "url=https://example.com&slug=my-link" http://canister.localhost:4943/shorten
+
+# Using the short URL (redirects with HTTP 302)
+curl -L http://canister.localhost:4943/s/abc123
+```
+
+### Managing Short URLs
+
+-   **Copy**: Click "[C]" to copy the short URL to clipboard
+-   **Visit**: Click "↗" to open the short URL in a new tab
+-   **Delete**: Click "[X]" to permanently remove the short URL
+-   **Stats**: View click counts and creation dates for each URL
 
 ### Keyboard Shortcuts
 
-- **Escape**: Cancel editing mode
-- **Ctrl/Cmd + R**: Refresh ghost list
-- **Enter**: Submit forms (add/edit)
+-   **Escape**: Clear the form inputs
+-   **Ctrl/Cmd + R**: Refresh URL list
+-   **Enter**: Submit the shorten form
 
 ## Technical Details
 
-### API Client (`ghostApi.js`)
+### HTTP Features Demonstrated
 
-- Promise-based HTTP client
-- Automatic error handling and validation
-- Type-safe request/response handling
-- Consistent error messaging
+-   **Content Negotiation**: Supports both `text/plain` and `application/x-www-form-urlencoded`
+-   **HTTP Redirects**: Proper 302 redirects for short URL visits
+-   **Status Codes**: Appropriate HTTP status codes for all operations
+-   **REST API**: Full RESTful interface following HTTP conventions
+
+### API Client (`urlApi.js`)
+
+-   HTTP-focused client emphasizing proper headers and content types
+-   Environment-aware URL construction (local vs IC deployment)
+-   Form data and plain text request handling
+-   JSON response parsing with error handling
 
 ### Styling (`index.scss`)
 
-- CSS Grid for responsive layouts
-- Smooth transitions and animations
-- Modern color scheme with gradients
-- Mobile-first responsive design
-- Accessibility-focused styles
+-   **Terminal Theme**: Green-on-black color scheme with monospace fonts
+-   **Retro Aesthetics**: Square buttons with bracket notation `[COPY]`, `[>]`
+-   **Responsive Design**: Mobile-friendly layout that maintains terminal feel
+-   **HTTP Emphasis**: Styling that reinforces the web service nature
 
 ### State Management
 
-- Reactive variables for UI state
-- Optimistic updates for better UX
-- Error state management
-- Loading state coordination
+-   **Reactive curl Commands**: Dynamic generation of curl examples
+-   **Real-time Validation**: Live URL validation and button state management
+-   **Optimistic Updates**: Immediate UI feedback for better UX
+
+## HTTP API Examples
+
+### Creating Short URLs
+
+```bash
+# Basic shortening
+$ curl -X POST -d "https://github.com/dfinity/motoko" \
+  http://canister.localhost:4943/shorten
+
+{"id":1,"shortCode":"abc123","originalUrl":"https://github.com/dfinity/motoko","clicks":0,"createdAt":1625097600000000000}
+
+# Custom short code
+$ curl -X POST -d "url=https://internetcomputer.org&slug=ic" \
+  http://canister.localhost:4943/shorten
+
+{"id":2,"shortCode":"ic","originalUrl":"https://internetcomputer.org","clicks":0,"createdAt":1625097600000000000}
+```
+
+### Using Short URLs
+
+```bash
+# Get redirect (follows automatically with -L)
+$ curl -L http://canister.localhost:4943/s/abc123
+# Redirects to https://github.com/dfinity/motoko
+
+# See redirect response
+$ curl -i http://canister.localhost:4943/s/abc123
+HTTP/1.1 302 Found
+Location: https://github.com/dfinity/motoko
+```
+
+### Managing URLs
+
+```bash
+# List all URLs
+$ curl http://canister.localhost:4943/urls
+
+# Delete a URL
+$ curl -X DELETE http://canister.localhost:4943/urls/1
+```
 
 ## Error Handling
 
 The application includes comprehensive error handling:
 
-- **Network errors**: Connection issues with the backend
-- **Validation errors**: Invalid input data
-- **Not found errors**: Attempting to access non-existent ghosts
-- **Server errors**: Backend processing issues
+-   **Invalid URLs**: Client-side validation with helpful error messages
+-   **Duplicate slugs**: Server-side validation for custom short codes
+-   **Not found errors**: Proper 404 responses for missing short URLs
+-   **Network errors**: Connection issues with clear user feedback
 
-All errors are displayed to users with clear, actionable messages.
-
-## Performance Optimizations
-
-- **Efficient updates**: Only re-render changed components
-- **Optimistic UI**: Immediate feedback for user actions
-- **Minimal API calls**: Batch operations where possible
-- **Cached data**: Reduce redundant requests
+All errors maintain the terminal aesthetic with `[!]` prefixes and monospace styling.
 
 ## Browser Support
 
-- Modern browsers with ES6+ support
-- Chrome 60+
-- Firefox 60+
-- Safari 12+
-- Edge 79+
+-   Modern browsers with ES6+ support and fetch API
+-   Chrome 60+
+-   Firefox 60+
+-   Safari 12+
+-   Edge 79+
+
+## Deployment
+
+### Local Development
+
+The demo runs locally using dfx with raw domain access:
+
+```bash
+# Backend available at:
+http://{canister-id}.raw.localhost:4943
+
+# Frontend available at:
+http://localhost:3000
+```
+
+### IC Mainnet
+
+For production deployment:
+
+```bash
+# Backend available at:
+https://{canister-id}.ic0.app
+
+# Redirects work at:
+https://{canister-id}.ic0.app/s/{shortCode}
+```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
+3. Test with both curl and web interface
+4. Ensure terminal styling is maintained
 5. Submit a pull request
 
 ## License

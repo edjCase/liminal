@@ -32,14 +32,25 @@
 
     // Generate dynamic curl command based on current input
     $: curlCommand = (() => {
+        const baseUrl = getBaseUrl();
+        
         if (!newUrl.trim()) {
-            return `curl -X POST -d "https://example.com" ${getBaseUrl()}/shorten`;
+            return `curl '${baseUrl}/shorten' \\
+  -H 'Accept: */*' \\
+  -H 'Content-Type: text/plain' \\
+  -d 'https://example.com'`;
         }
 
         if (customSlug.trim()) {
-            return `curl -X POST -d "url=${encodeURIComponent(newUrl)}&slug=${encodeURIComponent(customSlug)}" ${getBaseUrl()}/shorten`;
+            return `curl '${baseUrl}/shorten' \\
+  -H 'Accept: */*' \\
+  -H 'Content-Type: application/x-www-form-urlencoded' \\
+  -d 'url=${encodeURIComponent(newUrl)}&slug=${encodeURIComponent(customSlug)}'`;
         } else {
-            return `curl -X POST -d "${newUrl}" ${getBaseUrl()}/shorten`;
+            return `curl '${baseUrl}/shorten' \\
+  -H 'Accept: */*' \\
+  -H 'Content-Type: text/plain' \\
+  -d '${newUrl}'`;
         }
     })();
 
