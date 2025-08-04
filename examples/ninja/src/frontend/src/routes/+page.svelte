@@ -84,7 +84,7 @@
             // Show success message
             const shortCode = shortenedUrl.shortCode;
             const fullShortUrl = UrlApi.getShortUrl(shortCode);
-            showSuccess(`🔗 Short URL created: ${fullShortUrl}`);
+            showSuccess(`[>] Short URL created: ${fullShortUrl}`);
         } catch (err) {
             error = "Failed to shorten URL: " + err.message;
             console.error("Error shortening URL:", err);
@@ -121,7 +121,7 @@
             .writeText(text)
             .then(() => {
                 copiedShortUrl = text;
-                showSuccess(`📋 Copied to clipboard: ${text}`);
+                showSuccess(`[C] Copied to clipboard: ${text}`);
 
                 // Clear the copied state after 2 seconds
                 setTimeout(() => {
@@ -204,7 +204,7 @@
 
     {#if error}
         <div class="error-message">
-            <span>⚠️ {error}</span>
+            <span>[!] {error}</span>
             <button class="close-error" on:click={clearError} type="button"
                 >×</button
             >
@@ -213,7 +213,7 @@
 
     {#if successMessage}
         <div class="success-message">
-            <span>✅ {successMessage}</span>
+            <span>[OK] {successMessage}</span>
             <button class="close-success" on:click={clearSuccess} type="button"
                 >×</button
             >
@@ -262,7 +262,7 @@
                     disabled={loading || !newUrl.trim() || !isValidUrl(newUrl)}
                     class="shorten-btn"
                 >
-                    {loading ? "Shortening..." : "🔗 Shorten URL"}
+                    {loading ? "Shortening..." : "[>] Shorten URL"}
                 </button>
 
                 <div
@@ -278,7 +278,7 @@
                             disabled={!newUrl.trim() || !isValidUrl(newUrl)}
                             on:click={() => copyToClipboard(curlCommand)}
                         >
-                            📋 Copy curl
+                            [COPY] Copy curl
                         </button>
                     </div>
                 </div>
@@ -291,7 +291,7 @@
         <div class="section-header">
             <h2>Your Short URLs ({urls.length})</h2>
             <button on:click={loadUrls} disabled={loading} class="refresh-btn">
-                {loading ? "🔄 Loading..." : "🔄 Refresh"}
+                {loading ? "[...] Loading..." : "Refresh"}
             </button>
         </div>
 
@@ -323,8 +323,8 @@
                                     >
                                         {copiedShortUrl ===
                                         UrlApi.getShortUrl(url.shortCode)
-                                            ? "✓"
-                                            : "📋"}
+                                            ? "Copied ✓"
+                                            : "Copy Url"}
                                     </button>
                                     <button
                                         class="visit-btn"
@@ -335,14 +335,14 @@
                                                 )
                                             )}
                                     >
-                                        🔗 Visit
+                                        ↗
                                     </button>
                                     <button
                                         on:click={() => deleteUrl(url.id)}
                                         disabled={loading}
                                         class="delete-btn"
                                     >
-                                        🗑️
+                                        X
                                     </button>
                                 </div>
                             </div>
@@ -371,10 +371,12 @@
                                 </p>
                                 <div class="url-stats">
                                     <span class="stat"
-                                        >👀 {url.clicks || 0} clicks</span
+                                        >[HITS] {url.clicks || 0} clicks</span
                                     >
                                     <span class="stat"
-                                        >� {formatDate(url.createdAt)}</span
+                                        >[DATE] {formatDate(
+                                            url.createdAt
+                                        )}</span
                                     >
                                 </div>
                             </div>
