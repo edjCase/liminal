@@ -107,7 +107,7 @@
         try {
             await UrlApi.deleteUrl(id);
             urls = urls.filter((url) => url.id !== id);
-            showSuccess(`�️ Short URL deleted successfully`);
+            showSuccess(`Short URL deleted successfully`);
         } catch (err) {
             error = "Failed to delete URL: " + err.message;
             console.error("Error deleting URL:", err);
@@ -193,11 +193,12 @@
 
 <main>
     <div class="header">
-        <img src="/logo2.svg" alt="DFINITY logo" />
-        <h1>� Liminal URL Shortener</h1>
+        <h1>Liminal URL Shortener</h1>
         <p>
-            Shorten URLs with HTTP-native features. Perfect for curl and browser
-            usage!
+            Shorten URLs with HTTP-native features using <a
+                href="https://mops.one/liminal"
+                target="_blank">Liminal HTTP framework</a
+            > for Motoko
         </p>
     </div>
 
@@ -221,7 +222,6 @@
 
     <!-- Shorten URL Form -->
     <div class="shorten-section">
-        <h2>Shorten a URL</h2>
         <form on:submit|preventDefault={shortenUrl} class="shorten-form">
             <div class="form-field">
                 <label for="new-url" class="form-label">Long URL</label>
