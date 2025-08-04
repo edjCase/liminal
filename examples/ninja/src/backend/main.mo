@@ -1,7 +1,5 @@
 import Liminal "mo:liminal";
-import CORSMiddleware "mo:liminal/Middleware/CORS";
 import RouterMiddleware "mo:liminal/Middleware/Router";
-import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import Router "mo:liminal/Router";
 import UrlRouter "UrlRouter";
 import UrlStore "UrlStore";
@@ -45,8 +43,6 @@ shared ({ caller = initializer }) actor class Actor() = self {
   // Http App
   let app = Liminal.App({
     middleware = [
-      CompressionMiddleware.default(),
-      CORSMiddleware.default(),
       RouterMiddleware.new(routerConfig),
     ];
     errorSerializer = Liminal.defaultJsonErrorSerializer;
