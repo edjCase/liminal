@@ -3,44 +3,42 @@ import CORSMiddleware "mo:liminal/Middleware/CORS";
 import RouterMiddleware "mo:liminal/Middleware/Router";
 import CompressionMiddleware "mo:liminal/Middleware/Compression";
 import Router "mo:liminal/Router";
-import GhostRouter "GhostRouter";
-import GhostStore "GhostStore";
+import UrlRouter "UrlRouter";
+import UrlStore "UrlStore";
 
 shared ({ caller = initializer }) actor class Actor() = self {
-  stable var ghostStableData : GhostStore.StableData = {
-    ghosts = [];
+  stable var urlStableData : UrlStore.StableData = {
+    urls = [];
+    slugMap = [];
     nextId = 1;
   };
 
-  var ghostStore = GhostStore.Store(ghostStableData);
+  var urlStore = UrlStore.Store(urlStableData);
 
-  let ghostRouter = GhostRouter.Router(ghostStore);
+  let urlRouter = UrlRouter.Router(urlStore);
 
   // Upgrade methods
 
   system func preupgrade() {
-    ghostStableData := ghostStore.toStableData();
+    urlStableData := urlStore.toStableData();
   };
 
   system func postupgrade() {
-    ghostStore := GhostStore.Store(ghostStableData);
+    urlStore := UrlStore.Store(urlStableData);
   };
 
   let routerConfig : RouterMiddleware.Config = {
     prefix = null;
     identityRequirement = null;
     routes = [
-      Router.group(
-        "/ghosts",
-        [
-          Router.getQuery("/", ghostRouter.get),
-          Router.postUpdate("/", ghostRouter.create),
-          Router.getQuery("/{id}", ghostRouter.getById),
-          Router.getQuery("/{id}/image", ghostRouter.getImageById),
-          Router.postUpdate("/{id}", ghostRouter.update),
-          Router.deleteUpdate("/{id}", ghostRouter.delete),
-        ],
-      )
+      // URL management endpoints
+      Router.getQuery("/urls", urlRouter.getAllUrls),
+      Router.postUpdate("/shorten", urlRouter.createShortUrl),
+      Router.deleteUpdate("/urls/{id}", urlRouter.deleteUrl),
+
+      // Short URL redirect and stats
+      Router.getQuery("/s/{shortCode}", urlRouter.redirect),
+      Router.getQuery("/s/{shortCode}/stats", urlRouter.getStats),
     ];
   };
 

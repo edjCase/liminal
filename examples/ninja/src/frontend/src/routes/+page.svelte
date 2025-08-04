@@ -1,458 +1,400 @@
 <script>
-  import "../index.scss";
-  import { onMount } from "svelte";
-  import GhostApi from "$lib/ghostApi.js";
+    import "../index.scss";
+    import { onMount } from "svelte";
+    import UrlApi from "$lib/urlApi.js";
 
-  let ghosts = [];
-  let loading = false;
-  let error = "";
-  let successMessage = "";
-  let editingGhost = null;
-  let newGhostName = "";
-  let newGhostImage = null;
-  let editGhostName = "";
-  let editGhostImage = null;
-  let updatedGhostIds = new Set(); // Track which ghosts had their images updated
+    let urls = [];
+    let loading = false;
+    let error = "";
+    let successMessage = "";
+    let newUrl = "";
+    let customSlug = "";
+    let copiedShortUrl = "";
 
-  async function loadGhosts() {
-    loading = true;
-    error = "";
-    try {
-      ghosts = await GhostApi.getAllGhosts();
-    } catch (err) {
-      error = "Failed to load ghosts: " + err.message;
-      console.error("Error loading ghosts:", err);
-    } finally {
-      loading = false;
-    }
-  }
-
-  async function createGhost() {
-    if (!newGhostName.trim()) return;
-    if (!newGhostImage) {
-      error = "Please select an image for your ghost";
-      return;
+    async function loadUrls() {
+        loading = true;
+        error = "";
+        try {
+            urls = await UrlApi.getAllUrls();
+        } catch (err) {
+            error = "Failed to load URLs: " + err.message;
+            console.error("Error loading URLs:", err);
+        } finally {
+            loading = false;
+        }
     }
 
-    loading = true;
-    error = "";
-    try {
-      const newGhost = await GhostApi.createGhost(newGhostName, newGhostImage);
-      ghosts = [...ghosts, newGhost];
-      newGhostName = "";
-      newGhostImage = null;
+    async function shortenUrl() {
+        if (!newUrl.trim()) {
+            error = "Please enter a URL to shorten";
+            return;
+        }
 
-      // Reset file input
-      const fileInput = document.querySelector("#new-ghost-image");
-      if (fileInput) fileInput.value = "";
+        // Basic URL validation
+        try {
+            new URL(newUrl);
+        } catch {
+            error = "Please enter a valid URL (including http:// or https://)";
+            return;
+        }
 
-      // Show success message briefly
-      const successMsg = `👻 "${newGhost.name}" has been added to your collection!`;
-      showSuccess(successMsg);
-    } catch (err) {
-      error = "Failed to create ghost: " + err.message;
-      console.error("Error creating ghost:", err);
-    } finally {
-      loading = false;
-    }
-  }
+        loading = true;
+        error = "";
+        try {
+            const shortenedUrl = await UrlApi.createShortUrl(
+                newUrl,
+                customSlug || null
+            );
+            urls = [shortenedUrl, ...urls]; // Add to beginning of list
+            newUrl = "";
+            customSlug = "";
 
-  async function updateGhost(id) {
-    if (!editGhostName.trim()) return;
-
-    loading = true;
-    error = "";
-    try {
-      const hadImageUpdate = editGhostImage !== null;
-      
-      await GhostApi.updateGhost(id, editGhostName, editGhostImage);
-      
-      // If image was updated, mark this ghost for cache-busting
-      if (hadImageUpdate) {
-        updatedGhostIds.add(id);
-        updatedGhostIds = updatedGhostIds; // Trigger reactivity
-      }
-      
-      // Reload the entire ghost list to get updated data (including new images)
-      await loadGhosts();
-      
-      editingGhost = null;
-      editGhostName = "";
-      editGhostImage = null;
-
-      // Show success message briefly
-      showSuccess(`👻 Ghost updated successfully!`);
-    } catch (err) {
-      error = "Failed to update ghost: " + err.message;
-      console.error("Error updating ghost:", err);
-    } finally {
-      loading = false;
-    }
-  }
-
-  async function deleteGhost(id) {
-    const ghost = ghosts.find((g) => g.id === id);
-    if (
-      !confirm(
-        `Are you sure you want to delete "${ghost?.name || "this ghost"}"?`
-      )
-    )
-      return;
-
-    loading = true;
-    error = "";
-    try {
-      await GhostApi.deleteGhost(id);
-      ghosts = ghosts.filter((ghost) => ghost.id !== id);
-
-      // Show success message briefly
-      showSuccess(
-        `👻 "${ghost?.name || "Ghost"}" has been removed from your collection.`
-      );
-    } catch (err) {
-      error = "Failed to delete ghost: " + err.message;
-      console.error("Error deleting ghost:", err);
-    } finally {
-      loading = false;
-    }
-  }
-
-  function startEdit(ghost) {
-    editingGhost = ghost.id;
-    editGhostName = ghost.name;
-    editGhostImage = null;
-  }
-
-  function cancelEdit() {
-    editingGhost = null;
-    editGhostName = "";
-    editGhostImage = null;
-  }
-
-  function handleKeydown(event) {
-    // ESC key to cancel editing
-    if (event.key === "Escape" && editingGhost) {
-      cancelEdit();
-    }
-    // Ctrl+R or Cmd+R to refresh (prevent default and use our refresh)
-    if ((event.ctrlKey || event.metaKey) && event.key === "r") {
-      event.preventDefault();
-      loadGhosts();
-    }
-  }
-
-  function clearError() {
-    error = "";
-  }
-
-  function showSuccess(message) {
-    successMessage = message;
-    setTimeout(() => {
-      successMessage = "";
-    }, 3000);
-  }
-
-  function clearSuccess() {
-    successMessage = "";
-  }
-
-  function handleImageUpload(event, isEdit = false) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Validate file size (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      error = "Image must be under 2MB";
-      event.target.value = "";
-      return;
+            // Show success message
+            const shortCode = shortenedUrl.shortCode;
+            const fullShortUrl = UrlApi.getShortUrl(shortCode);
+            showSuccess(`🔗 Short URL created: ${fullShortUrl}`);
+        } catch (err) {
+            error = "Failed to shorten URL: " + err.message;
+            console.error("Error shortening URL:", err);
+        } finally {
+            loading = false;
+        }
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      error = "Please select an image file";
-      event.target.value = "";
-      return;
+    async function deleteUrl(id) {
+        const urlItem = urls.find((u) => u.id === id);
+        if (
+            !confirm(
+                `Are you sure you want to delete the short URL "${urlItem?.shortCode || "this URL"}"?`
+            )
+        )
+            return;
+
+        loading = true;
+        error = "";
+        try {
+            await UrlApi.deleteUrl(id);
+            urls = urls.filter((url) => url.id !== id);
+            showSuccess(`�️ Short URL deleted successfully`);
+        } catch (err) {
+            error = "Failed to delete URL: " + err.message;
+            console.error("Error deleting URL:", err);
+        } finally {
+            loading = false;
+        }
     }
 
-    if (isEdit) {
-      editGhostImage = file;
-    } else {
-      newGhostImage = file;
+    function copyToClipboard(text) {
+        navigator.clipboard
+            .writeText(text)
+            .then(() => {
+                copiedShortUrl = text;
+                showSuccess(`📋 Copied to clipboard: ${text}`);
+
+                // Clear the copied state after 2 seconds
+                setTimeout(() => {
+                    copiedShortUrl = "";
+                }, 2000);
+            })
+            .catch(() => {
+                error = "Failed to copy to clipboard";
+            });
     }
-  }
 
-  function getImagePreviewUrl(file) {
-    if (!file) return null;
-    return URL.createObjectURL(file);
-  }
-
-  async function downloadSampleImage() {
-    const imageUrl =
-      "https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400";
-
-    try {
-      // Show loading state
-      const originalText = document.querySelector(".sample-link").textContent;
-      document.querySelector(".sample-link").textContent = "⏳ Downloading...";
-
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error("Failed to fetch image");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.style.display = "none";
-      a.href = url;
-      a.download = "sample-ghost.png";
-
-      document.body.appendChild(a);
-      a.click();
-
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      // Reset button text
-      document.querySelector(".sample-link").textContent = originalText;
-
-      showSuccess("Sample ghost image downloaded successfully!");
-    } catch (err) {
-      error =
-        'Failed to download sample image. You can try right-clicking and "Save As..." instead.';
-      console.error("Download error:", err);
-
-      // Reset button text
-      document.querySelector(".sample-link").textContent =
-        "📥 Download Sample Ghost Image";
+    function openUrl(url) {
+        window.open(url, "_blank");
     }
-  }
 
-  onMount(() => {
-    loadGhosts();
-    document.addEventListener("keydown", handleKeydown);
+    function handleKeydown(event) {
+        // ESC key to clear form
+        if (event.key === "Escape") {
+            newUrl = "";
+            customSlug = "";
+            clearError();
+        }
+        // Ctrl+R or Cmd+R to refresh
+        if ((event.ctrlKey || event.metaKey) && event.key === "r") {
+            event.preventDefault();
+            loadUrls();
+        }
+    }
 
-    return () => {
-      document.removeEventListener("keydown", handleKeydown);
-    };
-  });
+    function clearError() {
+        error = "";
+    }
+
+    function showSuccess(message) {
+        successMessage = message;
+        setTimeout(() => {
+            successMessage = "";
+        }, 3000);
+    }
+
+    function clearSuccess() {
+        successMessage = "";
+    }
+
+    function formatDate(timestamp) {
+        return new Date(timestamp).toLocaleString();
+    }
+
+    function isValidUrl(string) {
+        try {
+            new URL(string);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    onMount(() => {
+        loadUrls();
+        document.addEventListener("keydown", handleKeydown);
+
+        return () => {
+            document.removeEventListener("keydown", handleKeydown);
+        };
+    });
 </script>
 
 <main>
-  <div class="header">
-    <img src="/logo2.svg" alt="DFINITY logo" />
-    <h1>👻 Motoko Ghost Manager</h1>
-    <p>Manage your collection of Motoko Ghosts from the Internet Computer!</p>
-  </div>
-
-  {#if error}
-    <div class="error-message">
-      <span>⚠️ {error}</span>
-      <button class="close-error" on:click={clearError} type="button">×</button>
+    <div class="header">
+        <img src="/logo2.svg" alt="DFINITY logo" />
+        <h1>� Liminal URL Shortener</h1>
+        <p>
+            Shorten URLs with HTTP-native features. Perfect for curl and browser
+            usage!
+        </p>
     </div>
-  {/if}
 
-  {#if successMessage}
-    <div class="success-message">
-      <span>✅ {successMessage}</span>
-      <button class="close-success" on:click={clearSuccess} type="button"
-        >×</button
-      >
-    </div>
-  {/if}
-
-  <!-- Add New Ghost Form -->
-  <div class="add-ghost-section">
-    <h2>Add New Ghost</h2>
-    <form on:submit|preventDefault={createGhost} class="add-ghost-form">
-      <div class="form-field">
-        <label for="new-ghost-name" class="form-label">Name</label>
-        <input
-          id="new-ghost-name"
-          type="text"
-          bind:value={newGhostName}
-          placeholder="Enter ghost name..."
-          disabled={loading}
-          required
-          maxlength="50"
-          autocomplete="off"
-          class="form-input"
-        />
-      </div>
-
-      <div class="form-field">
-        <label for="new-ghost-image" class="form-label">Image</label>
-        <div class="image-upload-section">
-          <div class="image-preview-container">
-            {#if newGhostImage}
-              <img
-                src={getImagePreviewUrl(newGhostImage)}
-                alt="Ghost preview"
-                class="ghost-preview"
-              />
-            {:else}
-              <div class="ghost-placeholder">
-                <span class="placeholder-icon">👻</span>
-                <span class="placeholder-text">No image selected</span>
-              </div>
-            {/if}
-          </div>
-        </div>
-        {#if newGhostImage}
-          <p class="preview-info">
-            {newGhostImage.name} ({(newGhostImage.size / 1024).toFixed(1)} KB)
-          </p>
-        {/if}
-        <div class="file-input-container">
-          <label for="new-ghost-image" class="file-input-label">
-            Choose Image
-          </label>
-          <input
-            id="new-ghost-image"
-            type="file"
-            accept="image/*"
-            on:change={(e) => handleImageUpload(e, false)}
-            disabled={loading}
-            required
-            class="file-input"
-          />
-        </div>
-        <div class="sample-ghost-link">
-          <p>
-            Need an image?
-            <button
-              on:click={downloadSampleImage}
-              type="button"
-              class="sample-link"
-              disabled={loading}
+    {#if error}
+        <div class="error-message">
+            <span>⚠️ {error}</span>
+            <button class="close-error" on:click={clearError} type="button"
+                >×</button
             >
-              📥 Download Sample Ghost Image
-            </button>
-          </p>
         </div>
-      </div>
+    {/if}
 
-      <button
-        type="submit"
-        disabled={loading || !newGhostName.trim() || !newGhostImage}
-        class="add-ghost-btn"
-      >
-        {loading ? "Adding..." : "👻 Add Ghost"}
-      </button>
-    </form>
-  </div>
+    {#if successMessage}
+        <div class="success-message">
+            <span>✅ {successMessage}</span>
+            <button class="close-success" on:click={clearSuccess} type="button"
+                >×</button
+            >
+        </div>
+    {/if}
 
-  <!-- Ghosts List -->
-  <div class="ghosts-section">
-    <div class="section-header">
-      <h2>Your Ghosts ({ghosts.length})</h2>
-      <button on:click={loadGhosts} disabled={loading} class="refresh-btn">
-        {loading ? "🔄 Loading..." : "🔄 Refresh"}
-      </button>
-    </div>
-
-    {#if loading && ghosts.length === 0}
-      <div class="loading">Loading ghosts...</div>
-    {:else if ghosts.length === 0}
-      <div class="empty-state">
-        <div class="empty-icon">👻</div>
-        <p>No ghosts found. Add your first ghost above!</p>
-      </div>
-    {:else}
-      <div class="ghosts-grid">
-        {#each ghosts as ghost (ghost.id)}
-          <div class="ghost-card">
-            <div class="ghost-avatar">
-              <img
-                src={GhostApi.getImageUrl(ghost.id, updatedGhostIds.has(ghost.id))}
-                alt={ghost.name}
-                class="ghost-image"
-                on:error={(e) => {
-                  e.target.src = "/ghost-placeholder.svg";
-                }}
-              />
+    <!-- Shorten URL Form -->
+    <div class="shorten-section">
+        <h2>Shorten a URL</h2>
+        <form on:submit|preventDefault={shortenUrl} class="shorten-form">
+            <div class="form-field">
+                <label for="new-url" class="form-label">Long URL</label>
+                <input
+                    id="new-url"
+                    type="url"
+                    bind:value={newUrl}
+                    placeholder="https://example.com/very/long/url..."
+                    disabled={loading}
+                    required
+                    class="form-input url-input"
+                />
             </div>
 
-            {#if editingGhost === ghost.id}
-              <form
-                on:submit|preventDefault={() => updateGhost(ghost.id)}
-                class="edit-form"
-              >
+            <div class="form-field">
+                <label for="custom-slug" class="form-label"
+                    >Custom Short Code (Optional)</label
+                >
                 <input
-                  type="text"
-                  bind:value={editGhostName}
-                  disabled={loading}
-                  required
-                  maxlength="50"
-                  autocomplete="off"
+                    id="custom-slug"
+                    type="text"
+                    bind:value={customSlug}
+                    placeholder="my-link"
+                    disabled={loading}
+                    pattern="[a-zA-Z0-9-_]+"
+                    maxlength="20"
+                    class="form-input"
                 />
-                <div class="file-input-container">
-                  <label
-                    for="edit-ghost-image-{ghost.id}"
-                    class="file-input-label small"
-                  >
-                    Change Image (Optional)
-                  </label>
-                  <input
-                    id="edit-ghost-image-{ghost.id}"
-                    type="file"
-                    accept="image/*"
-                    on:change={(e) => handleImageUpload(e, true)}
-                    disabled={loading}
-                    class="file-input"
-                  />
-                </div>
-                {#if editGhostImage}
-                  <div class="edit-preview">
-                    <img
-                      src={getImagePreviewUrl(editGhostImage)}
-                      alt="Ghost preview"
-                      class="ghost-preview small"
-                    />
-                    <p class="preview-info small">
-                      {editGhostImage.name} ({(
-                        editGhostImage.size / 1024
-                      ).toFixed(1)} KB)
-                    </p>
-                  </div>
-                {/if}
-                <div class="edit-actions">
-                  <button
-                    type="submit"
-                    disabled={loading || !editGhostName.trim()}
-                  >
-                    💾 Save
-                  </button>
-                  <button
-                    type="button"
-                    on:click={cancelEdit}
-                    disabled={loading}
-                  >
-                    ❌ Cancel
-                  </button>
-                </div>
-              </form>
-            {:else}
-              <div class="ghost-info">
-                <h3 class="ghost-name">{ghost.name}</h3>
-                <p class="ghost-id">ID: {ghost.id}</p>
+                <small class="form-help"
+                    >Letters, numbers, hyphens, and underscores only</small
+                >
+            </div>
 
-                <div class="ghost-actions">
-                  <button on:click={() => startEdit(ghost)} disabled={loading}>
-                    ✏️ Edit
-                  </button>
-                  <button
-                    on:click={() => deleteGhost(ghost.id)}
-                    disabled={loading}
-                    class="delete-btn"
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
+            <button
+                type="submit"
+                disabled={loading || !newUrl.trim() || !isValidUrl(newUrl)}
+                class="shorten-btn"
+            >
+                {loading ? "Shortening..." : "🔗 Shorten URL"}
+            </button>
+        </form>
+    </div>
+
+    <!-- Curl Examples -->
+    <div class="curl-section">
+        <h2>📋 Try with curl</h2>
+        <div class="curl-examples">
+            <div class="curl-example">
+                <h3>Create a short URL</h3>
+                <code class="curl-command"
+                    >curl -X POST -d "https://example.com"
+                    http://localhost:8000/shorten</code
+                >
+                <button
+                    class="copy-btn"
+                    on:click={() =>
+                        copyToClipboard(
+                            'curl -X POST -d "https://example.com" http://localhost:8000/shorten'
+                        )}
+                >
+                    📋 Copy
+                </button>
+            </div>
+
+            <div class="curl-example">
+                <h3>Create with custom slug</h3>
+                <code class="curl-command"
+                    >curl -X POST -d "url=https://example.com&slug=my-link"
+                    http://localhost:8000/shorten</code
+                >
+                <button
+                    class="copy-btn"
+                    on:click={() =>
+                        copyToClipboard(
+                            'curl -X POST -d "url=https://example.com&slug=my-link" http://localhost:8000/shorten'
+                        )}
+                >
+                    📋 Copy
+                </button>
+            </div>
+
+            <div class="curl-example">
+                <h3>Follow a redirect</h3>
+                <code class="curl-command"
+                    >curl -L http://localhost:8000/s/abc123</code
+                >
+                <button
+                    class="copy-btn"
+                    on:click={() =>
+                        copyToClipboard(
+                            "curl -L http://localhost:8000/s/abc123"
+                        )}
+                >
+                    📋 Copy
+                </button>
+            </div>
+
+            <div class="curl-example">
+                <h3>Get redirect info (no follow)</h3>
+                <code class="curl-command"
+                    >curl -I http://localhost:8000/s/abc123</code
+                >
+                <button
+                    class="copy-btn"
+                    on:click={() =>
+                        copyToClipboard(
+                            "curl -I http://localhost:8000/s/abc123"
+                        )}
+                >
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- URLs List -->
+    <div class="urls-section">
+        <div class="section-header">
+            <h2>Your Short URLs ({urls.length})</h2>
+            <button on:click={loadUrls} disabled={loading} class="refresh-btn">
+                {loading ? "🔄 Loading..." : "🔄 Refresh"}
+            </button>
+        </div>
+
+        {#if loading && urls.length === 0}
+            <div class="loading">Loading URLs...</div>
+        {:else if urls.length === 0}
+            <div class="empty-state">
+                <div class="empty-icon">�</div>
+                <p>No short URLs yet. Create your first one above!</p>
+            </div>
+        {:else}
+            <div class="urls-grid">
+                {#each urls as url (url.id)}
+                    <div class="url-card">
+                        <div class="url-info">
+                            <div class="url-header">
+                                <h3 class="short-code">/{url.shortCode}</h3>
+                                <div class="url-actions">
+                                    <button
+                                        class="copy-btn small"
+                                        class:copied={copiedShortUrl ===
+                                            UrlApi.getShortUrl(url.shortCode)}
+                                        on:click={() =>
+                                            copyToClipboard(
+                                                UrlApi.getShortUrl(
+                                                    url.shortCode
+                                                )
+                                            )}
+                                    >
+                                        {copiedShortUrl ===
+                                        UrlApi.getShortUrl(url.shortCode)
+                                            ? "✓"
+                                            : "📋"}
+                                    </button>
+                                    <button
+                                        class="visit-btn"
+                                        on:click={() =>
+                                            openUrl(url.originalUrl)}
+                                    >
+                                        🔗 Visit
+                                    </button>
+                                    <button
+                                        on:click={() => deleteUrl(url.id)}
+                                        disabled={loading}
+                                        class="delete-btn"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="url-details">
+                                <p class="short-url">
+                                    <strong>Short:</strong>
+                                    <a
+                                        href={UrlApi.getShortUrl(url.shortCode)}
+                                        target="_blank"
+                                        rel="noopener"
+                                    >
+                                        {UrlApi.getShortUrl(url.shortCode)}
+                                    </a>
+                                </p>
+                                <p class="original-url">
+                                    <strong>Original:</strong>
+                                    <a
+                                        href={url.originalUrl}
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="original-link"
+                                    >
+                                        {url.originalUrl}
+                                    </a>
+                                </p>
+                                <div class="url-stats">
+                                    <span class="stat"
+                                        >👀 {url.clicks || 0} clicks</span
+                                    >
+                                    <span class="stat"
+                                        >� {formatDate(url.createdAt)}</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+        {/if}
+    </div>
 </main>

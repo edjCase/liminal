@@ -169,6 +169,27 @@ module {
     /// ```
     public func parseJsonBody<T>(f : Json.Json -> Result.Result<T, Text>) : Result.Result<T, Text> = httpContext.parseJsonBody(f);
 
+    /// Returns the raw request body as a Blob without any processing.
+    /// Use this when you need to access binary data or when implementing custom parsers.
+    ///
+    /// ```motoko
+    /// let rawBody : Blob = routeContext.getRawBody();
+    /// // Process binary data directly
+    /// ```
+    public func getRawBody() : Blob {
+      httpContext.getRawBody();
+    };
+
+    /// Attempts to parse the request body as UTF-8 text.
+    /// Returns null if the body contains invalid UTF-8 sequences.
+    ///
+    /// ```motoko
+    /// let ?text = routeContext.parseUtf8Body() else Debug.trap("Failed to decode request body as UTF-8");
+    /// ```
+    public func parseUtf8Body() : ?Text {
+      httpContext.parseUtf8Body();
+    };
+
     /// Builds an HTTP response with the specified status code and content.
     /// Convenience wrapper around the HTTP context's response building functionality.
     ///

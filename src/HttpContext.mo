@@ -433,7 +433,7 @@ module {
     /// };
     /// ```
     public func parseRawJsonBody() : Result.Result<Json.Json, Text> {
-      let ?jsonText = Text.decodeUtf8(request.body) else return #err("Body is not valid UTF-8");
+      let ?jsonText = parseUtf8Body() else return #err("Body is not valid UTF-8");
       switch (Json.parse(jsonText)) {
         case (#ok(json)) #ok(json);
         case (#err(e)) #err("Failed to parse JSON: " # debug_show (e));
@@ -461,6 +461,27 @@ module {
         case (#ok(json)) f(json);
         case (#err(e)) #err(e);
       };
+    };
+
+    /// Returns the raw request body as a Blob without any processing.
+    /// Use this when you need to access binary data or when implementing custom parsers.
+    ///
+    /// ```motoko
+    /// let rawBody : Blob = httpContext.getRawBody();
+    /// // Process binary data directly
+    /// ```
+    public func getRawBody() : Blob {
+      request.body;
+    };
+
+    /// Attempts to parse the request body as UTF-8 text.
+    /// Returns null if the body contains invalid UTF-8 sequences.
+    ///
+    /// ```motoko
+    /// let ?text = httpContext.parseUtf8Body() else Debug.trap("Failed to decode request body as UTF-8");
+    /// ```
+    public func parseUtf8Body() : ?Text {
+      Text.decodeUtf8(request.body);
     };
 
     /// Builds an HTTP response with the specified status code and content.
