@@ -1,9 +1,9 @@
-import Text "mo:new-base/Text";
-import Time "mo:new-base/Time";
-import Array "mo:new-base/Array";
-import Int "mo:new-base/Int";
-import Random "mo:new-base/Random";
-import Bool "mo:new-base/Bool";
+import Text "mo:core/Text";
+import Time "mo:core/Time";
+import Array "mo:core/Array";
+import Int "mo:core/Int";
+import Random "mo:core/Random";
+import Bool "mo:core/Bool";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";

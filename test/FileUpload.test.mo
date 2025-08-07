@@ -1,9 +1,9 @@
 import { test; suite } "mo:test";
-import Debug "mo:new-base/Debug";
-import Text "mo:new-base/Text";
-import Blob "mo:new-base/Blob";
-import Nat "mo:new-base/Nat";
-import Runtime "mo:new-base/Runtime";
+import Debug "mo:core/Debug";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
+import Nat "mo:core/Nat";
+import Runtime "mo:core/Runtime";
 import FileUpload "../src/FileUpload";
 import HttpContext "../src/HttpContext";
 import ContentNegotiation "../src/ContentNegotiation";

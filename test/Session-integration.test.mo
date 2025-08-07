@@ -1,11 +1,11 @@
 import { test } "mo:test/async";
-import Text "mo:new-base/Text";
-import Blob "mo:new-base/Blob";
-import Nat16 "mo:new-base/Nat16";
-import Nat "mo:new-base/Nat";
-import Runtime "mo:new-base/Runtime";
-import Time "mo:new-base/Time";
-import Int "mo:new-base/Int";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
+import Nat16 "mo:core/Nat16";
+import Nat "mo:core/Nat";
+import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
+import Int "mo:core/Int";
 
 import Liminal "../src/lib";
 import SessionMiddleware "../src/Middleware/Session";

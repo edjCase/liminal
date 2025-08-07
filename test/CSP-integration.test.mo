@@ -1,11 +1,11 @@
 import { test } "mo:test";
-import Array "mo:new-base/Array";
-import Text "mo:new-base/Text";
-import Blob "mo:new-base/Blob";
-import Iter "mo:new-base/Iter";
-import Runtime "mo:new-base/Runtime";
-import Nat "mo:new-base/Nat";
-import Nat16 "mo:new-base/Nat16";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
+import Iter "mo:core/Iter";
+import Runtime "mo:core/Runtime";
+import Nat "mo:core/Nat";
+import Nat16 "mo:core/Nat16";
 import Liminal "../src/lib";
 import CSPMiddleware "../src/Middleware/CSP";
 import RouterMiddleware "../src/Middleware/Router";

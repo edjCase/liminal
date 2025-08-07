@@ -1,9 +1,9 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Text "mo:new-base/Text";
-import Iter "mo:new-base/Iter";
-import Result "mo:new-base/Result";
-import List "mo:new-base/List";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+import Result "mo:core/Result";
+import List "mo:core/List";
 import TextX "mo:xtended-text/TextX";
 import Identity "./Identity";
 import RouteContext "RouteContext";

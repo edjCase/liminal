@@ -1,4 +1,4 @@
-import Text "mo:new-base/Text";
+import Text "mo:core/Text";
 module {
 
   public type HttpMethod = {

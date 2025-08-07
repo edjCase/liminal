@@ -1,10 +1,10 @@
-import Text "mo:new-base/Text";
-import Iter "mo:new-base/Iter";
-import List "mo:new-base/List";
-import Runtime "mo:new-base/Runtime";
-import Order "mo:new-base/Order";
-import Nat "mo:new-base/Nat";
-import Debug "mo:base/Debug";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+import List "mo:core/List";
+import Runtime "mo:core/Runtime";
+import Order "mo:core/Order";
+import Nat "mo:core/Nat";
+import Debug "mo:core/Debug";
 import MimeType "MimeType";
 import QualityFactor "QualityFactor";
 

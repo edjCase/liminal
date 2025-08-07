@@ -1,5 +1,5 @@
-import List "mo:new-base/List";
-import Text "mo:new-base/Text";
+import List "mo:core/List";
+import Text "mo:core/Text";
 import Types "Types";
 
 module {

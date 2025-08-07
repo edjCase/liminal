@@ -1,8 +1,8 @@
 import UrlStore "UrlStore";
 import Json "mo:json";
-import Result "mo:base/Result";
-import Text "mo:base/Text";
-import Blob "mo:base/Blob";
+import Result "mo:core/Result";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
 import BaseX "mo:base-x-encoder";
 import UrlKit "mo:url-kit";
 

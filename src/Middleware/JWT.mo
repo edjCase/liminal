@@ -1,8 +1,8 @@
 import JWT "mo:jwt";
 import App "../App";
 import HttpContext "../HttpContext";
-import Debug "mo:new-base/Debug";
-import Text "mo:new-base/Text";
+import Debug "mo:core/Debug";
+import Text "mo:core/Text";
 
 module {
   public type ValidationOptions = JWT.ValidationOptions;

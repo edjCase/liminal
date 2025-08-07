@@ -1,8 +1,8 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Nat "mo:new-base/Nat";
-import Blob "mo:new-base/Blob";
-import Nat16 "mo:new-base/Nat16";
+import Nat "mo:core/Nat";
+import Blob "mo:core/Blob";
+import Nat16 "mo:core/Nat16";
 import HttpAssets "mo:http-assets";
 
 module {

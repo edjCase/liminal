@@ -1,8 +1,8 @@
 import { test } "mo:test";
 import HttpContext "../src/HttpContext";
-import Runtime "mo:new-base/Runtime";
-import Text "mo:new-base/Text";
-import Blob "mo:new-base/Blob";
+import Runtime "mo:core/Runtime";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
 import Liminal "../src/lib";
 import Types "../src/Types";
 

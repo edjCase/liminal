@@ -1,9 +1,9 @@
 import { test } "mo:test/async";
-import Text "mo:new-base/Text";
-import Blob "mo:new-base/Blob";
-import Nat16 "mo:new-base/Nat16";
-import Nat "mo:new-base/Nat";
-import Runtime "mo:new-base/Runtime";
+import Text "mo:core/Text";
+import Blob "mo:core/Blob";
+import Nat16 "mo:core/Nat16";
+import Nat "mo:core/Nat";
+import Runtime "mo:core/Runtime";
 
 import Liminal "../src/lib";
 import RateLimiterMiddleware "../src/Middleware/RateLimiter";

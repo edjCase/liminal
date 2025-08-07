@@ -1,6 +1,6 @@
 import Route "mo:liminal/Route";
-import Nat "mo:new-base/Nat";
-import Runtime "mo:new-base/Runtime";
+import Nat "mo:core/Nat";
+import Runtime "mo:core/Runtime";
 import UserHandler "UserHandler";
 import Serializer "Serializer";
 import Serde "mo:serde";

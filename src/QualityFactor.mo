@@ -1,5 +1,5 @@
-import Text "mo:new-base/Text";
-import Int "mo:new-base/Int";
+import Text "mo:core/Text";
+import Int "mo:core/Int";
 import NatX "mo:xtended-numbers/NatX";
 module {
   public type QualityFactor = Nat;

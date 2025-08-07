@@ -1,6 +1,6 @@
 import HttpAssets "mo:http-assets";
-import Result "mo:new-base/Result";
-import Runtime "mo:new-base/Runtime";
+import Result "mo:core/Result";
+import Runtime "mo:core/Runtime";
 
 module {
 

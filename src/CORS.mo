@@ -1,8 +1,8 @@
-import Text "mo:new-base/Text";
-import List "mo:new-base/List";
-import Nat "mo:new-base/Nat";
-import Iter "mo:new-base/Iter";
-import Array "mo:new-base/Array";
+import Text "mo:core/Text";
+import List "mo:core/List";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
+import Array "mo:core/Array";
 import HttpContext "./HttpContext";
 import Types "./Types";
 import HttpMethod "./HttpMethod";

@@ -13,19 +13,19 @@ Liminal is a flexible HTTP framework designed to make building web applications 
 
 Key features:
 
-- 🔄 **Middleware**: Compose your application using reusable middleware components
-- 🛣️ **Routing**: Powerful route matching with parameter extraction and group support
-- 🔒 **CORS Support**: Configurable Cross-Origin Resource Sharing
-- 🔐 **CSP Support**: Content Security Policy configuration
-- 📦 **Asset Canister Integration**: Simplified interface with Internet Computer's certified assets
-- 🔑 **JWT Authentication**: Built-in JWT parsing and validation
-- 🚀 **Compression**: Automatic response compression for performance
-- ⏱️ **Rate Limiting**: Protect your APIs from abuse
-- 🛡️ **Authentication**: Configurable authentication requirements
-- 🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
-- 📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
-- 📝 **Logging**: Built-in logging system with configurable levels and custom logger support
-- 🔐 **OAuth Authentication**: Built-in OAuth 2.0 support with PKCE for Google, GitHub, and custom providers
+-   🔄 **Middleware**: Compose your application using reusable middleware components
+-   🛣️ **Routing**: Powerful route matching with parameter extraction and group support
+-   🔒 **CORS Support**: Configurable Cross-Origin Resource Sharing
+-   🔐 **CSP Support**: Content Security Policy configuration
+-   📦 **Asset Canister Integration**: Simplified interface with Internet Computer's certified assets
+-   🔑 **JWT Authentication**: Built-in JWT parsing and validation
+-   🚀 **Compression**: Automatic response compression for performance
+-   ⏱️ **Rate Limiting**: Protect your APIs from abuse
+-   🛡️ **Authentication**: Configurable authentication requirements
+-   🔀 **Content Negotiation**: Automatically convert data to JSON, CBOR, XML based on Accept header
+-   📤 **File Uploads**: Parse and process multipart/form-data for handling file uploads (limited to 2MB)
+-   📝 **Logging**: Built-in logging system with configurable levels and custom logger support
+-   🔐 **OAuth Authentication**: Built-in OAuth 2.0 support with PKCE for Google, GitHub, and custom providers
 
 ## Package
 
@@ -263,10 +263,10 @@ actor {
 
 Middleware are components that process HTTP requests and responses in a pipeline. Each middleware can:
 
-- Handle the request and produce a response
-- Pass the request to the next middleware in the pipeline
-- Modify the request before passing it on
-- Modify the response after the next middleware processes it
+-   Handle the request and produce a response
+-   Pass the request to the next middleware in the pipeline
+-   Modify the request before passing it on
+-   Modify the response after the next middleware processes it
 
 ```motoko
 import App "mo:liminal/App";
@@ -299,11 +299,11 @@ public func createLoggingMiddleware() : App.Middleware {
 
 The routing system supports:
 
-- Path parameters (`/users/{id}`)
-- Nested routes with prefixes
-- HTTP method-specific handlers
-- Synchronous and asynchronous handlers
-- Authorization controls
+-   Path parameters (`/users/{id}`)
+-   Nested routes with prefixes
+-   HTTP method-specific handlers
+-   Synchronous and asynchronous handlers
+-   Authorization controls
 
 ```motoko
 // Route configuration example
@@ -394,11 +394,11 @@ Router.getQuery("/api/**/info", getApiInfo)
 
 The `HttpContext` provides access to request details:
 
-- Path and query parameters
-- Headers
-- Request body (with JSON parsing helpers)
-- HTTP method
-- Identity (for authentication)
+-   Path and query parameters
+-   Headers
+-   Request body (with JSON parsing helpers)
+-   HTTP method
+-   Identity (for authentication)
 
 ```motoko
 public func handleRequest(context : RouteContext.RouteContext) : Route.HttpResponse {
@@ -767,8 +767,8 @@ Custom error handling can be configured via the app's `errorSerializer`:
 
 ```motoko
 import Json "mo:json";
-import Text "mo:new-base/Text";
-import Option "mo:new-base/Option";
+import Text "mo:core/Text";
+import Option "mo:core/Option";
 
 let app = Liminal.App({
     middleware = [ /* ... */ ];

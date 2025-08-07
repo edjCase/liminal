@@ -1,9 +1,9 @@
 import HttpContext "HttpContext";
-import Array "mo:new-base/Array";
-import Text "mo:new-base/Text";
-import Iter "mo:new-base/Iter";
-import Blob "mo:new-base/Blob";
-import Nat "mo:new-base/Nat";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+import Blob "mo:core/Blob";
+import Nat "mo:core/Nat";
 import TextX "mo:xtended-text/TextX";
 import DynamicArray "mo:xtended-collections/DynamicArray";
 

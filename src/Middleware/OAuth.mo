@@ -1,19 +1,19 @@
 import Liminal "../";
-import Result "mo:new-base/Result";
-import Text "mo:new-base/Text";
-import Map "mo:new-base/Map";
-import Time "mo:new-base/Time";
-import Random "mo:base/Random";
-import Nat "mo:new-base/Nat";
+import Result "mo:core/Result";
+import Text "mo:core/Text";
+import Map "mo:core/Map";
+import Time "mo:core/Time";
+import Random "mo:core/Random";
+import Nat "mo:core/Nat";
 import App "../App";
 import IC "mo:ic";
 import Serde "mo:serde";
 import BaseX "mo:base-x-encoder";
-import Option "mo:new-base/Option";
-import Array "mo:new-base/Array";
+import Option "mo:core/Option";
+import Array "mo:core/Array";
 import Sha256 "mo:sha2/Sha256";
 import UrlKit "mo:url-kit";
-import Iter "mo:new-base/Iter";
+import Iter "mo:core/Iter";
 
 module {
 

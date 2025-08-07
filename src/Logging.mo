@@ -1,5 +1,5 @@
-import Debug "mo:new-base/Debug";
-import Nat "mo:new-base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 module {
   public type Logger = {

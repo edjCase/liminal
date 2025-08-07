@@ -1,6 +1,6 @@
 import { test } "mo:test";
 import MimeType "../src/MimeType";
-import Runtime "mo:new-base/Runtime";
+import Runtime "mo:core/Runtime";
 
 test(
   "MimeType.toRaw - converts MimeType to RawMimeType correctly",

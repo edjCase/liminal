@@ -1,6 +1,6 @@
 import { test; suite } "mo:test";
-import Blob "mo:new-base/Blob";
-import Runtime "mo:new-base/Runtime";
+import Blob "mo:core/Blob";
+import Runtime "mo:core/Runtime";
 import HttpMethod "../src/HttpMethod";
 import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";

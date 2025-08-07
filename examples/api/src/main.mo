@@ -1,8 +1,8 @@
 import Liminal "mo:liminal";
 import UserHandler "UserHandler";
 import UserRouter "UserRouter";
-import Principal "mo:new-base/Principal";
-import Blob "mo:new-base/Blob";
+import Principal "mo:core/Principal";
+import Blob "mo:core/Blob";
 import LoggingMiddleware "LoggingMiddleware";
 import { ic } "mo:ic";
 import CORSMiddleware "mo:liminal/Middleware/CORS";

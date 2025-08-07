@@ -1,18 +1,18 @@
 import HttpContext "./HttpContext";
 import Gzip "mo:compression/Gzip";
 import Lzss "mo:compression/LZSS";
-import Blob "mo:new-base/Blob";
-import Text "mo:new-base/Text";
-import Array "mo:new-base/Array";
+import Blob "mo:core/Blob";
+import Text "mo:core/Text";
+import Array "mo:core/Array";
 import DynamicArray "mo:xtended-collections/DynamicArray";
-import List "mo:new-base/List";
+import List "mo:core/List";
 import TextX "mo:xtended-text/TextX";
-import Nat "mo:new-base/Nat";
-import Iter "mo:new-base/Iter";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import App "./App";
 import ContentNegotiation "./ContentNegotiation";
 import Types "./Types";
-import Result "mo:new-base/Result";
+import Result "mo:core/Result";
 
 module {
 
@@ -461,7 +461,7 @@ module {
 
   func getHeader(headers : List.List<(Text, Text)>, key : Text) : ?(Text, Nat) {
     var i = 0;
-    for (((k, v), i) in List.entries(headers)) {
+    for ((i, (k, v)) in Iter.enumerate(List.values(headers))) {
       if (k == key) return ?(v, i);
     };
     null;

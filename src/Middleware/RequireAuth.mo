@@ -2,7 +2,7 @@ import App "../App";
 import Identity "../Identity";
 import HttpContext "../HttpContext";
 import Types "../Types";
-import Text "mo:new-base/Text";
+import Text "mo:core/Text";
 
 module {
 

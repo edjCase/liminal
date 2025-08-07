@@ -1,5 +1,5 @@
 import { test } "mo:test";
-import Runtime "mo:new-base/Runtime";
+import Runtime "mo:core/Runtime";
 import IterTools "mo:itertools/Iter";
 import Router "../src/Router";
 import Route "../src/Route";

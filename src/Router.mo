@@ -1,13 +1,12 @@
 import Types "./Types";
-import Text "mo:new-base/Text";
-import Array "mo:new-base/Array";
-import Iter "mo:new-base/Iter";
-import List "mo:new-base/List";
-import Runtime "mo:new-base/Runtime";
+import Text "mo:core/Text";
+import Array "mo:core/Array";
+import Iter "mo:core/Iter";
+import List "mo:core/List";
+import Runtime "mo:core/Runtime";
 import TextX "mo:xtended-text/TextX";
 import HttpContext "./HttpContext";
 import Route "./Route";
-import Prelude "mo:base/Prelude";
 import Path "mo:url-kit/Path";
 import Identity "Identity";
 import RouteContext "RouteContext";
@@ -611,7 +610,7 @@ module Module {
           // Single wildcard always matches one segment
           return matchRecursive(expIndex + 1, actIndex + 1, currentParams);
         };
-        case (#wildcard(#multi)) Prelude.unreachable(); /* Already handled multi-wildcard */
+        case (#wildcard(#multi)) Runtime.unreachable(); /* Already handled multi-wildcard */
       };
 
       return null;

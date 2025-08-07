@@ -1,7 +1,7 @@
-import Array "mo:new-base/Array";
-import Text "mo:new-base/Text";
-import Option "mo:new-base/Option";
-import Nat "mo:new-base/Nat";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
+import Option "mo:core/Option";
+import Nat "mo:core/Nat";
 import DynamicArray "mo:xtended-collections/DynamicArray";
 import QualityFactor "QualityFactor";
 

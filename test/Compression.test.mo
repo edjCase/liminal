@@ -1,10 +1,10 @@
 import { test; suite } "mo:test";
-import Blob "mo:new-base/Blob";
-import Nat "mo:new-base/Nat";
-import Option "mo:new-base/Option";
-import Text "mo:new-base/Text";
-import Array "mo:new-base/Array";
-import Nat8 "mo:new-base/Nat8";
+import Blob "mo:core/Blob";
+import Nat "mo:core/Nat";
+import Option "mo:core/Option";
+import Text "mo:core/Text";
+import Array "mo:core/Array";
+import Nat8 "mo:core/Nat8";
 import CompressionMiddleware "../src/Middleware/Compression";
 import Compression "../src/Compression";
 import HttpContext "../src/HttpContext";
@@ -13,8 +13,8 @@ import App "../src/App";
 import ContentNegotiation "../src/ContentNegotiation";
 import Logging "../src/Logging";
 import Types "../src/Types";
-import Runtime "mo:new-base/Runtime";
-import Debug "mo:new-base/Debug";
+import Runtime "mo:core/Runtime";
+import Debug "mo:core/Debug";
 
 // Helper function to get header value
 func getHeader(headers : [(Text, Text)], key : Text) : ?Text {

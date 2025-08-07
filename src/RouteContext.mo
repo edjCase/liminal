@@ -1,9 +1,9 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Array "mo:new-base/Array";
-import Text "mo:new-base/Text";
-import Result "mo:new-base/Result";
-import Runtime "mo:new-base/Runtime";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
+import Result "mo:core/Result";
+import Runtime "mo:core/Runtime";
 import TextX "mo:xtended-text/TextX";
 import Json "mo:json";
 import Identity "./Identity";

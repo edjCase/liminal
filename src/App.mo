@@ -1,9 +1,9 @@
 import Types "./Types";
-import Blob "mo:new-base/Blob";
-import Nat16 "mo:new-base/Nat16";
-import Option "mo:new-base/Option";
-import Text "mo:new-base/Text";
-import Nat "mo:new-base/Nat";
+import Blob "mo:core/Blob";
+import Nat16 "mo:core/Nat16";
+import Option "mo:core/Option";
+import Text "mo:core/Text";
+import Nat "mo:core/Nat";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
 import Json "mo:json";

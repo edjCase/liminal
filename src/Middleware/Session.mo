@@ -1,14 +1,14 @@
 import App "../App";
 import HttpContext "../HttpContext";
-import Text "mo:new-base/Text";
-import Time "mo:new-base/Time";
-import Nat "mo:new-base/Nat";
-import Array "mo:new-base/Array";
-import List "mo:new-base/List";
-import Int "mo:new-base/Int";
-import Runtime "mo:new-base/Runtime";
-import Map "mo:new-base/Map";
-import Random "mo:new-base/Random";
+import Text "mo:core/Text";
+import Time "mo:core/Time";
+import Nat "mo:core/Nat";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Int "mo:core/Int";
+import Runtime "mo:core/Runtime";
+import Map "mo:core/Map";
+import Random "mo:core/Random";
 import Session "../Session";
 import BaseX "mo:base-x-encoder";
 import NatX "mo:xtended-numbers/NatX";
@@ -121,13 +121,10 @@ module {
     let rand = Random.crypto();
 
     // Generate two 64-bit values (16 bytes total)
-    let part1 = await* rand.nat64();
-    let part2 = await* rand.nat64();
-
     let dynamicArray = DynamicArray.DynamicArray<Nat8>(16);
-    let buffer = dynamicArray.buffer();
-    NatX.toNat64BytesBuffer(buffer, part1, #msb);
-    NatX.toNat64BytesBuffer(buffer, part2, #msb);
+    for (_ in Nat.range(0, 16)) {
+      dynamicArray.add(await* rand.nat8());
+    };
     BaseX.toHex(dynamicArray.vals(), { isUpper = false; prefix = #none });
   };
 

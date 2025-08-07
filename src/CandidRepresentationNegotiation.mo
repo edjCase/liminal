@@ -1,28 +1,27 @@
 import App "App";
 import Xml "mo:xml";
 import XmlElement "mo:xml/Element";
-import Runtime "mo:new-base/Runtime";
-import Blob "mo:new-base/Blob";
-import Prelude "mo:base/Prelude";
+import Runtime "mo:core/Runtime";
+import Blob "mo:core/Blob";
 import HttpContext "HttpContext";
 import MimeType "MimeType";
-import Text "mo:base/Text";
+import Text "mo:core/Text";
 import Serde "mo:serde";
-import Iter "mo:base/Iter";
-import Nat "mo:new-base/Nat";
-import Nat8 "mo:new-base/Nat8";
-import Nat16 "mo:new-base/Nat16";
-import Nat32 "mo:new-base/Nat32";
-import Nat64 "mo:new-base/Nat64";
-import Int "mo:new-base/Int";
-import Int8 "mo:new-base/Int8";
-import Int16 "mo:new-base/Int16";
-import Int32 "mo:new-base/Int32";
-import Int64 "mo:new-base/Int64";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Nat8 "mo:core/Nat8";
+import Nat16 "mo:core/Nat16";
+import Nat32 "mo:core/Nat32";
+import Nat64 "mo:core/Nat64";
+import Int "mo:core/Int";
+import Int8 "mo:core/Int8";
+import Int16 "mo:core/Int16";
+import Int32 "mo:core/Int32";
+import Int64 "mo:core/Int64";
 import DynamicArray "mo:xtended-collections/DynamicArray";
-import Float "mo:new-base/Float";
-import Principal "mo:new-base/Principal";
-import Option "mo:new-base/Option";
+import Float "mo:core/Float";
+import Principal "mo:core/Principal";
+import Option "mo:core/Option";
 import BaseX "mo:base-x-encoder";
 
 module {
@@ -119,8 +118,8 @@ module {
     catchAll : ?CatchAllSerializer,
   ) : ?HttpContext.CandidNegotiatedContent {
     label f for ({ type_; subType; parameters } in contentPreference.requestedTypes.vals()) {
-      let normalizedType = type_ |> Text.trim(_, #char(' ')) |> Text.toLowercase(_);
-      let normalizedSubType = subType |> Text.trim(_, #char(' ')) |> Text.toLowercase(_);
+      let normalizedType = type_ |> Text.trim(_, #char(' ')) |> Text.toLower(_);
+      let normalizedSubType = subType |> Text.trim(_, #char(' ')) |> Text.toLower(_);
       let ?value : ?HttpContext.CandidNegotiatedContent = switch ((normalizedType, normalizedSubType)) {
         case ((normalizedType, "*")) {
           let value = toWildcard(
@@ -343,7 +342,7 @@ module {
         case (("application", "candid")) return ?toX(candid, toCandid, "application/candid");
         case (("text", "xml")) return ?toX(candid, toXml, "text/xml");
         case (("application", "xml")) return ?toX(candid, toXml, "application/xml");
-        case (_) Prelude.unreachable();
+        case (_) Runtime.unreachable();
       };
     };
     return null;
