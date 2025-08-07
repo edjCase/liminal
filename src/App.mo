@@ -7,7 +7,7 @@ import Nat "mo:new-base/Nat";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
 import Json "mo:json";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 import ContentNegotiation "ContentNegotiation";
 import MimeType "MimeType";
 import Serde "mo:serde";
@@ -271,7 +271,7 @@ module {
         (json, null);
       };
       case (#rfc9457(rfc)) {
-        let fields = Buffer.Buffer<(Text, Json.Json)>(10);
+        let fields = DynamicArray.DynamicArray<(Text, Json.Json)>(10);
         let addIfNotNull = func(
           key : Text,
           value : ?Text,
@@ -291,7 +291,7 @@ module {
           fields.add((extension.name, mapExtensionToJson(extension.value)));
         };
 
-        let json = #object_(Buffer.toArray(fields));
+        let json = #object_(DynamicArray.toArray(fields));
         (json, ?"application/problem+json");
       };
     };
@@ -313,18 +313,18 @@ module {
       case (#number(v)) #number(#int(v));
       case (#boolean(v)) #bool(v);
       case (#array(v)) {
-        let jsonArray = Buffer.Buffer<Json.Json>(v.size());
+        let jsonArray = DynamicArray.DynamicArray<Json.Json>(v.size());
         for (innerExtension in v.vals()) {
           jsonArray.add(mapExtensionToJson(innerExtension));
         };
-        #array(Buffer.toArray(jsonArray));
+        #array(DynamicArray.toArray(jsonArray));
       };
       case (#object_(v)) {
-        let jsonObject = Buffer.Buffer<(Text, Json.Json)>(v.size());
+        let jsonObject = DynamicArray.DynamicArray<(Text, Json.Json)>(v.size());
         for ((innerName, innerValue) in v.vals()) {
           jsonObject.add((innerName, mapExtensionToJson(innerValue)));
         };
-        #object_(Buffer.toArray(jsonObject));
+        #object_(DynamicArray.toArray(jsonObject));
       };
     };
   };

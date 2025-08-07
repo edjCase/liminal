@@ -5,7 +5,7 @@ import Iter "mo:new-base/Iter";
 import Blob "mo:new-base/Blob";
 import Nat "mo:new-base/Nat";
 import TextX "mo:xtended-text/TextX";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 
 module {
 
@@ -92,7 +92,7 @@ module {
     // Convert blob to array for easier manipulation
     let bodyBytes = Blob.toArray(requestBody);
 
-    let files = Buffer.Buffer<UploadedFile>(4);
+    let files = DynamicArray.DynamicArray<UploadedFile>(4);
 
     // Find parts by locating boundaries
     let parts = findParts(bodyBytes, boundaryBytes, crlfBoundaryBytes);
@@ -132,7 +132,7 @@ module {
       };
     };
 
-    return Buffer.toArray(files);
+    return DynamicArray.toArray(files);
   };
 
   /// Check if a part represents a file upload
@@ -194,7 +194,7 @@ module {
   /// Parse headers from a multipart part
   private func parsePartHeaders(headersText : Text) : [(Text, Text)] {
     let headerLines = Text.split(headersText, #text("\r\n"));
-    let headers = Buffer.Buffer<(Text, Text)>(4);
+    let headers = DynamicArray.DynamicArray<(Text, Text)>(4);
 
     for (line in headerLines) {
       let colonParts = Iter.toArray(Text.split(line, #text(":")));
@@ -214,7 +214,7 @@ module {
       };
     };
 
-    return Buffer.toArray(headers);
+    return DynamicArray.toArray(headers);
   };
 
   private func subArray(array : [Nat8], start : Nat, length : Nat) : [Nat8] {
@@ -232,7 +232,7 @@ module {
 
   // Helper function to find all parts between boundaries
   private func findParts(data : [Nat8], firstBoundary : [Nat8], otherBoundaries : [Nat8]) : [[Nat8]] {
-    let parts = Buffer.Buffer<[Nat8]>(8);
+    let parts = DynamicArray.DynamicArray<[Nat8]>(8);
 
     // Find first boundary
     let ?startPos = findSubArray(data, firstBoundary) else return [];
@@ -268,7 +268,7 @@ module {
       };
     };
 
-    return Buffer.toArray(parts);
+    return DynamicArray.toArray(parts);
   };
 
   // Find first occurrence of a subarray in an array

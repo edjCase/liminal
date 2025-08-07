@@ -12,7 +12,7 @@ import Random "mo:new-base/Random";
 import Session "../Session";
 import BaseX "mo:base-x-encoder";
 import NatX "mo:xtended-numbers/NatX";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 
 module {
   // Configuration for the middleware
@@ -124,10 +124,11 @@ module {
     let part1 = await* rand.nat64();
     let part2 = await* rand.nat64();
 
-    let buffer = Buffer.Buffer<Nat8>(16);
-    NatX.encodeNat64(buffer, part1, #msb);
-    NatX.encodeNat64(buffer, part2, #msb);
-    BaseX.toHex(buffer.vals(), { isUpper = false; prefix = #none });
+    let dynamicArray = DynamicArray.DynamicArray<Nat8>(16);
+    let buffer = dynamicArray.buffer();
+    NatX.toNat64BytesBuffer(buffer, part1, #msb);
+    NatX.toNat64BytesBuffer(buffer, part2, #msb);
+    BaseX.toHex(dynamicArray.vals(), { isUpper = false; prefix = #none });
   };
 
   /// Creates an in-memory session store with automatic cleanup of expired sessions

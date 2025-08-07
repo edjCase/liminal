@@ -4,7 +4,7 @@ import Lzss "mo:compression/LZSS";
 import Blob "mo:new-base/Blob";
 import Text "mo:new-base/Text";
 import Array "mo:new-base/Array";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 import List "mo:new-base/List";
 import TextX "mo:xtended-text/TextX";
 import Nat "mo:new-base/Nat";
@@ -97,7 +97,7 @@ module {
         let decoder = Gzip.Decoder();
         decoder.decode(data);
         let response = decoder.finish();
-        #ok(Buffer.toArray(response.buffer));
+        #ok(response.buffer.vals() |> Iter.toArray(_));
       };
       // case (#deflate) {
       //     let buffer = Buffer.fromArray<Nat8>(data);
@@ -110,7 +110,7 @@ module {
       //         case (#ok) ();
       //         case (#err(e)) return #err("Decompression failed: " # e);
       //     };
-      //     #ok(Buffer.toArray(buffer));
+      //     #ok(DynamicArray.toArray(buffer));
       // };
     };
   };
@@ -388,14 +388,14 @@ module {
       totalSize += chunk.size();
     };
 
-    let buffer = Buffer.Buffer<Nat8>(totalSize);
+    let buffer = DynamicArray.DynamicArray<Nat8>(totalSize);
     for (chunk in chunks.vals()) {
       for (byte in chunk.vals()) {
         buffer.add(byte);
       };
     };
 
-    return Buffer.toArray(buffer);
+    return DynamicArray.toArray(buffer);
   };
 
   // Check if a response already has compression

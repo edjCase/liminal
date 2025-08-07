@@ -2,7 +2,7 @@ import Array "mo:new-base/Array";
 import Text "mo:new-base/Text";
 import Option "mo:new-base/Option";
 import Nat "mo:new-base/Nat";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 import QualityFactor "QualityFactor";
 
 module {
@@ -111,7 +111,7 @@ module {
   public func toRaw(mimeType : MimeType) : RawMimeType {
     switch (mimeType) {
       case (#text_html(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(3);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(3);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -128,11 +128,11 @@ module {
         {
           type_ = "text";
           subType = "html";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#text_plain(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -141,11 +141,11 @@ module {
         {
           type_ = "text";
           subType = "plain";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#text_css(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -154,11 +154,11 @@ module {
         {
           type_ = "text";
           subType = "css";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#text_csv(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(2);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(2);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -172,11 +172,11 @@ module {
         {
           type_ = "text";
           subType = "csv";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#text_xml(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -185,11 +185,11 @@ module {
         {
           type_ = "text";
           subType = "xml";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_json(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(2);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(2);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -202,11 +202,11 @@ module {
         {
           type_ = "application";
           subType = "json";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_xml(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(2);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(2);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -219,11 +219,11 @@ module {
         {
           type_ = "application";
           subType = "xml";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_javascript(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -232,11 +232,11 @@ module {
         {
           type_ = "application";
           subType = "javascript";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_pdf(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.version) {
           case (?v) parameters.add(("version", v));
           case (null) {};
@@ -245,11 +245,11 @@ module {
         {
           type_ = "application";
           subType = "pdf";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_x_www_form_urlencoded(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -258,11 +258,11 @@ module {
         {
           type_ = "application";
           subType = "x-www-form-urlencoded";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#application_octet_stream(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.type_) {
           case (?v) parameters.add(("type", v));
           case (null) {};
@@ -271,11 +271,11 @@ module {
         {
           type_ = "application";
           subType = "octet-stream";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#image_jpeg(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.quality) {
           case (?v) parameters.add(("quality", Nat.toText(v)));
           case (null) {};
@@ -284,11 +284,11 @@ module {
         {
           type_ = "image";
           subType = "jpeg";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#image_png(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.compression) {
           case (?v) parameters.add(("compression", Nat.toText(v)));
           case (null) {};
@@ -297,11 +297,11 @@ module {
         {
           type_ = "image";
           subType = "png";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#image_svg_xml(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.charset) {
           case (?v) parameters.add(("charset", v));
           case (null) {};
@@ -310,7 +310,7 @@ module {
         {
           type_ = "image";
           subType = "svg+xml";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#image_gif(_)) {
@@ -321,7 +321,7 @@ module {
         };
       };
       case (#image_webp(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.quality) {
           case (?v) parameters.add(("quality", Nat.toText(v)));
           case (null) {};
@@ -330,11 +330,11 @@ module {
         {
           type_ = "image";
           subType = "webp";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#audio_mpeg(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.bitrate) {
           case (?v) parameters.add(("bitrate", Nat.toText(v)));
           case (null) {};
@@ -343,11 +343,11 @@ module {
         {
           type_ = "audio";
           subType = "mpeg";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#audio_ogg(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.codec) {
           case (?v) parameters.add(("codec", v));
           case (null) {};
@@ -356,11 +356,11 @@ module {
         {
           type_ = "audio";
           subType = "ogg";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#video_mp4(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(2);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(2);
         switch (params.codec) {
           case (?v) parameters.add(("codec", v));
           case (null) {};
@@ -373,11 +373,11 @@ module {
         {
           type_ = "video";
           subType = "mp4";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#video_webm(params)) {
-        let parameters = Buffer.Buffer<(Text, Text)>(1);
+        let parameters = DynamicArray.DynamicArray<(Text, Text)>(1);
         switch (params.codec) {
           case (?v) parameters.add(("codec", v));
           case (null) {};
@@ -386,7 +386,7 @@ module {
         {
           type_ = "video";
           subType = "webm";
-          parameters = Buffer.toArray(parameters);
+          parameters = DynamicArray.toArray(parameters);
         };
       };
       case (#multipart_form_data(params)) {
@@ -722,7 +722,7 @@ module {
     };
 
     // Parse parameters
-    let parameters = Buffer.Buffer<(Text, Text)>(4);
+    let parameters = DynamicArray.DynamicArray<(Text, Text)>(4);
     var qualityFactor : QualityFactor.QualityFactor = 1000; // Default
 
     label paramLoop for (param in parts) {
@@ -744,7 +744,7 @@ module {
       {
         type_ = trimmedType;
         subType = trimmedSubType;
-        parameters = Buffer.toArray(parameters);
+        parameters = DynamicArray.toArray(parameters);
       },
       qualityFactor,
     );

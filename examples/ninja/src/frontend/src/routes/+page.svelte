@@ -33,7 +33,7 @@
     // Generate dynamic curl command based on current input
     $: curlCommand = (() => {
         const baseUrl = getBaseUrl();
-        
+
         if (!newUrl.trim()) {
             return `curl '${baseUrl}/shorten' \\
   -H 'Accept: */*' \\

@@ -19,7 +19,7 @@ import Int8 "mo:new-base/Int8";
 import Int16 "mo:new-base/Int16";
 import Int32 "mo:new-base/Int32";
 import Int64 "mo:new-base/Int64";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 import Float "mo:new-base/Float";
 import Principal "mo:new-base/Principal";
 import Option "mo:new-base/Option";
@@ -229,33 +229,33 @@ module {
       case (#Text(t)) [#text(t)];
       // Array of values
       case (#Array(arr)) {
-        let childElements = Buffer.Buffer<XmlElement.ElementChild>(arr.size());
+        let childElements = DynamicArray.DynamicArray<XmlElement.ElementChild>(arr.size());
 
         for (item in arr.vals()) {
           let itemChildren = transpileCandidToElementChildren(item);
           childElements.add(#element({ name = "item"; attributes = []; children = #open(itemChildren) }));
         };
 
-        Buffer.toArray(childElements);
+        DynamicArray.toArray(childElements);
       };
       // Record or Map (key-value pairs)
       case (#Record(records) or #Map(records)) {
-        let childElements = Buffer.Buffer<XmlElement.ElementChild>(records.size());
+        let childElements = DynamicArray.DynamicArray<XmlElement.ElementChild>(records.size());
 
         for ((key, val) in records.vals()) {
           let itemChildren = transpileCandidToElementChildren(val);
           childElements.add(#element({ name = key; attributes = []; children = #open(itemChildren) }));
         };
-        Buffer.toArray(childElements);
+        DynamicArray.toArray(childElements);
       };
       case (#Tuple(tuple)) {
-        let childElements = Buffer.Buffer<XmlElement.ElementChild>(tuple.size());
+        let childElements = DynamicArray.DynamicArray<XmlElement.ElementChild>(tuple.size());
 
         for (val in tuple.vals()) {
           let itemChildren = transpileCandidToElementChildren(val);
           childElements.add(#element({ name = "item"; attributes = []; children = #open(itemChildren) }));
         };
-        Buffer.toArray(childElements);
+        DynamicArray.toArray(childElements);
       };
       // Optional values
       case (#Option(option)) transpileCandidToElementChildren(option);

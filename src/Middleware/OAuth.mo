@@ -166,6 +166,7 @@ module {
         ];
         body = ?Text.encodeUtf8(formDataText);
         method = #post;
+        is_replicated = ?false;
         transform = null; // todo configurable
       };
 

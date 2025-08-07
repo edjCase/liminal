@@ -5,7 +5,7 @@ import Map "mo:new-base/Map";
 import Iter "mo:new-base/Iter";
 import Int "mo:new-base/Int";
 import Option "mo:new-base/Option";
-import Buffer "mo:base/Buffer";
+import DynamicArray "mo:xtended-collections/DynamicArray";
 import HttpContext "HttpContext";
 import App "App";
 
@@ -184,7 +184,7 @@ module {
           for (errorHeader in errorHeaders.vals()) {
             headers.add(errorHeader);
           };
-          Buffer.toArray(headers);
+          DynamicArray.toArray(headers);
 
         } else errorHeaders;
 
@@ -202,7 +202,7 @@ module {
       context.log(#debug_, "Rate limit check passed for key: " # key # " (remaining: " # Nat.toText(remaining) # "/" # Nat.toText(config.limit) # ")");
 
       let responseHeaders = if (config.includeResponseHeaders) {
-        Buffer.toArray(getHeaders(config.limit, remaining, newStoreData.resetAt));
+        DynamicArray.toArray(getHeaders(config.limit, remaining, newStoreData.resetAt));
       } else [];
       // Rate limit not exceeded
       return #allowed({
@@ -242,8 +242,8 @@ module {
     resetAt : Time.Time; // Timestamp in nanoseconds
   };
 
-  func getHeaders(limit : Nat, remaining : Nat, resetAt : Int) : Buffer.Buffer<(Text, Text)> {
-    let headers = Buffer.Buffer<(Text, Text)>(6);
+  func getHeaders(limit : Nat, remaining : Nat, resetAt : Int) : DynamicArray.DynamicArray<(Text, Text)> {
+    let headers = DynamicArray.DynamicArray<(Text, Text)>(6);
     headers.add(("X-RateLimit-Limit", Nat.toText(limit)));
     headers.add(("X-RateLimit-Remaining", Nat.toText(remaining)));
     headers.add(("X-RateLimit-Reset", Int.toText(resetAt / 1_000_000_000))); // Convert to seconds
