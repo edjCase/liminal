@@ -16,7 +16,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "outDir": "HACK_BECAUSE_OF_ALLOW_JS"
   },
   "include": ["src"]
 }

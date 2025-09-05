@@ -1,5 +1,5 @@
 import Array "mo:core/Array";
-import HashMap "mo:core/HashMap";
+import Map "mo:core/Map";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 import Nat32 "mo:core/Nat32";
@@ -44,13 +44,13 @@ module {
 
     var nextId = stableData.nextId;
 
-    let slugToIdMap : HashMap.HashMap<Text, Nat> = stableData.urls
+    let slugToIdMap : Map.Map<Text, Nat> = stableData.urls
     |> BTree.entries(_)
     |> Iter.map<(Nat, Url), (Text, Nat)>(
       _,
       func((_, url) : (Nat, Url)) : (Text, Nat) = (url.shortCode, url.id),
     )
-    |> HashMap.fromIter<Text, Nat>(_, BTree.size(stableData.urls), Text.equal, Text.hash);
+    |> Map.fromIter<Text, Nat>(_, Text.compare);
 
     public func getAllUrls() : [Url] {
       BTree.entries(stableData.urls)
