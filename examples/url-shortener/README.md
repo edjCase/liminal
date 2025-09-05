@@ -71,7 +71,7 @@ curl -X POST -d "url=https://example.com&slug=my-link" http://canister.localhost
 1. **Start the backend**:
 
     ```bash
-    cd examples/ninja
+    cd examples/url-shortener
     dfx start --background
     dfx deploy
     ```
