@@ -1,11 +1,11 @@
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
-import Time "mo:core/Time";
-import Map "mo:core/Map";
-import Iter "mo:core/Iter";
-import Int "mo:core/Int";
-import Option "mo:core/Option";
-import DynamicArray "mo:xtended-collections/DynamicArray";
+import Text "mo:core@1/Text";
+import Nat "mo:core@1/Nat";
+import Time "mo:core@1/Time";
+import Map "mo:core@1/Map";
+import Iter "mo:core@1/Iter";
+import Int "mo:core@1/Int";
+import Option "mo:core@1/Option";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
 import HttpContext "HttpContext";
 import App "App";
 

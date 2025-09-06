@@ -1,6 +1,6 @@
 import { test } "mo:test";
 import QualityFactor "../src/QualityFactor";
-import Runtime "mo:core/Runtime";
+import Runtime "mo:core@1/Runtime";
 
 test(
   "QualityFactor.fromText - all test cases",

@@ -1,13 +1,13 @@
-import Text "mo:core/Text";
-import Time "mo:core/Time";
-import Array "mo:core/Array";
-import Int "mo:core/Int";
-import Random "mo:core/Random";
-import Bool "mo:core/Bool";
+import Text "mo:core@1/Text";
+import Time "mo:core@1/Time";
+import Array "mo:core@1/Array";
+import Int "mo:core@1/Int";
+import Random "mo:core@1/Random";
+import Bool "mo:core@1/Bool";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";
-import Path "mo:url-kit/Path";
+import Path "mo:url-kit@1/Path";
 import BaseX "mo:base-x-encoder";
 
 module {

@@ -1,4 +1,4 @@
-import JWT "mo:jwt";
+import JWT "mo:jwt@2";
 
 module {
 

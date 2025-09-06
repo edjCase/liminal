@@ -1,11 +1,11 @@
 import { test; suite } "mo:test";
-import Blob "mo:core/Blob";
-import Runtime "mo:core/Runtime";
+import Blob "mo:core@1/Blob";
+import Runtime "mo:core@1/Runtime";
 import HttpMethod "../src/HttpMethod";
 import CORS "../src/CORS";
 import HttpContext "../src/HttpContext";
 import ContentNegotiation "../src/ContentNegotiation";
-import Serde "mo:serde";
+import Serde "mo:serde@3";
 import Logging "../src/Logging";
 
 // Helper function to find header value

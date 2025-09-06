@@ -1,11 +1,11 @@
 import HttpContext "HttpContext";
-import Array "mo:core/Array";
-import Text "mo:core/Text";
-import Iter "mo:core/Iter";
-import Blob "mo:core/Blob";
-import Nat "mo:core/Nat";
-import TextX "mo:xtended-text/TextX";
-import DynamicArray "mo:xtended-collections/DynamicArray";
+import Array "mo:core@1/Array";
+import Text "mo:core@1/Text";
+import Iter "mo:core@1/Iter";
+import Blob "mo:core@1/Blob";
+import Nat "mo:core@1/Nat";
+import TextX "mo:xtended-text@2/TextX";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
 
 module {
 

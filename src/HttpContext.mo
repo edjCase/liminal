@@ -1,24 +1,23 @@
 import HttpTypes "./HttpTypes";
-import Text "mo:core/Text";
-import TextX "mo:xtended-text/TextX";
-import Array "mo:core/Array";
-import Result "mo:core/Result";
-import Runtime "mo:core/Runtime";
-import Iter "mo:core/Iter";
-import Blob "mo:core/Blob";
-import IterTools "mo:itertools/Iter";
+import Text "mo:core@1/Text";
+import TextX "mo:xtended-text@2/TextX";
+import Array "mo:core@1/Array";
+import Result "mo:core@1/Result";
+import Runtime "mo:core@1/Runtime";
+import Iter "mo:core@1/Iter";
+import Blob "mo:core@1/Blob";
 import HttpMethod "./HttpMethod";
-import Json "mo:json";
-import JWT "mo:jwt";
-import Nat "mo:core/Nat";
+import Json "mo:json@1";
+import JWT "mo:jwt@2";
+import Nat "mo:core@1/Nat";
 import Identity "./Identity";
 import Types "./Types";
 import ContentNegotiation "./ContentNegotiation";
-import Serde "mo:serde";
+import Serde "mo:serde@3";
 import Logging "./Logging";
 import Session "./Session";
-import Path "mo:url-kit/Path";
-import UrlKit "mo:url-kit";
+import Path "mo:url-kit@1/Path";
+import UrlKit "mo:url-kit@1";
 
 module {
   public type SuccessHttpStatusCode = {
@@ -344,7 +343,7 @@ module {
 
       // TODO optimize this
       let ?queryKeyValue = url.queryParams.vals()
-      |> IterTools.find(
+      |> Iter.find(
         _,
         func((k, _) : (Text, Text)) : Bool = TextX.equalIgnoreCase(k, key),
       ) else return null;

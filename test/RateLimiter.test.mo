@@ -1,8 +1,8 @@
 import { test; suite } "mo:test";
-import Blob "mo:core/Blob";
-import Nat "mo:core/Nat";
-import Text "mo:core/Text";
-import Runtime "mo:core/Runtime";
+import Blob "mo:core@1/Blob";
+import Nat "mo:core@1/Nat";
+import Text "mo:core@1/Text";
+import Runtime "mo:core@1/Runtime";
 import RateLimiterMiddleware "../src/Middleware/RateLimiter";
 import HttpContext "../src/HttpContext";
 import HttpMethod "../src/HttpMethod";

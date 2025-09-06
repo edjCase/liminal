@@ -1,10 +1,10 @@
 import { test } "mo:test";
-import Text "mo:core/Text";
-import Blob "mo:core/Blob";
-import Nat16 "mo:core/Nat16";
-import Nat "mo:core/Nat";
-import Runtime "mo:core/Runtime";
-import JWT "mo:jwt";
+import Text "mo:core@1/Text";
+import Blob "mo:core@1/Blob";
+import Nat16 "mo:core@1/Nat16";
+import Nat "mo:core@1/Nat";
+import Runtime "mo:core@1/Runtime";
+import JWT "mo:jwt@2";
 
 import Liminal "../src/lib";
 import RequireAuthMiddleware "../src/Middleware/RequireAuth";

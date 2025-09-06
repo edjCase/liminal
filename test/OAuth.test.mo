@@ -1,9 +1,9 @@
 import { test } "mo:test";
 import OAuth "../src/Middleware/OAuth";
-import Runtime "mo:core/Runtime";
-import Text "mo:core/Text";
-import Blob "mo:core/Blob";
-import Nat16 "mo:core/Nat16";
+import Runtime "mo:core@1/Runtime";
+import Text "mo:core@1/Text";
+import Blob "mo:core@1/Blob";
+import Nat16 "mo:core@1/Nat16";
 import Liminal "../src/lib";
 
 test(

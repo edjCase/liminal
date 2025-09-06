@@ -1,17 +1,17 @@
 import { test } "mo:test/async";
-import Array "mo:core/Array";
-import Text "mo:core/Text";
-import Blob "mo:core/Blob";
-import Runtime "mo:core/Runtime";
-import Nat "mo:core/Nat";
-import Nat16 "mo:core/Nat16";
+import Array "mo:core@1/Array";
+import Text "mo:core@1/Text";
+import Blob "mo:core@1/Blob";
+import Runtime "mo:core@1/Runtime";
+import Nat "mo:core@1/Nat";
+import Nat16 "mo:core@1/Nat16";
 import Liminal "../src/lib";
 import CSRFMiddleware "../src/Middleware/CSRF";
 import RouterMiddleware "../src/Middleware/Router";
 import Router "../src/Router";
 import HttpMethod "../src/HttpMethod";
-import Int "mo:core/Int";
-import Time "mo:core/Time";
+import Int "mo:core@1/Int";
+import Time "mo:core@1/Time";
 
 // Helper functions for testing assertions
 func assertStatusCode(actual : Nat16, expected : Nat) : () {

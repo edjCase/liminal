@@ -1,9 +1,9 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Nat "mo:core/Nat";
-import Blob "mo:core/Blob";
-import Nat16 "mo:core/Nat16";
-import HttpAssets "mo:http-assets";
+import Nat "mo:core@1/Nat";
+import Blob "mo:core@1/Blob";
+import Nat16 "mo:core@1/Nat16";
+import HttpAssets "mo:http-assets@0";
 
 module {
   public type Seconds = Nat;

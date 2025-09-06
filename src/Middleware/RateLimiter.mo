@@ -1,7 +1,7 @@
 import RateLimiter "../RateLimiter";
 import HttpContext "../HttpContext";
 import App "../App";
-import Array "mo:core/Array";
+import Array "mo:core@1/Array";
 module {
 
   public type Config = RateLimiter.Config;

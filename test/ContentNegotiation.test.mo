@@ -1,8 +1,8 @@
 import { test; suite } "mo:test";
-import Text "mo:core/Text";
+import Text "mo:core@1/Text";
 import ContentNegotiation "../src/ContentNegotiation";
-import Array "mo:core/Array";
-import Runtime "mo:core/Runtime";
+import Array "mo:core@1/Array";
+import Runtime "mo:core@1/Runtime";
 import MimeType "../src/MimeType";
 
 suite(

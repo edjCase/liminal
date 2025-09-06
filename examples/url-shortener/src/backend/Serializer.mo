@@ -1,10 +1,10 @@
 import UrlStore "UrlStore";
-import Json "mo:json";
-import Result "mo:core/Result";
-import Text "mo:core/Text";
-import Blob "mo:core/Blob";
+import Json "mo:json@1";
+import Result "mo:core@1/Result";
+import Text "mo:core@1/Text";
+import Blob "mo:core@1/Blob";
 import BaseX "mo:base-x-encoder";
-import UrlKit "mo:url-kit";
+import UrlKit "mo:url-kit@1";
 
 module {
 

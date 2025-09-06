@@ -1,14 +1,14 @@
 import Route "mo:liminal/Route";
-import Nat "mo:core/Nat";
-import Debug "mo:core/Debug";
+import Nat "mo:core@1/Nat";
+import Debug "mo:core@1/Debug";
 import UrlStore "UrlStore";
 import Serializer "Serializer";
-import Serde "mo:serde";
+import Serde "mo:serde@3";
 import RouteContext "mo:liminal/RouteContext";
-import Text "mo:core/Text";
-import Result "mo:core/Result";
-import Iter "mo:core/Iter";
-import UrlKit "mo:url-kit";
+import Text "mo:core@1/Text";
+import Result "mo:core@1/Result";
+import Iter "mo:core@1/Iter";
+import UrlKit "mo:url-kit@1";
 
 module {
 

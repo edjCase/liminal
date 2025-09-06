@@ -1,6 +1,6 @@
-import HttpAssets "mo:http-assets";
-import Result "mo:core/Result";
-import Runtime "mo:core/Runtime";
+import HttpAssets "mo:http-assets@0";
+import Result "mo:core@1/Result";
+import Runtime "mo:core@1/Runtime";
 
 module {
 
@@ -9,7 +9,7 @@ module {
   /// All methods trap on error for simplified error handling - use the underlying assets directly for Result-based APIs.
   ///
   /// ```motoko
-  /// import HttpAssets "mo:http-assets";
+  /// import HttpAssets "mo:http-assets@0";
   /// import AssetCanister "mo:liminal/AssetCanister";
   ///
   /// // Initialize the underlying assets store

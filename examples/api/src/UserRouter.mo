@@ -1,9 +1,9 @@
 import Route "mo:liminal/Route";
-import Nat "mo:core/Nat";
-import Runtime "mo:core/Runtime";
+import Nat "mo:core@1/Nat";
+import Runtime "mo:core@1/Runtime";
 import UserHandler "UserHandler";
 import Serializer "Serializer";
-import Serde "mo:serde";
+import Serde "mo:serde@3";
 import RouteContext "mo:liminal/RouteContext";
 
 module {

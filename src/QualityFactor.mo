@@ -1,6 +1,6 @@
-import Text "mo:core/Text";
-import Int "mo:core/Int";
-import NatX "mo:xtended-numbers/NatX";
+import Text "mo:core@1/Text";
+import Int "mo:core@1/Int";
+import NatX "mo:xtended-numbers@2/NatX";
 module {
   public type QualityFactor = Nat;
 

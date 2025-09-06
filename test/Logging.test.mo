@@ -1,6 +1,6 @@
 import { test; suite } "mo:test";
 import Logging "../src/Logging";
-import Runtime "mo:core/Runtime";
+import Runtime "mo:core@1/Runtime";
 
 suite(
   "Logging module tests",

@@ -1,5 +1,5 @@
-import Array "mo:core/Array";
-import Nat "mo:core/Nat";
+import Array "mo:core@1/Array";
+import Nat "mo:core@1/Nat";
 
 module {
   public type StableData = {

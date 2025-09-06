@@ -2,8 +2,8 @@ import HttpContext "../HttpContext";
 import Types "../Types";
 import App "../App";
 import CORS "../CORS";
-import List "mo:core/List";
-import Text "mo:core/Text";
+import List "mo:core@1/List";
+import Text "mo:core@1/Text";
 
 module {
 

@@ -1,11 +1,11 @@
 import HttpContext "./HttpContext";
 import Types "./Types";
-import Array "mo:core/Array";
-import Text "mo:core/Text";
-import Result "mo:core/Result";
-import Runtime "mo:core/Runtime";
-import TextX "mo:xtended-text/TextX";
-import Json "mo:json";
+import Array "mo:core@1/Array";
+import Text "mo:core@1/Text";
+import Result "mo:core@1/Result";
+import Runtime "mo:core@1/Runtime";
+import TextX "mo:xtended-text@2/TextX";
+import Json "mo:json@1";
 import Identity "./Identity";
 import FileUpload "FileUpload";
 

@@ -1,12 +1,12 @@
 import Liminal "mo:liminal";
-import Principal "mo:core/Principal";
-import Blob "mo:core/Blob";
-import Result "mo:core/Result";
-import Error "mo:core/Error";
+import Principal "mo:core@1/Principal";
+import Blob "mo:core@1/Blob";
+import Result "mo:core@1/Result";
+import Error "mo:core@1/Error";
 import AssetsMiddleware "mo:liminal/Middleware/Assets";
-import HttpAssets "mo:http-assets";
+import HttpAssets "mo:http-assets@0";
 import AssetCanister "mo:liminal/AssetCanister";
-import Text "mo:core/Text";
+import Text "mo:core@1/Text";
 
 shared ({ caller = initializer }) actor class Actor() = self {
 

@@ -1,5 +1,5 @@
-import Text "mo:core/Text";
-import Blob "mo:core/Blob";
+import Text "mo:core@1/Text";
+import Blob "mo:core@1/Blob";
 import HttpMethod "HttpMethod";
 
 module {

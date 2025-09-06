@@ -1,18 +1,18 @@
 import HttpContext "./HttpContext";
-import Gzip "mo:compression/Gzip";
-import Lzss "mo:compression/LZSS";
-import Blob "mo:core/Blob";
-import Text "mo:core/Text";
-import Array "mo:core/Array";
-import DynamicArray "mo:xtended-collections/DynamicArray";
-import List "mo:core/List";
-import TextX "mo:xtended-text/TextX";
-import Nat "mo:core/Nat";
-import Iter "mo:core/Iter";
+import Gzip "mo:compression@0/Gzip";
+import Lzss "mo:compression@0/LZSS";
+import Blob "mo:core@1/Blob";
+import Text "mo:core@1/Text";
+import Array "mo:core@1/Array";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
+import List "mo:core@1/List";
+import TextX "mo:xtended-text@2/TextX";
+import Nat "mo:core@1/Nat";
+import Iter "mo:core@1/Iter";
 import App "./App";
 import ContentNegotiation "./ContentNegotiation";
 import Types "./Types";
-import Result "mo:core/Result";
+import Result "mo:core@1/Result";
 
 module {
 

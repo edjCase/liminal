@@ -1,17 +1,17 @@
-import Array "mo:core/Array";
-import Map "mo:core/Map";
-import Iter "mo:core/Iter";
-import Nat "mo:core/Nat";
-import Nat32 "mo:core/Nat32";
-import Result "mo:core/Result";
-import Text "mo:core/Text";
-import Time "mo:core/Time";
-import Int "mo:core/Int";
-import Random "mo:core/Random";
-import Char "mo:core/Char";
+import Array "mo:core@1/Array";
+import Map "mo:core@1/Map";
+import Iter "mo:core@1/Iter";
+import Nat "mo:core@1/Nat";
+import Nat32 "mo:core@1/Nat32";
+import Result "mo:core@1/Result";
+import Text "mo:core@1/Text";
+import Time "mo:core@1/Time";
+import Int "mo:core@1/Int";
+import Random "mo:core@1/Random";
+import Char "mo:core@1/Char";
 import BTree "mo:stableheapbtreemap/BTree";
-import UrlKit "mo:url-kit";
-import Debug "mo:core/Debug";
+import UrlKit "mo:url-kit@1";
+import Debug "mo:core@1/Debug";
 
 module {
   public type StableData = {

@@ -1,8 +1,8 @@
 import { test } "mo:test";
-import Runtime "mo:core/Runtime";
-import IterTools "mo:itertools/Iter";
+import Runtime "mo:core@1/Runtime";
 import Router "../src/Router";
 import Route "../src/Route";
+import Nat "mo:core@1/Nat";
 
 // Test for Router.matchPath function with various path matching scenarios
 test(
@@ -123,7 +123,7 @@ test(
             );
           };
 
-          for (i in IterTools.range(0, testCase.expectedParams.size())) {
+          for (i in Nat.range(0, testCase.expectedParams.size())) {
             if (i >= res.params.size()) {
               Runtime.trap("Missing parameter at index " # debug_show (i) # " in test case: " # testCase.name);
             };

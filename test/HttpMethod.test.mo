@@ -1,6 +1,6 @@
 import { test } "mo:test";
 import HttpMethod "../src/HttpMethod";
-import Runtime "mo:core/Runtime";
+import Runtime "mo:core@1/Runtime";
 
 test(
   "HttpMethod.toText - converts all HTTP methods to correct text",

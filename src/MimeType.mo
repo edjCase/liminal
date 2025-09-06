@@ -1,8 +1,8 @@
-import Array "mo:core/Array";
-import Text "mo:core/Text";
-import Option "mo:core/Option";
-import Nat "mo:core/Nat";
-import DynamicArray "mo:xtended-collections/DynamicArray";
+import Array "mo:core@1/Array";
+import Text "mo:core@1/Text";
+import Option "mo:core@1/Option";
+import Nat "mo:core@1/Nat";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
 import QualityFactor "QualityFactor";
 
 module {

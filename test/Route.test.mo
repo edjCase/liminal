@@ -1,6 +1,6 @@
 import { test } "mo:test";
-import Runtime "mo:core/Runtime";
-import Nat "mo:core/Nat";
+import Runtime "mo:core@1/Runtime";
+import Nat "mo:core@1/Nat";
 import Route "../src/Route";
 // Test for parsePathSegments function
 test(

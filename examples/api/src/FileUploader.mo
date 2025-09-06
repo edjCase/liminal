@@ -1,8 +1,8 @@
 import RouteContext "mo:liminal/RouteContext";
 import Liminal "mo:liminal";
-import Iter "mo:core/Iter";
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
+import Iter "mo:core@1/Iter";
+import Text "mo:core@1/Text";
+import Nat "mo:core@1/Nat";
 import FileUpload "mo:liminal/FileUpload";
 
 module {

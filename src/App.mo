@@ -1,16 +1,16 @@
 import Types "./Types";
-import Blob "mo:core/Blob";
-import Nat16 "mo:core/Nat16";
-import Option "mo:core/Option";
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
+import Blob "mo:core@1/Blob";
+import Nat16 "mo:core@1/Nat16";
+import Option "mo:core@1/Option";
+import Text "mo:core@1/Text";
+import Nat "mo:core@1/Nat";
 import HttpContext "./HttpContext";
 import HttpTypes "./HttpTypes";
-import Json "mo:json";
-import DynamicArray "mo:xtended-collections/DynamicArray";
+import Json "mo:json@1";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
 import ContentNegotiation "ContentNegotiation";
 import MimeType "MimeType";
-import Serde "mo:serde";
+import Serde "mo:serde@3";
 import Logging "Logging";
 
 module {

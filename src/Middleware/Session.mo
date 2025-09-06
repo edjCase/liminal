@@ -1,18 +1,18 @@
 import App "../App";
 import HttpContext "../HttpContext";
-import Text "mo:core/Text";
-import Time "mo:core/Time";
-import Nat "mo:core/Nat";
-import Array "mo:core/Array";
-import List "mo:core/List";
-import Int "mo:core/Int";
-import Runtime "mo:core/Runtime";
-import Map "mo:core/Map";
-import Random "mo:core/Random";
+import Text "mo:core@1/Text";
+import Time "mo:core@1/Time";
+import Nat "mo:core@1/Nat";
+import Array "mo:core@1/Array";
+import List "mo:core@1/List";
+import Int "mo:core@1/Int";
+import Runtime "mo:core@1/Runtime";
+import Map "mo:core@1/Map";
+import Random "mo:core@1/Random";
 import Session "../Session";
 import BaseX "mo:base-x-encoder";
-import NatX "mo:xtended-numbers/NatX";
-import DynamicArray "mo:xtended-collections/DynamicArray";
+import NatX "mo:xtended-numbers@2/NatX";
+import DynamicArray "mo:xtended-collections@0/DynamicArray";
 
 module {
   // Configuration for the middleware
