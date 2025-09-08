@@ -14,8 +14,7 @@
       "source": [
         "src/frontend/dist"
       ],
-      "type": "assets",
-      "workspace": "frontend"
+      "type": "assets"
     }
   },
   "defaults": {

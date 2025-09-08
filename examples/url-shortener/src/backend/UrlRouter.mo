@@ -9,6 +9,7 @@ import Text "mo:core@1/Text";
 import Result "mo:core@1/Result";
 import Iter "mo:core@1/Iter";
 import UrlKit "mo:url-kit@1";
+import Runtime "mo:core@1/Runtime";
 
 module {
 
@@ -69,7 +70,7 @@ module {
         };
         case (?"text/plain") {
           // Simple text body is just the URL
-          let ?body : ?Text = routeContext.parseUtf8Body() else Debug.trap("Failed to decode request body as UTF-8");
+          let ?body : ?Text = routeContext.parseUtf8Body() else Runtime.trap("Failed to decode request body as UTF-8");
           { originalUrl = body; customSlug = null };
         };
         case _ {
@@ -104,7 +105,7 @@ module {
 
     // Helper function to parse form data
     private func parseFormData(routeContext : RouteContext.RouteContext) : UrlStore.CreateRequest {
-      let ?body : ?Text = routeContext.parseUtf8Body() else Debug.trap("Failed to decode request body as UTF-8");
+      let ?body : ?Text = routeContext.parseUtf8Body() else Runtime.trap("Failed to decode request body as UTF-8");
       var originalUrl = "";
       var customSlug : ?Text = null;
 
@@ -116,11 +117,11 @@ module {
         if (keyValueArray.size() == 2) {
           let key = switch (UrlKit.decodeText(keyValueArray[0])) {
             case (#ok(decoded)) decoded;
-            case (#err(e)) Debug.trap("Failed to decode key: " # e);
+            case (#err(e)) Runtime.trap("Failed to decode key: " # e);
           };
           let value = switch (UrlKit.decodeText(keyValueArray[1])) {
             case (#ok(decoded)) decoded;
-            case (#err(e)) Debug.trap("Failed to decode value: " # e);
+            case (#err(e)) Runtime.trap("Failed to decode value: " # e);
           };
 
           if (key == "url") {
@@ -146,12 +147,12 @@ module {
       switch (Serde.Candid.decode(value, urlKeys, options)) {
         case (#err(e)) {
           Debug.print("Failed to decode URL Candid. Error: " # e);
-          Debug.trap("Failed to decode URL Candid. Error: " # e);
+          Runtime.trap("Failed to decode URL Candid. Error: " # e);
         };
         case (#ok(candid)) {
           if (candid.size() != 1) {
             Debug.print("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
-            Debug.trap("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
+            Runtime.trap("Invalid Candid response. Expected 1 element, got " # Nat.toText(candid.size()));
           };
           candid[0];
         };

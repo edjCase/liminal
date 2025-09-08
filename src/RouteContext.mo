@@ -184,7 +184,7 @@ module {
     /// Returns null if the body contains invalid UTF-8 sequences.
     ///
     /// ```motoko
-    /// let ?text = routeContext.parseUtf8Body() else Debug.trap("Failed to decode request body as UTF-8");
+    /// let ?text = routeContext.parseUtf8Body() else Runtime.trap("Failed to decode request body as UTF-8");
     /// ```
     public func parseUtf8Body() : ?Text {
       httpContext.parseUtf8Body();

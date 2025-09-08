@@ -3,17 +3,17 @@ import RouterMiddleware "mo:liminal/Middleware/Router";
 import Router "mo:liminal/Router";
 import UrlRouter "UrlRouter";
 import UrlStore "UrlStore";
-import BTree "mo:stableheapbtreemap/BTree";
+import BTree "mo:stableheapbtreemap@1/BTree";
 
-shared ({ caller = initializer }) actor class Actor() = self {
-  stable var urlStableData : UrlStore.StableData = {
+shared ({ caller = initializer }) persistent actor class Actor() = self {
+  var urlStableData : UrlStore.StableData = {
     urls = BTree.init<Nat, UrlStore.Url>(null);
     nextId = 1;
   };
 
-  var urlStore = UrlStore.Store(urlStableData);
+  transient var urlStore = UrlStore.Store(urlStableData);
 
-  let urlRouter = UrlRouter.Router(urlStore);
+  transient let urlRouter = UrlRouter.Router(urlStore);
 
   // Upgrade methods
 
@@ -25,7 +25,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
     urlStore := UrlStore.Store(urlStableData);
   };
 
-  let routerConfig : RouterMiddleware.Config = {
+  transient let routerConfig : RouterMiddleware.Config = {
     prefix = null;
     identityRequirement = null;
     routes = [
@@ -41,7 +41,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
   };
 
   // Http App
-  let app = Liminal.App({
+  transient let app = Liminal.App({
     middleware = [
       RouterMiddleware.new(routerConfig),
     ];

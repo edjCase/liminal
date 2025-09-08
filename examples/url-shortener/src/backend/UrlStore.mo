@@ -9,7 +9,7 @@ import Time "mo:core@1/Time";
 import Int "mo:core@1/Int";
 import Random "mo:core@1/Random";
 import Char "mo:core@1/Char";
-import BTree "mo:stableheapbtreemap/BTree";
+import BTree "mo:stableheapbtreemap@1/BTree";
 import UrlKit "mo:url-kit@1";
 import Debug "mo:core@1/Debug";
 
@@ -62,7 +62,7 @@ module {
     };
 
     public func getUrlByShortCode(shortCode : Text) : ?Url {
-      let ?id = slugToIdMap.get(shortCode) else return null;
+      let ?id = Map.get(slugToIdMap, Text.compare, shortCode) else return null;
       BTree.get(stableData.urls, Nat.compare, id);
     };
 
@@ -92,7 +92,7 @@ module {
           if (not isValidSlug(slug)) {
             return #err("Invalid custom slug. Use only letters, numbers, hyphens, and underscores");
           };
-          if (slugToIdMap.get(slug) != null) {
+          if (Map.get(slugToIdMap, Text.compare, slug) != null) {
             return #err("Custom slug already exists");
           };
           slug;
@@ -112,14 +112,14 @@ module {
 
       nextId += 1;
       ignore BTree.insert(stableData.urls, Nat.compare, newUrl.id, newUrl);
-      slugToIdMap.put(shortCode, newUrl.id);
+      Map.add(slugToIdMap, Text.compare, shortCode, newUrl.id);
 
       #ok(newUrl);
     };
 
     public func delete(id : Nat) : Bool {
       let ?url = BTree.delete(stableData.urls, Nat.compare, id) else return false;
-      slugToIdMap.delete(url.shortCode);
+      ignore Map.delete(slugToIdMap, Text.compare, url.shortCode);
       true;
     };
 
@@ -158,14 +158,14 @@ module {
       let base = nextId;
       var num = base;
 
-      for (i in Iter.range(0, length - 1)) {
+      for (i in Nat.range(0, length)) {
         let index = num % charsArray.size();
         code := code # Char.toText(charsArray[index]);
         num := num / charsArray.size() + 1;
       };
 
       // Ensure uniqueness
-      if (slugToIdMap.get(code) != null) {
+      if (Map.get(slugToIdMap, Text.compare, code) != null) {
         code # Nat.toText(nextId); // Add ID as suffix if collision
       } else {
         code;
