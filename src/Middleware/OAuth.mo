@@ -6,7 +6,7 @@ import Time "mo:core@1/Time";
 import Random "mo:core@1/Random";
 import Nat "mo:core@1/Nat";
 import App "../App";
-import IC "mo:ic";
+import IC "mo:ic@3";
 import Serde "mo:serde@3";
 import BaseX "mo:base-x-encoder";
 import Option "mo:core@1/Option";

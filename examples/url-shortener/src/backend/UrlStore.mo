@@ -9,7 +9,7 @@ import Time "mo:core@1/Time";
 import Int "mo:core@1/Int";
 import Random "mo:core@1/Random";
 import Char "mo:core@1/Char";
-import BTree "mo:stableheapbtreemap@1/BTree";
+import BTree "mo:stableheapbtreemap/BTree";
 import UrlKit "mo:url-kit@1";
 import Debug "mo:core@1/Debug";
 

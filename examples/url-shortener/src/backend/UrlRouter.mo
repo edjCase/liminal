@@ -3,7 +3,7 @@ import Nat "mo:core@1/Nat";
 import Debug "mo:core@1/Debug";
 import UrlStore "UrlStore";
 import Serializer "Serializer";
-import Serde "mo:serde@3";
+import Serde "mo:serde";
 import RouteContext "mo:liminal/RouteContext";
 import Text "mo:core@1/Text";
 import Result "mo:core@1/Result";

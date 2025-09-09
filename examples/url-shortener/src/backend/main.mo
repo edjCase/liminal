@@ -3,7 +3,7 @@ import RouterMiddleware "mo:liminal/Middleware/Router";
 import Router "mo:liminal/Router";
 import UrlRouter "UrlRouter";
 import UrlStore "UrlStore";
-import BTree "mo:stableheapbtreemap@1/BTree";
+import BTree "mo:stableheapbtreemap/BTree";
 
 shared ({ caller = initializer }) persistent actor class Actor() = self {
   var urlStableData : UrlStore.StableData = {

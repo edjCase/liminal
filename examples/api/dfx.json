@@ -1,9 +1,9 @@
 {
-  "dfx": "0.28.0",
   "canisters": {
     "api": {
       "main": "src/main.mo",
-      "type": "motoko"
+      "type": "motoko",
+      "args": "--enhanced-orthogonal-persistence"
     }
   },
   "defaults": {

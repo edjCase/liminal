@@ -1,5 +1,2 @@
 [dependencies]
 liminal = "../.."
-
-[toolchain]
-moc = "0.14.14"
