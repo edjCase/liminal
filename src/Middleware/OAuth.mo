@@ -12,7 +12,7 @@ import BaseX "mo:base-x-encoder";
 import Option "mo:core@1/Option";
 import Array "mo:core@1/Array";
 import Sha256 "mo:sha2@0/Sha256";
-import UrlKit "mo:url-kit@1";
+import UrlKit "mo:url-kit@3";
 import Iter "mo:core@1/Iter";
 
 module {

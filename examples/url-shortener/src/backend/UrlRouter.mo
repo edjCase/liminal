@@ -8,7 +8,7 @@ import RouteContext "mo:liminal/RouteContext";
 import Text "mo:core@1/Text";
 import Result "mo:core@1/Result";
 import Iter "mo:core@1/Iter";
-import UrlKit "mo:url-kit@1";
+import UrlKit "mo:url-kit@3";
 import Runtime "mo:core@1/Runtime";
 
 module {

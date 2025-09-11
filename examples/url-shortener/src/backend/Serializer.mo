@@ -3,8 +3,8 @@ import Json "mo:json@1";
 import Result "mo:core@1/Result";
 import Text "mo:core@1/Text";
 import Blob "mo:core@1/Blob";
-import BaseX "mo:base-x-encoder@1";
-import UrlKit "mo:url-kit@1";
+import BaseX "mo:base-x-encoder@2";
+import UrlKit "mo:url-kit@3";
 
 module {
 

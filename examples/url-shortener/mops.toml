@@ -1,7 +1,11 @@
 [dependencies]
 liminal = "../.."
 "core@1" = "1.0.0"
-"url-kit@1" = "1.1.0"
-"base-x-encoder@1" = "1.2.0"
+"url-kit@3" = "3.0.0"
+"base-x-encoder@2" = "2.1.0"
+"base-x-encoder" = "2.1.0"
 "stableheapbtreemap" = "1.5.0"
 "serde" = "3.3.2"
+"base" = "0.16.0"
+"xtended-numbers" = "2.1.0"
+"buffer" = "0.1.0"

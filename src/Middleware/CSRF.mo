@@ -7,7 +7,7 @@ import Bool "mo:core@1/Bool";
 import HttpContext "../HttpContext";
 import HttpMethod "../HttpMethod";
 import App "../App";
-import Path "mo:url-kit@1/Path";
+import Path "mo:url-kit@3/Path";
 import BaseX "mo:base-x-encoder";
 
 module {

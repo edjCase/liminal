@@ -7,7 +7,7 @@ import Runtime "mo:core@1/Runtime";
 import TextX "mo:xtended-text@2/TextX";
 import HttpContext "./HttpContext";
 import Route "./Route";
-import Path "mo:url-kit@1/Path";
+import Path "mo:url-kit@3/Path";
 import Identity "Identity";
 import RouteContext "RouteContext";
 import HttpMethod "./HttpMethod";

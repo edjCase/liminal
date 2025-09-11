@@ -16,8 +16,8 @@ import ContentNegotiation "./ContentNegotiation";
 import Serde "mo:serde@3";
 import Logging "./Logging";
 import Session "./Session";
-import Path "mo:url-kit@1/Path";
-import UrlKit "mo:url-kit@1";
+import Path "mo:url-kit@3/Path";
+import UrlKit "mo:url-kit@3";
 
 module {
   public type SuccessHttpStatusCode = {
