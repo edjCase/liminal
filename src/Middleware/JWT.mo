@@ -41,7 +41,12 @@ module {
     };
   };
 
-  private func tryParseAndSetJWT(
+  /// Attempts to parse and validate a JWT from the request, setting it in the context if successful
+  /// - Parameters:
+  ///   - context: The current HTTP context
+  ///   - validation: JWT validation options
+  ///   - locations: Locations to look for the JWT (headers, cookies, query params)
+  public func tryParseAndSetJWT(
     context : HttpContext.HttpContext,
     validation : JWT.ValidationOptions,
     locations : [JWTLocation],
