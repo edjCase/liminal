@@ -8,21 +8,17 @@ license = "MIT"
 
 [dependencies]
 "core@1" = "1.0.0"
-core = "1.0.0"                    # override broken core references
 "xtended-text@2" = "2.3.0"
 "xtended-numbers@2" = "2.1.0"
-xtended-numbers = "2.1.0"         # override broken core references
-"xtended-numbers@2.0.0" = "2.1.0" # override broken core references
 "xtended-collections@0" = "0.2.0"
 "json@1" = "1.4.0"
 "jwt@2" = "2.1.1"
 "compression@0" = "0.3.0"
-"serde@3" = "3.3.3"
+"serde@3" = "3.3.2"
 "xml@2" = "2.1.0"
 "http-assets@0" = "0.2.0"
-"sha2@0" = "0.1.9"
+"sha2@0" = "0.1.6"
 "url-kit@4" = "4.0.0"
-"base-x-encoder" = "2.1.0"        # override broken core references
 
 [dev-dependencies]
 test = "2.1.1"
