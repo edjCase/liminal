@@ -31,6 +31,15 @@ func createRequest(
   };
 };
 
+let urlNormalizationOptions = {
+  pathIsCaseSensitive = false;
+  preserveTrailingSlash = false;
+  queryKeysAreCaseSensitive = false;
+  removeEmptyPathSegments = true;
+  resolvePathDotSegments = true;
+  usernameIsCaseSensitive = false;
+};
+
 // Test 1: Simple CORS request with allowed origin
 test(
   "should allow request from allowed origin",
@@ -45,6 +54,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -79,6 +89,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -113,6 +124,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -148,6 +160,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -193,6 +206,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -234,6 +248,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -280,6 +295,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -320,6 +336,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -354,6 +371,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -387,6 +405,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -421,6 +440,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(

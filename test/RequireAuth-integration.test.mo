@@ -61,6 +61,15 @@ func createTestJWT() : JWT.Token {
   };
 };
 
+let urlNormalizationOptions = {
+  pathIsCaseSensitive = false;
+  preserveTrailingSlash = false;
+  queryKeysAreCaseSensitive = false;
+  removeEmptyPathSegments = true;
+  resolvePathDotSegments = true;
+  usernameIsCaseSensitive = false;
+};
+
 // Test 1: Request without identity should return 401 Unauthorized
 test(
   "should return 401 unauthorized when no identity is present",
@@ -70,6 +79,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -119,6 +129,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -187,6 +198,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -261,6 +273,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -316,6 +329,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -384,6 +398,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -465,6 +480,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -531,6 +547,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -555,6 +572,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -640,6 +658,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(

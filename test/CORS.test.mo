@@ -26,6 +26,15 @@ func dummyErrorSerialzer(
   };
 };
 
+let urlNormalizationOptions : HttpContext.UrlNormalizationOptions = {
+  pathIsCaseSensitive = false;
+  preserveTrailingSlash = false;
+  queryKeysAreCaseSensitive = false;
+  removeEmptyPathSegments = true;
+  resolvePathDotSegments = true;
+  usernameIsCaseSensitive = false;
+};
+
 func dummyCandidRepresentationNegotiator(
   candid : Serde.Candid.Candid,
   _ : ContentNegotiation.ContentPreference,
@@ -58,6 +67,7 @@ suite(
             errorSerializer = dummyErrorSerialzer;
             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
             logger = Logging.buildDebugLogger(#warning);
+            urlNormalization = urlNormalizationOptions;
           },
         );
         let response1 = CORS.handlePreflight(
@@ -87,6 +97,7 @@ suite(
             errorSerializer = dummyErrorSerialzer;
             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
             logger = Logging.buildDebugLogger(#warning);
+            urlNormalization = urlNormalizationOptions;
           },
         );
         let response2 = CORS.handlePreflight(
@@ -126,6 +137,7 @@ suite(
             errorSerializer = dummyErrorSerialzer;
             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
             logger = Logging.buildDebugLogger(#warning);
+            urlNormalization = urlNormalizationOptions;
           },
         );
         let response = CORS.handlePreflight(
@@ -168,6 +180,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -206,6 +219,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -240,6 +254,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -273,6 +288,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -310,6 +326,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -347,6 +364,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -384,6 +402,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -421,6 +440,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -460,6 +480,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -492,6 +513,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -531,6 +553,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -564,6 +587,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -599,6 +623,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -633,6 +658,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           CORS.defaultOptions,
@@ -667,6 +693,7 @@ suite(
               errorSerializer = dummyErrorSerialzer;
               candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
               logger = Logging.buildDebugLogger(#warning);
+              urlNormalization = urlNormalizationOptions;
             },
           ),
           {
@@ -701,6 +728,7 @@ suite(
             errorSerializer = dummyErrorSerialzer;
             candidRepresentationNegotiator = dummyCandidRepresentationNegotiator;
             logger = Logging.buildDebugLogger(#warning);
+            urlNormalization = urlNormalizationOptions;
           },
         );
 

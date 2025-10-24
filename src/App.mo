@@ -49,11 +49,14 @@ module {
     handleUpdate : UpdateFunc;
   };
 
+  public type UrlNormalizationOptions = HttpContext.UrlNormalizationOptions;
+
   public type Data = {
     middleware : [Middleware];
     errorSerializer : HttpContext.ErrorSerializer;
     candidRepresentationNegotiator : HttpContext.CandidRepresentationNegotiator;
     logger : Logging.Logger;
+    urlNormalization : UrlNormalizationOptions;
   };
 
   /// Main application class that handles HTTP requests through a middleware pipeline.
@@ -90,6 +93,7 @@ module {
           errorSerializer = data.errorSerializer;
           candidRepresentationNegotiator = data.candidRepresentationNegotiator;
           logger = data.logger;
+          urlNormalization = data.urlNormalization;
         },
       );
 
@@ -165,6 +169,7 @@ module {
           errorSerializer = data.errorSerializer;
           candidRepresentationNegotiator = data.candidRepresentationNegotiator;
           logger = data.logger;
+          urlNormalization = data.urlNormalization;
         },
       );
 

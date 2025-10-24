@@ -4,7 +4,7 @@ import Result "mo:core@1/Result";
 import Text "mo:core@1/Text";
 import Blob "mo:core@1/Blob";
 import BaseX "mo:base-x-encoder@2";
-import UrlKit "mo:url-kit@3";
+import UrlKit "mo:url-kit@4";
 
 module {
 

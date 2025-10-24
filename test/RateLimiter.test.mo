@@ -53,6 +53,14 @@ func createContext(
         };
       };
       logger = Logging.buildDebugLogger(#warning);
+      urlNormalization = {
+        pathIsCaseSensitive = true;
+        preserveTrailingSlash = true;
+        queryKeysAreCaseSensitive = true;
+        removeEmptyPathSegments = false;
+        resolvePathDotSegments = false;
+        usernameIsCaseSensitive = true;
+      };
     },
   );
 

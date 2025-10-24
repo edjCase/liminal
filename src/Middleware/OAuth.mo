@@ -12,7 +12,7 @@ import BaseX "mo:base-x-encoder";
 import Option "mo:core@1/Option";
 import Array "mo:core@1/Array";
 import Sha256 "mo:sha2@0/Sha256";
-import UrlKit "mo:url-kit@3";
+import UrlKit "mo:url-kit@4";
 import Iter "mo:core@1/Iter";
 
 module {
@@ -128,7 +128,7 @@ module {
       ].vals()
       |> Iter.map(
         _,
-        func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
+        func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0, true) # "=" # UrlKit.encodeText(pair.1, true),
       )
       |> Text.join("&", _);
 
@@ -150,7 +150,7 @@ module {
       ].vals()
       |> Iter.map(
         _,
-        func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0) # "=" # UrlKit.encodeText(pair.1),
+        func(pair : (Text, Text)) : Text = UrlKit.encodeText(pair.0, true) # "=" # UrlKit.encodeText(pair.1, true),
       )
       |> Text.join("&", _);
 
@@ -289,17 +289,17 @@ module {
     };
     func parseRequest(context : Liminal.HttpContext) : ?RequestInfo {
       let path = context.getPath();
-      if (path.size() < 3 or Text.toLower(path[0]) != "auth") {
+      if (path.segments.size() < 3 or Text.toLower(path.segments[0]) != "auth") {
         return null;
       };
-      let providerName = Text.toLower(path[1]);
+      let providerName = Text.toLower(path.segments[1]);
       let ?providerConfig = Array.find(
         config.providers,
         func(p : ProviderConfig) : Bool = Text.toLower(p.name) == providerName,
       ) else {
         return ?#providerNotFound(providerName);
       };
-      let oauthPath = Text.toLower(path[2]);
+      let oauthPath = Text.toLower(path.segments[2]);
       ?(
         switch (oauthPath) {
           case ("login") #login(providerConfig);

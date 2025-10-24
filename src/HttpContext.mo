@@ -16,8 +16,8 @@ import ContentNegotiation "./ContentNegotiation";
 import Serde "mo:serde@3";
 import Logging "./Logging";
 import Session "./Session";
-import Path "mo:url-kit@3/Path";
-import UrlKit "mo:url-kit@3";
+import Path "mo:url-kit@4/Path";
+import UrlKit "mo:url-kit@4";
 
 module {
   public type SuccessHttpStatusCode = {
@@ -177,10 +177,13 @@ module {
 
   public type CandidRepresentationNegotiator = (CandidValue, ContentNegotiation.ContentPreference) -> ?CandidNegotiatedContent;
 
+  public type UrlNormalizationOptions = UrlKit.NormalizationOptions;
+
   public type Options = {
     errorSerializer : ErrorSerializer;
     candidRepresentationNegotiator : CandidRepresentationNegotiator;
     logger : Logging.Logger;
+    urlNormalization : UrlNormalizationOptions;
   };
 
   /// HTTP context class that provides access to request data and response building utilities.
@@ -301,7 +304,7 @@ module {
             case (#ok(v)) v;
             case (#err(err)) Runtime.trap("Invalid URL '" # request.url # "'. Error: " # err);
           };
-          urlCache := ?UrlKit.normalize(parsedUrl);
+          urlCache := ?UrlKit.normalize(parsedUrl, options.urlNormalization);
           parsedUrl;
         };
       };

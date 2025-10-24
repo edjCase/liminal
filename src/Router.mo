@@ -7,7 +7,7 @@ import Runtime "mo:core@1/Runtime";
 import TextX "mo:xtended-text@2/TextX";
 import HttpContext "./HttpContext";
 import Route "./Route";
-import Path "mo:url-kit@3/Path";
+import Path "mo:url-kit@4/Path";
 import Identity "Identity";
 import RouteContext "RouteContext";
 import HttpMethod "./HttpMethod";
@@ -531,7 +531,7 @@ module Module {
       label f for (route in routes.vals()) {
         httpContext.log(#verbose, "Attempting to match to route " # debug_show (route.pathSegments) # " with method " # HttpMethod.toText(route.method));
         if (route.method != httpContext.method) continue f;
-        let ?{ params } = matchPath(route.pathSegments, path) else continue f;
+        let ?{ params } = matchPath(route.pathSegments, path.segments) else continue f;
         httpContext.log(#debug_, "Route successfully matched. Path: " # debug_show (route.pathSegments) # ", Method: " # HttpMethod.toText(route.method));
         return ?RouteContext.RouteContext(
           httpContext,
@@ -555,7 +555,7 @@ module Module {
   /// let ?{ params } = Router.matchPath(pattern, path) else return null;
   /// // params contains [("id", "123")]
   /// ```
-  public func matchPath(expected : [Route.PathSegment], actual : [Path.Segment]) : ?{
+  public func matchPath(expected : [Route.PathSegment], actual : [Text]) : ?{
     params : [(Text, Text)];
   } {
     func matchRecursive(expIndex : Nat, actIndex : Nat, currentParams : List.List<(Text, Text)>) : ?{

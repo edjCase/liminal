@@ -6,6 +6,14 @@ import Blob "mo:core@1/Blob";
 import Nat16 "mo:core@1/Nat16";
 import Liminal "../src/lib";
 
+let urlNormalizationOptions = {
+  pathIsCaseSensitive = true;
+  preserveTrailingSlash = true;
+  queryKeysAreCaseSensitive = true;
+  removeEmptyPathSegments = false;
+  resolvePathDotSegments = false;
+  usernameIsCaseSensitive = true;
+};
 test(
   "OAuth middleware - integrated with Liminal app",
   func() : () {
@@ -35,6 +43,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Helper to create HTTP requests
@@ -173,6 +182,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     func createRequest(method : Text, url : Text) : Liminal.RawQueryHttpRequest {
@@ -241,6 +251,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Test callback scenarios
@@ -314,6 +325,7 @@ test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Test various error scenarios

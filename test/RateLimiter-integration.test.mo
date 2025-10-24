@@ -60,6 +60,15 @@ func assertHeaderValue(headers : [(Text, Text)], key : Text, expectedValue : Tex
   };
 };
 
+let urlNormalizationOptions = {
+  pathIsCaseSensitive = false;
+  preserveTrailingSlash = false;
+  queryKeysAreCaseSensitive = false;
+  removeEmptyPathSegments = true;
+  resolvePathDotSegments = true;
+  usernameIsCaseSensitive = false;
+};
+
 // Test 1: Basic rate limiting with IP-based key
 await test(
   "should allow requests within rate limit",
@@ -99,6 +108,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // First request should be allowed
@@ -176,6 +186,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // First two requests should be allowed
@@ -252,6 +263,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Exhaust rate limit for first IP
@@ -342,6 +354,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // First request exhausts the rate limit
@@ -444,6 +457,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // First request should be allowed
@@ -496,6 +510,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Multiple query requests should all be allowed regardless of rate limit

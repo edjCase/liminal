@@ -35,6 +35,14 @@ func createContext(contentType : Text, body : Blob) : HttpContext.HttpContext {
         };
       };
       logger = Logging.buildDebugLogger(#warning);
+      urlNormalization = {
+        pathIsCaseSensitive = false;
+        preserveTrailingSlash = false;
+        queryKeysAreCaseSensitive = false;
+        removeEmptyPathSegments = true;
+        resolvePathDotSegments = true;
+        usernameIsCaseSensitive = false;
+      };
     },
   );
 };

@@ -68,6 +68,15 @@ func extractSessionId(setCookieHeader : Text, cookieName : Text) : ?Text {
   };
 };
 
+let urlNormalizationOptions = {
+  pathIsCaseSensitive = true;
+  preserveTrailingSlash = true;
+  queryKeysAreCaseSensitive = true;
+  removeEmptyPathSegments = false;
+  resolvePathDotSegments = false;
+  usernameIsCaseSensitive = true;
+};
+
 // Test 1: Session creation with default config
 await test(
   "should create new session with default config",
@@ -101,6 +110,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -175,6 +185,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // First request: set session data
@@ -276,6 +287,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Setup session data
@@ -346,6 +358,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -432,6 +445,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     // Setup session data
@@ -488,6 +502,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -543,6 +558,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let request = createRequest(
@@ -615,6 +631,7 @@ await test(
       errorSerializer = Liminal.defaultJsonErrorSerializer;
       candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
       logger = Liminal.buildDebugLogger(#warning);
+      urlNormalization = urlNormalizationOptions;
     });
 
     let response = await* app.http_request_update(createRequest(#get, "/overwrite-test", [], Blob.fromArray([])));
