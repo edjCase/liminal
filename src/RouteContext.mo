@@ -30,10 +30,12 @@ module {
     #async_ : (RouteContext) -> async* HttpResponse;
   };
 
+  public type QueryHttpResponse = { #response : HttpResponse; #upgrade };
+
   public type RouteHandler = {
     #query_ : (RouteContext) -> HttpResponse;
     #upgradableQuery : {
-      queryHandler : (RouteContext) -> { #response : HttpResponse; #upgrade };
+      queryHandler : (RouteContext) -> QueryHttpResponse;
       updateHandler : UpdateHandlerKind;
     };
     #update : UpdateHandlerKind;
