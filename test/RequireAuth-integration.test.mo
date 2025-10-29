@@ -153,16 +153,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/protected",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Protected content";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Protected content";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -222,16 +224,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/admin",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Admin content";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Admin content";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -353,16 +357,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/protected",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"JWT protected content";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"JWT protected content";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -422,16 +428,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/super-protected",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Super protected content";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Super protected content";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -504,16 +512,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.postQuery(
+        Router.post(
           "/api/data",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 201;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Data created";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 201;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Data created";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -603,16 +613,18 @@ test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/admin/users",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"User list";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"User list";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };

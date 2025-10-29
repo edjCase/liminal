@@ -30,7 +30,7 @@ module {
     routeContext.buildResponse(#ok, #html(formHtml));
   };
 
-  public func handleUpload<system>(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
+  public func handleUpload(routeContext : RouteContext.RouteContext) : Liminal.HttpResponse {
     let files = routeContext.getUploadedFiles();
 
     if (files.size() == 0) {

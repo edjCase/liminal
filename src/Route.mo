@@ -46,16 +46,16 @@ module {
   };
 
   /// Parses a URL path string into structured path segments.
-  /// Supports text segments, parameters (prefixed with :), and wildcards (* and **).
+  /// Supports text segments, parameters (wrapped in {}), and wildcards (* and **).
   ///
   /// ```motoko
-  /// let result1 = Route.parsePathSegments("/users/:id/posts");
+  /// let result1 = Route.parsePathSegments("/users/{id}/posts");
   /// // result1 is #ok([#text("users"), #param("id"), #text("posts")])
   ///
   /// let result2 = Route.parsePathSegments("/api/*/files/**");
   /// // result2 is #ok([#text("api"), #wildcard(#single), #text("files"), #wildcard(#multi)])
   ///
-  /// let invalid = Route.parsePathSegments("/users/:id:");
+  /// let invalid = Route.parsePathSegments("/users/{id}:");
   /// // invalid is #err("Invalid parameter syntax")
   /// ```
   public func parsePathSegments(path : Text) : Result.Result<[PathSegment], Text> {

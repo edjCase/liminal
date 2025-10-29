@@ -22,7 +22,7 @@ module {
       routeContext.buildResponse(#ok, #content(toCandid(to_candid (urls))));
     };
 
-    public func redirect<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+    public func redirect(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       let shortCode = routeContext.getRouteParam("shortCode");
 
       switch (store.incrementClicks(shortCode)) {
@@ -57,7 +57,7 @@ module {
       };
     };
 
-    public func createShortUrl<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+    public func createShortUrl(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       Debug.print("Creating short URL...");
 
       // Handle different content types
@@ -92,7 +92,7 @@ module {
       };
     };
 
-    public func deleteUrl<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+    public func deleteUrl(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       let idText = routeContext.getRouteParam("id");
       let ?id = Nat.fromText(idText) else return routeContext.buildResponse(#badRequest, #error(#message("Invalid id '" # idText # "', must be a positive integer")));
 

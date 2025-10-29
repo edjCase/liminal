@@ -26,7 +26,7 @@ module {
       routeContext.buildResponse(#ok, #content(toCandid(to_candid (user))));
     };
 
-    public func create<system>(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
+    public func create(routeContext : RouteContext.RouteContext) : Route.HttpResponse {
       let createUserRequest : UserHandler.CreateUserRequest = switch (routeContext.parseJsonBody<UserHandler.CreateUserRequest>(Serializer.deserializeCreateUserRequest)) {
         case (#err(e)) return routeContext.buildResponse(#badRequest, #error(#message("Failed to parse Json. Error: " # e)));
         case (#ok(req)) req;

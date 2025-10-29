@@ -14,15 +14,15 @@ import Router "mo:liminal/Router";
 import RouteContext "mo:liminal/RouteContext";
 import FileUploader "FileUploader";
 
-shared ({ caller = initializer }) actor class Actor() = self {
+shared ({ caller = initializer }) persistent actor class Actor() = self {
 
-  stable var userStableData : UserHandler.StableData = {
+  var userStableData : UserHandler.StableData = {
     users = [];
   };
 
-  var userHandler = UserHandler.Handler(userStableData);
+  transient let userHandler = UserHandler.Handler(userStableData);
 
-  let userRouter = UserRouter.Router(userHandler);
+  transient let userRouter = UserRouter.Router(userHandler);
 
   // Upgrade methods
 
@@ -30,45 +30,45 @@ shared ({ caller = initializer }) actor class Actor() = self {
     userStableData := userHandler.toStableData();
   };
 
-  system func postupgrade() {
-    userHandler := UserHandler.Handler(userStableData);
-  };
-
-  let routerConfig : RouterMiddleware.Config = {
+  transient let routerConfig : RouterMiddleware.Config = {
     prefix = null;
     identityRequirement = null;
     routes = [
       Router.groupWithAuthorization(
         "/users",
         [
-          Router.getQuery("/", userRouter.get),
-          Router.postUpdate("/", userRouter.create),
-          Router.getQuery("/{id}", userRouter.getById),
+          Router.get("/", #query_(userRouter.get)),
+          Router.post("/", #update(#sync(userRouter.create))),
+          Router.get("/{id}", #query_(userRouter.getById)),
         ],
         #authenticated,
       ),
-      Router.getQuery("/upload", FileUploader.getUploadFormHtml),
-      Router.postUpdate("/upload", FileUploader.handleUpload),
-      Router.getAsyncUpdate(
+      Router.get("/upload", #query_(FileUploader.getUploadFormHtml)),
+      Router.post("/upload", #update(#sync(FileUploader.handleUpload))),
+      Router.get(
         "/hash",
-        func(routeContext : RouteContext.RouteContext) : async* Liminal.HttpResponse {
-          let result = await ic.canister_info({
-            canister_id = Principal.fromActor(self);
-            num_requested_changes = ?0;
-          });
-          let hashJson = switch (result.module_hash) {
-            case (null) #Null;
-            case (?hash) #Text(debug_show (hash));
-          };
-          routeContext.buildResponse(#ok, #content(#Record([("hash", hashJson)])));
-        },
+        #update(
+          #async_(
+            func(routeContext : RouteContext.RouteContext) : async* Liminal.HttpResponse {
+              let result = await ic.canister_info({
+                canister_id = Principal.fromActor(self);
+                num_requested_changes = ?0;
+              });
+              let hashJson = switch (result.module_hash) {
+                case (null) #Null;
+                case (?hash) #Text(debug_show (hash));
+              };
+              routeContext.buildResponse(#ok, #content(#Record([("hash", hashJson)])));
+            }
+          )
+        ),
       ),
     ];
   };
 
-  stable var accessTokenOrNull : ?Text = null;
+  var accessTokenOrNull : ?Text = null;
 
-  let oauthConfig : OAuthMiddleware.Config = {
+  transient let oauthConfig : OAuthMiddleware.Config = {
     providers = [{
       OAuthMiddleware.GitHub with
       name = "GitHub";
@@ -89,7 +89,7 @@ shared ({ caller = initializer }) actor class Actor() = self {
   };
 
   // Http App
-  let app = Liminal.App({
+  transient let app = Liminal.App({
     middleware = [
       LoggingMiddleware.new(),
       SessionMiddleware.inMemoryDefault(),
@@ -111,6 +111,14 @@ shared ({ caller = initializer }) actor class Actor() = self {
     errorSerializer = Liminal.defaultJsonErrorSerializer;
     candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     logger = Liminal.buildDebugLogger(#info);
+    urlNormalization = {
+      pathIsCaseSensitive = false;
+      preserveTrailingSlash = false;
+      queryKeysAreCaseSensitive = false;
+      removeEmptyPathSegments = true;
+      resolvePathDotSegments = true;
+      usernameIsCaseSensitive = false;
+    };
   });
 
   // Http server methods

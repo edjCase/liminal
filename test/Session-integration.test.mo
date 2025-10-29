@@ -85,19 +85,21 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let session = ctx.httpContext.session;
-            switch (session) {
-              case (?s) {
-                ctx.buildResponse(#ok, #text("Session ID: " # s.id));
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let session = ctx.httpContext.session;
+              switch (session) {
+                case (?s) {
+                  ctx.buildResponse(#ok, #text("Session ID: " # s.id));
+                };
+                case (null) {
+                  ctx.buildResponse(#internalServerError, #text("No session found"));
+                };
               };
-              case (null) {
-                ctx.buildResponse(#internalServerError, #text("No session found"));
-              };
-            };
-          },
+            }
+          ),
         ),
       ];
     };
@@ -146,33 +148,37 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/set",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.set("username", "testuser");
-            session.set("role", "admin");
-            ctx.buildResponse(#ok, #text("Data set"));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              session.set("username", "testuser");
+              session.set("role", "admin");
+              ctx.buildResponse(#ok, #text("Data set"));
+            }
+          ),
         ),
-        Router.getQuery(
+        Router.get(
           "/get",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            let username = switch (session.get("username")) {
-              case (?u) u;
-              case (null) "none";
-            };
-            let role = switch (session.get("role")) {
-              case (?r) r;
-              case (null) "none";
-            };
-            ctx.buildResponse(#ok, #text("username=" # username # ",role=" # role));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              let username = switch (session.get("username")) {
+                case (?u) u;
+                case (null) "none";
+              };
+              let role = switch (session.get("role")) {
+                case (?r) r;
+                case (null) "none";
+              };
+              ctx.buildResponse(#ok, #text("username=" # username # ",role=" # role));
+            }
+          ),
         ),
       ];
     };
@@ -233,48 +239,54 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/setup",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.set("key1", "value1");
-            session.set("key2", "value2");
-            session.set("key3", "value3");
-            ctx.buildResponse(#ok, #text("Setup complete"));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              session.set("key1", "value1");
+              session.set("key2", "value2");
+              session.set("key3", "value3");
+              ctx.buildResponse(#ok, #text("Setup complete"));
+            }
+          ),
         ),
-        Router.getQuery(
+        Router.get(
           "/remove",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.remove("key2");
-            ctx.buildResponse(#ok, #text("Key removed"));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              session.remove("key2");
+              ctx.buildResponse(#ok, #text("Key removed"));
+            }
+          ),
         ),
-        Router.getQuery(
+        Router.get(
           "/check",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            let key1 = switch (session.get("key1")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            let key2 = switch (session.get("key2")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            let key3 = switch (session.get("key3")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            ctx.buildResponse(#ok, #text("key1=" # key1 # ",key2=" # key2 # ",key3=" # key3));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              let key1 = switch (session.get("key1")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              let key2 = switch (session.get("key2")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              let key3 = switch (session.get("key3")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              ctx.buildResponse(#ok, #text("key1=" # key1 # ",key2=" # key2 # ",key3=" # key3));
+            }
+          ),
         ),
       ];
     };
@@ -338,14 +350,16 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/api/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            ctx.buildResponse(#ok, #text("Custom session: " # session.id));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              ctx.buildResponse(#ok, #text("Custom session: " # session.id));
+            }
+          ),
         ),
       ];
     };
@@ -396,43 +410,49 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/setup",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.set("data1", "value1");
-            session.set("data2", "value2");
-            ctx.buildResponse(#ok, #text("Data set"));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              session.set("data1", "value1");
+              session.set("data2", "value2");
+              ctx.buildResponse(#ok, #text("Data set"));
+            }
+          ),
         ),
-        Router.getQuery(
+        Router.get(
           "/clear",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.clear();
-            ctx.buildResponse(#ok, #text("Session cleared"));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              session.clear();
+              ctx.buildResponse(#ok, #text("Session cleared"));
+            }
+          ),
         ),
-        Router.getQuery(
+        Router.get(
           "/check-after-clear",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            let data1 = switch (session.get("data1")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            let data2 = switch (session.get("data2")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            ctx.buildResponse(#ok, #text("data1=" # data1 # ",data2=" # data2));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
+              let data1 = switch (session.get("data1")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              let data2 = switch (session.get("data2")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              ctx.buildResponse(#ok, #text("data1=" # data1 # ",data2=" # data2));
+            }
+          ),
         ),
       ];
     };
@@ -480,16 +500,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/no-session",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let session = ctx.httpContext.session;
-            let hasSession = switch (session) {
-              case (?_) "yes";
-              case (null) "no";
-            };
-            ctx.buildResponse(#ok, #text("Has session: " # hasSession));
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let session = ctx.httpContext.session;
+              let hasSession = switch (session) {
+                case (?_) "yes";
+                case (null) "no";
+              };
+              ctx.buildResponse(#ok, #text("Has session: " # hasSession));
+            }
+          ),
         ),
       ];
     };
@@ -537,15 +559,19 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.postUpdate(
+        Router.post(
           "/create-session",
-          func<system>(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
-            session.set("created", "true");
-            ctx.buildResponse(#created, #text("Session created: " # session.id));
-          },
+          #update(
+            #sync(
+              func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+                let ?session = ctx.httpContext.session else {
+                  return ctx.buildResponse(#internalServerError, #text("No session found"));
+                };
+                session.set("created", "true");
+                ctx.buildResponse(#created, #text("Session created: " # session.id));
+              }
+            )
+          ),
         ),
       ];
     };
@@ -591,34 +617,36 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/overwrite-test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            let ?session = ctx.httpContext.session else {
-              return ctx.buildResponse(#internalServerError, #text("No session found"));
-            };
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              let ?session = ctx.httpContext.session else {
+                return ctx.buildResponse(#internalServerError, #text("No session found"));
+              };
 
-            // Set initial value
-            session.set("counter", "1");
+              // Set initial value
+              session.set("counter", "1");
 
-            // Overwrite with new value
-            session.set("counter", "2");
+              // Overwrite with new value
+              session.set("counter", "2");
 
-            // Set another key and overwrite it
-            session.set("name", "first");
-            session.set("name", "second");
+              // Set another key and overwrite it
+              session.set("name", "first");
+              session.set("name", "second");
 
-            let counter = switch (session.get("counter")) {
-              case (?v) v;
-              case (null) "missing";
-            };
-            let name = switch (session.get("name")) {
-              case (?v) v;
-              case (null) "missing";
-            };
+              let counter = switch (session.get("counter")) {
+                case (?v) v;
+                case (null) "missing";
+              };
+              let name = switch (session.get("name")) {
+                case (?v) v;
+                case (null) "missing";
+              };
 
-            ctx.buildResponse(#ok, #text("counter=" # counter # ",name=" # name));
-          },
+              ctx.buildResponse(#ok, #text("counter=" # counter # ",name=" # name));
+            }
+          ),
         ),
       ];
     };

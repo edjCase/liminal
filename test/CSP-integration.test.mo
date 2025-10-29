@@ -94,49 +94,57 @@ func createAppWithCSP(cspOptions : ?CSPMiddleware.Options) : Liminal.App {
     prefix = null;
     identityRequirement = null;
     routes = [
-      Router.getQuery(
+      Router.get(
         "/",
-        func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-          {
-            statusCode = 200;
-            headers = [("Content-Type", "text/html")];
-            body = ?"<html><body>Hello World</body></html>";
-            streamingStrategy = null;
-          };
-        },
+        #query_(
+          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+            {
+              statusCode = 200;
+              headers = [("Content-Type", "text/html")];
+              body = ?"<html><body>Hello World</body></html>";
+              streamingStrategy = null;
+            };
+          }
+        ),
       ),
-      Router.getQuery(
+      Router.get(
         "/api/data",
-        func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-          {
-            statusCode = 200;
-            headers = [("Content-Type", "application/json")];
-            body = ?"{\"data\": \"test\"}";
-            streamingStrategy = null;
-          };
-        },
+        #query_(
+          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+            {
+              statusCode = 200;
+              headers = [("Content-Type", "application/json")];
+              body = ?"{\"data\": \"test\"}";
+              streamingStrategy = null;
+            };
+          }
+        ),
       ),
-      Router.postQuery(
+      Router.post(
         "/submit",
-        func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-          {
-            statusCode = 200;
-            headers = [("Content-Type", "application/json")];
-            body = ?"{\"success\": true}";
-            streamingStrategy = null;
-          };
-        },
+        #query_(
+          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+            {
+              statusCode = 200;
+              headers = [("Content-Type", "application/json")];
+              body = ?"{\"success\": true}";
+              streamingStrategy = null;
+            };
+          }
+        ),
       ),
-      Router.getQuery(
+      Router.get(
         "/test",
-        func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-          {
-            statusCode = 200;
-            headers = [("Content-Type", "text/html")];
-            body = ?"<html><body>Test</body></html>";
-            streamingStrategy = null;
-          };
-        },
+        #query_(
+          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+            {
+              statusCode = 200;
+              headers = [("Content-Type", "text/html")];
+              body = ?"<html><body>Test</body></html>";
+              streamingStrategy = null;
+            };
+          }
+        ),
       ),
     ];
   };

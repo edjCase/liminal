@@ -49,259 +49,56 @@ module Module {
   /// The handler type (query/update/async) is determined by the RouteHandler variant.
   ///
   /// ```motoko
-  /// let route = Router.get("/users/:id", #syncQuery(getUserHandler));
+  /// let route = Router.get("/users/{id}", #query_(getUserHandler));
   /// ```
   public func get(path : Text, handler : Route.RouteHandler) : RouteConfig {
     route(path, #get, handler);
   };
 
-  /// Creates a GET route for query operations (read-only).
-  /// Query handlers execute synchronously and cannot modify state.
-  ///
-  /// ```motoko
-  /// let route = Router.getQuery("/users", func(ctx) {
-  ///     ctx.buildResponse(#ok, #content(#Text("User list")))
-  /// });
-  /// ```
-  public func getQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #get, #syncQuery(handler));
-  };
-
-  /// Creates a GET route for update operations (can modify state).
-  /// Update handlers execute synchronously with system access.
-  ///
-  /// ```motoko
-  /// let route = Router.getUpdate("/admin/cache-clear", func(ctx) {
-  ///     // Clear cache and return response
-  ///     ctx.buildResponse(#ok, #content(#Text("Cache cleared")))
-  /// });
-  /// ```
-  public func getUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #get, #syncUpdate(handler));
-  };
-
-  /// Creates a GET route for asynchronous update operations.
-  /// Async handlers can perform inter-canister calls and other async operations.
-  ///
-  /// ```motoko
-  /// let route = Router.getAsyncUpdate("/external-data", func(ctx) : async* Types.HttpResponse {
-  ///     let data = await* externalService.getData();
-  ///     ctx.buildResponse(#ok, #content(#Text(data)))
-  /// });
-  /// ```
-  public func getAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
-    route(path, #get, #asyncUpdate(handler));
-  };
-
   /// Creates a POST route configuration with automatic handler type detection.
   ///
   /// ```motoko
-  /// let route = Router.post("/users", #asyncUpdate(createUserHandler));
+  /// let route = Router.post("/users", #update(#async_(createUserHandler)));
   /// ```
   public func post(path : Text, handler : Route.RouteHandler) : RouteConfig {
     route(path, #post, handler);
-  };
-
-  /// Creates a POST route for query operations.
-  /// Useful for complex queries that need request body data.
-  ///
-  /// ```motoko
-  /// let route = Router.postQuery("/search", func(ctx) {
-  ///     let searchQuery = ctx.getBodyText();
-  ///     // Perform search and return results
-  ///     ctx.buildResponse(#ok, #content(#Text(results)))
-  /// });
-  /// ```
-  public func postQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #post, #syncQuery(handler));
-  };
-
-  /// Creates a POST route for synchronous update operations.
-  /// Ideal for creating resources or modifying state.
-  ///
-  /// ```motoko
-  /// let route = Router.postUpdate("/users", func(ctx) {
-  ///     let userData = ctx.getBodyText();
-  ///     // Create user and return response
-  ///     ctx.buildResponse(#created, #content(#Text("User created")))
-  /// });
-  /// ```
-  public func postUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #post, #syncUpdate(handler));
-  };
-
-  /// Creates a POST route for asynchronous update operations.
-  /// Use when creating resources requires external calls or complex async logic.
-  ///
-  /// ```motoko
-  /// let route = Router.postAsyncUpdate("/users", func(ctx) : async* Types.HttpResponse {
-  ///     let userData = ctx.getBodyText();
-  ///     await* userService.createUser(userData);
-  ///     ctx.buildResponse(#created, #content(#Text("User created")))
-  /// });
-  /// ```
-  public func postAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
-    route(path, #post, #asyncUpdate(handler));
   };
 
   /// Creates a PUT route configuration with automatic handler type detection.
   /// The handler type is determined by the RouteHandler variant passed.
   ///
   /// ```motoko
-  /// let route = Router.put("/users/:id", #syncUpdate(updateUserHandler));
+  /// let route = Router.put("/users/{id}", #update(#sync(updateUserHandler)));
   /// ```
   public func put(path : Text, handler : Route.RouteHandler) : RouteConfig {
     route(path, #put, handler);
-  };
-
-  /// Creates a PUT route for query operations.
-  /// Use for idempotent operations that don't modify state.
-  ///
-  /// ```motoko
-  /// let route = Router.putQuery("/users/:id/validate", func(ctx) {
-  ///     // Validate user data without modification
-  ///     ctx.buildResponse(#ok, #content(#Text("Valid")))
-  /// });
-  /// ```
-  public func putQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #put, #syncQuery(handler));
-  };
-
-  /// Creates a PUT route for synchronous update operations.
-  /// Ideal for updating or replacing resources entirely.
-  ///
-  /// ```motoko
-  /// let route = Router.putUpdate("/users/:id", func(ctx) {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     // Update user and return response
-  ///     ctx.buildResponse(#ok, #content(#Text("User updated")))
-  /// });
-  /// ```
-  public func putUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #put, #syncUpdate(handler));
-  };
-
-  /// Creates a PUT route for asynchronous update operations.
-  /// Use when updating resources requires external calls or complex async logic.
-  ///
-  /// ```motoko
-  /// let route = Router.putAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     await* userService.updateUser(userId, userData);
-  ///     ctx.buildResponse(#ok, #content(#Text("User updated")))
-  /// });
-  /// ```
-  public func putAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
-    route(path, #put, #asyncUpdate(handler));
   };
 
   /// Creates a PATCH route configuration with automatic handler type detection.
   /// The handler type is determined by the RouteHandler variant passed.
   ///
   /// ```motoko
-  /// let route = Router.patch("/users/:id", #syncUpdate(partialUpdateHandler));
+  /// let route = Router.patch("/users/{id}", #update(#sync(partialUpdateHandler)));
   /// ```
   public func patch(path : Text, handler : Route.RouteHandler) : RouteConfig {
     route(path, #patch, handler);
-  };
-
-  /// Creates a PATCH route for query operations.
-  /// Use for validation or preview of partial updates without modification.
-  ///
-  /// ```motoko
-  /// let route = Router.patchQuery("/users/:id/preview", func(ctx) {
-  ///     // Preview what the patch would do
-  ///     ctx.buildResponse(#ok, #content(#Text("Preview")))
-  /// });
-  /// ```
-  public func patchQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #patch, #syncQuery(handler));
-  };
-
-  /// Creates a PATCH route for synchronous update operations.
-  /// Ideal for partial updates to existing resources.
-  ///
-  /// ```motoko
-  /// let route = Router.patchUpdate("/users/:id", func(ctx) {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     // Apply partial update and return response
-  ///     ctx.buildResponse(#ok, #content(#Text("User partially updated")))
-  /// });
-  /// ```
-  public func patchUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #patch, #syncUpdate(handler));
-  };
-
-  /// Creates a PATCH route for asynchronous update operations.
-  /// Use when partial updates require external calls or complex async logic.
-  ///
-  /// ```motoko
-  /// let route = Router.patchAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     await* userService.partialUpdateUser(userId, patchData);
-  ///     ctx.buildResponse(#ok, #content(#Text("User partially updated")))
-  /// });
-  /// ```
-  public func patchAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
-    route(path, #patch, #asyncUpdate(handler));
   };
 
   /// Creates a DELETE route configuration with automatic handler type detection.
   /// The handler type is determined by the RouteHandler variant passed.
   ///
   /// ```motoko
-  /// let route = Router.delete("/users/:id", #syncUpdate(deleteUserHandler));
+  /// let route = Router.delete("/users/{id}", #update(#sync(deleteUserHandler)));
   /// ```
   public func delete(path : Text, handler : Route.RouteHandler) : RouteConfig {
     route(path, #delete, handler);
-  };
-
-  /// Creates a DELETE route for query operations.
-  /// Use for previewing what would be deleted without actually deleting.
-  ///
-  /// ```motoko
-  /// let route = Router.deleteQuery("/users/:id/preview", func(ctx) {
-  ///     // Show what would be deleted
-  ///     ctx.buildResponse(#ok, #content(#Text("Would delete user")))
-  /// });
-  /// ```
-  public func deleteQuery(path : Text, handler : RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #delete, #syncQuery(handler));
-  };
-
-  /// Creates a DELETE route for synchronous update operations.
-  /// Standard approach for deleting resources.
-  ///
-  /// ```motoko
-  /// let route = Router.deleteUpdate("/users/:id", func(ctx) {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     // Delete user and return response
-  ///     ctx.buildResponse(#noContent, #empty)
-  /// });
-  /// ```
-  public func deleteUpdate(path : Text, handler : <system> RouteContext.RouteContext -> Types.HttpResponse) : RouteConfig {
-    route(path, #delete, #syncUpdate(handler));
-  };
-
-  /// Creates a DELETE route for asynchronous update operations.
-  /// Use when deleting resources requires external calls or complex async logic.
-  ///
-  /// ```motoko
-  /// let route = Router.deleteAsyncUpdate("/users/:id", func(ctx) : async* Types.HttpResponse {
-  ///     let userId = ctx.getRouteParam("id");
-  ///     await* userService.deleteUser(userId);
-  ///     ctx.buildResponse(#noContent, #empty)
-  /// });
-  /// ```
-  public func deleteAsyncUpdate(path : Text, handler : RouteContext.RouteContext -> async* Types.HttpResponse) : RouteConfig {
-    route(path, #delete, #asyncUpdate(handler));
   };
 
   /// Creates a route configuration with the specified path, method, and handler.
   /// This is the base function used by all HTTP method-specific functions.
   ///
   /// ```motoko
-  /// let route = Router.route("/users/:id", #get, #syncQuery(handler));
+  /// let route = Router.route("/users/{id}", #get, #query_(handler));
   /// ```
   public func route(path : Text, method : Route.RouteMethod, handler : Route.RouteHandler) : RouteConfig {
     routeWithOptAuthorization(
@@ -319,7 +116,7 @@ module Module {
   /// let authRoute = Router.routeWithAuthorization(
   ///     "/admin/users",
   ///     #get,
-  ///     #syncQuery(handler),
+  ///     #query_(handler),
   ///     { kind = #principalIdAllowList; principalIds = ["admin-principal"] }
   /// );
   /// ```
@@ -360,9 +157,9 @@ module Module {
   ///
   /// ```motoko
   /// let userRoutes = Router.group("/users", [
-  ///     Router.getQuery("/", listUsersHandler),
-  ///     Router.postUpdate("/", createUserHandler),
-  ///     Router.getQuery("/:id", getUserHandler),
+  ///     Router.get("/", #query_(listUsersHandler)),
+  ///     Router.post("/", #update(#sync(createUserHandler))),
+  ///     Router.get("/{id}", #query_(getUserHandler)),
   /// ]);
   /// ```
   public func group(prefix : Text, routes : [RouteConfig]) : RouteConfig {
@@ -378,8 +175,8 @@ module Module {
   ///
   /// ```motoko
   /// let adminRoutes = Router.groupWithAuthorization("/admin", [
-  ///     Router.getQuery("/users", adminListUsersHandler),
-  ///     Router.deleteUpdate("/users/:id", adminDeleteUserHandler),
+  ///     Router.get("/users", #query_(adminListUsersHandler)),
+  ///     Router.delete("/users/{id}", #update(#sync(adminDeleteUserHandler))),
   /// ], { kind = #principalIdAllowList; principalIds = ["admin-principal"] });
   /// ```
   public func groupWithAuthorization(
@@ -442,9 +239,9 @@ module Module {
   /// ```motoko
   /// let config = {
   ///     routes = [
-  ///         Router.get("/users", #syncQuery(getUsersHandler)),
-  ///         Router.get("/users/{id}", #syncQuery(getUserHandler)),
-  ///         Router.post("/users", #asyncUpdate(createUserHandler)),
+  ///         Router.get("/users", #query_(getUsersHandler)),
+  ///         Router.get("/users/{id}", #query_(getUserHandler)),
+  ///         Router.post("/users", #update(#async_(createUserHandler))),
   ///         Router.group({
   ///             prefix = [#text("api"), #text("v1")];
   ///             routes = [/* nested routes */];
@@ -495,9 +292,14 @@ module Module {
       let ?routeContext = findRoute(httpContext) else return #noMatch;
 
       let response = switch (routeContext.handler) {
-        case (#syncQuery(handler)) handler(routeContext);
-        case (#syncUpdate(_)) return #upgrade; // Skip sync handlers that restrict to only updates, only handle in routeAsync
-        case (#asyncUpdate(_)) return #upgrade; // Skip async handlers, only handle in routeAsync
+        case (#query_(handler)) handler(routeContext);
+        case (#upgradableQuery({ queryHandler })) {
+          switch (queryHandler(routeContext)) {
+            case (#response(response)) response;
+            case (#upgrade) return #upgrade;
+          };
+        };
+        case (#update(_)) return #upgrade; // Skip sync handlers that restrict to only updates, only handle in routeAsync
       };
       #response(response);
     };
@@ -515,10 +317,19 @@ module Module {
     /// ```
     public func routeUpdate<system>(httpContext : HttpContext.HttpContext) : async* AsyncRouteResult {
       let ?routeContext = findRoute(httpContext) else return #noMatch;
+
+      func handleUpdate(handler : RouteContext.UpdateHandlerKind) : async* Types.HttpResponse {
+        switch (handler) {
+          case (#sync(handler)) handler(routeContext);
+          case (#syncSystem(handler)) handler<system>(routeContext);
+          case (#async_(handler)) await* handler(routeContext);
+        };
+      };
+
       let response = switch (routeContext.handler) {
-        case (#syncQuery(handler)) handler(routeContext); // Could have been upgraded by previous middleware
-        case (#syncUpdate(handler)) handler<system>(routeContext);
-        case (#asyncUpdate(handler)) await* handler(routeContext);
+        case (#query_(handler)) handler(routeContext); // Could have been upgraded by previous middleware
+        case (#upgradableQuery({ updateHandler })) await* handleUpdate(updateHandler);
+        case (#update(handler)) await* handleUpdate(handler);
       };
       #response(response);
     };
@@ -547,7 +358,7 @@ module Module {
 
   /// Matches a URL path against a route pattern and extracts path parameters.
   /// Returns extracted parameters if the path matches the pattern, null otherwise.
-  /// Supports text segments, parameters (:param), and wildcards (* and **).
+  /// Supports text segments, parameters ({param}), and wildcards (* and **).
   ///
   /// ```motoko
   /// let pattern = [#text("users"), #param("id")];

@@ -8,33 +8,41 @@ import HttpAssets "mo:http-assets@0";
 import AssetCanister "mo:liminal/AssetCanister";
 import Text "mo:core@1/Text";
 
-shared ({ caller = initializer }) actor class Actor() = self {
+shared ({ caller = initializer }) persistent actor class Actor() = self {
 
-  let canisterId = Principal.fromActor(self);
+  transient let canisterId = Principal.fromActor(self);
 
-  stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
-  assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
+  let assetStableData = HttpAssets.init_stable_store(canisterId, initializer)
+  |> HttpAssets.upgrade_stable_store(_);
 
-  let setPermissions : HttpAssets.SetPermissions = {
+  transient let setPermissions : HttpAssets.SetPermissions = {
     commit = [initializer];
     manage_permissions = [initializer];
     prepare = [initializer];
   };
-  var assetStore = HttpAssets.Assets(assetStableData, ?setPermissions);
-  var assetCanister = AssetCanister.AssetCanister(assetStore);
+  transient let assetStore = HttpAssets.Assets(assetStableData, ?setPermissions);
+  transient let assetCanister = AssetCanister.AssetCanister(assetStore);
 
-  let assetMiddlewareConfig : AssetsMiddleware.Config = {
+  transient let assetMiddlewareConfig : AssetsMiddleware.Config = {
     store = assetStore;
   };
 
   // Http App
-  let app = Liminal.App({
+  transient let app = Liminal.App({
     middleware = [
       AssetsMiddleware.new(assetMiddlewareConfig),
     ];
     errorSerializer = Liminal.defaultJsonErrorSerializer;
     candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     logger = Liminal.buildDebugLogger(#info);
+    urlNormalization = {
+      pathIsCaseSensitive = false;
+      preserveTrailingSlash = false;
+      queryKeysAreCaseSensitive = false;
+      removeEmptyPathSegments = true;
+      resolvePathDotSegments = true;
+      usernameIsCaseSensitive = false;
+    };
   });
 
   // Http server methods

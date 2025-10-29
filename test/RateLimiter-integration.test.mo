@@ -86,16 +86,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Success";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Success";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -164,16 +166,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Success";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Success";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -241,16 +245,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Success";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Success";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -332,16 +338,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Success";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Success";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };
@@ -409,16 +417,18 @@ await test(
       prefix = null;
       identityRequirement = null;
       routes = [
-        Router.getQuery(
+        Router.get(
           "/test",
-          func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
-            {
-              statusCode = 200;
-              headers = [("Content-Type", "text/plain")];
-              body = ?"Success";
-              streamingStrategy = null;
-            };
-          },
+          #query_(
+            func(ctx : Liminal.RouteContext) : Liminal.HttpResponse {
+              {
+                statusCode = 200;
+                headers = [("Content-Type", "text/plain")];
+                body = ?"Success";
+                streamingStrategy = null;
+              };
+            }
+          ),
         ),
       ];
     };

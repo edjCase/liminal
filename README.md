@@ -132,12 +132,12 @@ actor {
         prefix = ?"/api";
         identityRequirement = null;
         routes = [
-            Router.getQuery(
+            Router.get(
                 "/hello/{name}",
-                func(context : RouteContext.RouteContext) : Route.HttpResponse {
+                #query_(func(context : RouteContext.RouteContext) : Route.HttpResponse {
                     let name = context.getRouteParam("name");
                     context.buildResponse(#ok, #text("Hello, " # name # "!"));
-                }
+                })
             )
         ]
     };
@@ -154,6 +154,14 @@ actor {
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
         logger = Liminal.buildDebugLogger(#info);
+        urlNormalization = {
+            pathIsCaseSensitive = false;
+            preserveTrailingSlash = false;
+            queryKeysAreCaseSensitive = false;
+            removeEmptyPathSegments = true;
+            resolvePathDotSegments = true;
+            usernameIsCaseSensitive = false;
+        };
     });
 
     // Expose standard HTTP interface
@@ -191,20 +199,20 @@ actor {
         prefix = ?"/api";
         identityRequirement = null;
         routes = [
-            Router.getQuery(
+            Router.get(
                 "/public",
-                func(context : RouteContext.RouteContext) : Route.HttpResponse {
+                #query_(func(context : RouteContext.RouteContext) : Route.HttpResponse {
                     context.buildResponse(#ok, #text("Public endpoint"))
-                }
+                })
             ),
             Router.groupWithAuthorization(
                 "/secure",
                 [
-                    Router.getQuery(
+                    Router.get(
                         "/profile",
-                        func(context : RouteContext.RouteContext) : Route.HttpResponse {
+                        #query_(func(context : RouteContext.RouteContext) : Route.HttpResponse {
                             context.buildResponse(#ok, #text("Secure profile endpoint"))
-                        }
+                        })
                     )
                 ],
                 #authenticated
@@ -212,10 +220,13 @@ actor {
         ]
     };
 
+    ];
+
     // Initialize asset store
-    stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
-    assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
-    var assetStore = HttpAssets.Assets(assetStableData);
+    let canisterId = Principal.fromActor(self);
+    let assetStableData = HttpAssets.init_stable_store(canisterId, initializer)
+    |> HttpAssets.upgrade_stable_store(_);
+    let assetStore = HttpAssets.Assets(assetStableData, ?setPermissions);
 
     // Create the HTTP App with middleware
     let app = Liminal.App({
@@ -244,6 +255,14 @@ actor {
         errorSerializer = Liminal.defaultJsonErrorSerializer;
         candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
         logger = Liminal.buildDebugLogger(#info);
+        urlNormalization = {
+            pathIsCaseSensitive = false;
+            preserveTrailingSlash = false;
+            queryKeysAreCaseSensitive = false;
+            removeEmptyPathSegments = true;
+            resolvePathDotSegments = true;
+            usernameIsCaseSensitive = false;
+        };
     });
 
     // Expose standard HTTP interface
@@ -302,8 +321,78 @@ The routing system supports:
 -   Path parameters (`/users/{id}`)
 -   Nested routes with prefixes
 -   HTTP method-specific handlers
--   Synchronous and asynchronous handlers
+-   Query, update, and async handlers
 -   Authorization controls
+
+#### Route Handlers
+
+Liminal provides three types of route handlers to match different execution requirements:
+
+##### Query Handlers (`#query_`)
+
+For read-only operations that don't modify state. These execute as fast query calls on the Internet Computer.
+
+```motoko
+Router.get("/users", #query_(func(context : RouteContext.RouteContext) : HttpResponse {
+    // Read-only logic
+    context.buildResponse(#ok, #text("User list"))
+}))
+```
+
+##### Update Handlers (`#update`)
+
+For operations that modify state or need async capabilities. Update handlers come in three variants:
+
+**Sync Update (`#sync`)** - Synchronous update handler without system access:
+
+```motoko
+Router.post("/users", #update(#sync(func(context : RouteContext.RouteContext) : HttpResponse {
+    // Modify state synchronously
+    context.buildResponse(#created, #text("User created"))
+})))
+```
+
+**Sync System Update (`#syncSystem`)** - Synchronous update handler with `<system>` access:
+
+```motoko
+Router.post("/data", #update(#syncSystem(func<system>(context : RouteContext.RouteContext) : HttpResponse {
+    // Modify state with system access
+    context.buildResponse(#ok, #text("Data updated"))
+})))
+```
+
+**Async Update (`#async_`)** - Asynchronous handler for inter-canister calls:
+
+```motoko
+Router.put("/users/{id}", #update(#async_(func(context : RouteContext.RouteContext) : async* HttpResponse {
+    let result = await* externalCanister.updateUser(userId);
+    context.buildResponse(#ok, #text("User updated"))
+})))
+```
+
+##### Upgradable Query Handlers (`#upgradableQuery`)
+
+For operations that start as queries but can upgrade to updates when needed. This is useful for optimistic reads that may need to write:
+
+```motoko
+Router.get("/data", #upgradableQuery({
+    queryHandler = func(context : RouteContext.RouteContext) : { #response : HttpResponse; #upgrade } {
+        // Try to handle as query
+        if (canHandleAsQuery()) {
+            #response(context.buildResponse(#ok, #text("Data")))
+        } else {
+            #upgrade // Upgrade to update call
+        }
+    };
+    updateHandler = #async_(func(context : RouteContext.RouteContext) : async* HttpResponse {
+        // Handle as update after upgrade
+        await* performUpdate();
+        context.buildResponse(#ok, #text("Data updated"))
+    });
+}))
+```
+
+#### Route Configuration Example
 
 ```motoko
 // Route configuration example
@@ -315,11 +404,11 @@ let routerConfig = {
         Router.group(
             "/users",
             [
-                Router.getQuery("/", getAllUsers), // GET + query call -> getAllUsers
-                Router.postUpdate("/", createUser), // POST + update call -> createUser
-                Router.getQuery("/{id}", getUserById), // GET + query call -> getUserById
-                Router.putUpdateAsync("/{id}", updateUser), // PUT + update call (using async method) -> updateUser
-                Router.deleteUpdate("/{id}", deleteUser) // DELETE + update call -> deleteUser
+                Router.get("/", #query_(getAllUsers)), // GET + query call -> getAllUsers
+                Router.post("/", #update(#sync(createUser))), // POST + update call -> createUser
+                Router.get("/{id}", #query_(getUserById)), // GET + query call -> getUserById
+                Router.put("/{id}", #update(#async_(updateUser))), // PUT + update call (using async method) -> updateUser
+                Router.delete("/{id}", #update(#sync(deleteUser))) // DELETE + update call -> deleteUser
             ]
         )
     ]
@@ -335,8 +424,8 @@ Liminal provides a flexible and powerful path matching system that supports vari
 Basic routes with fixed path segments:
 
 ```motoko
-Router.getQuery("/users", getAllUsers)
-Router.getQuery("/api/products", getProducts)
+Router.get("/users", #query_(getAllUsers))
+Router.get("/api/products", #query_(getProducts))
 ```
 
 #### Path Parameters
@@ -345,11 +434,11 @@ Capture dynamic values from the URL using curly braces:
 
 ```motoko
 // Matches: /users/123, /users/abc
-Router.getQuery("/users/{id}", getUserById)
+Router.get("/users/{id}", #query_(getUserById))
 
 // Multiple parameters
 // Matches: /blog/2023/05/hello-world
-Router.getQuery("/blog/{year}/{month}/{slug}", getBlogPost)
+Router.get("/blog/{year}/{month}/{slug}", #query_(getBlogPost))
 ```
 
 Access parameters in your handler:
@@ -370,11 +459,11 @@ Matches exactly one segment in the path:
 ```motoko
 // Matches: /files/document.txt, /files/image.jpg
 // Does NOT match: /files/folder/document.txt
-Router.getQuery("/files/*", getFile)
+Router.get("/files/*", #query_(getFile))
 
 // Can appear in the middle of a path
 // Matches: /files/document.txt/versions
-Router.getQuery("/files/*/versions", getFileVersions)
+Router.get("/files/*/versions", #query_(getFileVersions))
 ```
 
 ##### Multi Wildcard (\*\*)
@@ -383,11 +472,11 @@ Matches any number of segments (including zero):
 
 ```motoko
 // Matches: /api, /api/users, /api/users/123/profile
-Router.getQuery("/api/**", handleApiRequest)
+Router.get("/api/**", #query_(handleApiRequest))
 
 // Can appear in the middle of a path
 // Matches: /api/info, /api/users/123/info
-Router.getQuery("/api/**/info", getApiInfo)
+Router.get("/api/**/info", #query_(getApiInfo))
 ```
 
 ### HTTP Context
@@ -735,30 +824,39 @@ Liminal provides a wrapper around the Internet Computer's asset canister functio
 import HttpAssets "mo:http-assets";
 import AssetCanister "mo:liminal/AssetCanister";
 
-// Initialize asset store
-stable var assetStableData = HttpAssets.init_stable_store(canisterId, initializer);
-assetStableData := HttpAssets.upgrade_stable_store(assetStableData);
-var assetStore = HttpAssets.Assets(assetStableData);
-var assetCanister = AssetCanister.AssetCanister(assetStore);
+shared ({ caller = initializer }) persistent actor class Actor() = self {
+    transient let canisterId = Principal.fromActor(self);
 
-...
+    // Initialize asset store (persists across upgrades with persistent actor)
+    let assetStableData = HttpAssets.init_stable_store(canisterId, initializer)
+    |> HttpAssets.upgrade_stable_store(_);
 
-// Use in middleware
-AssetsMiddleware.new({
-    prefix = null;
-    store = assetStore;
-    indexAssetPath = ?"/index.html";
-    // Cache configuration...
-})
+    transient let setPermissions : HttpAssets.SetPermissions = {
+        commit = [initializer];
+        manage_permissions = [initializer];
+        prepare = [initializer];
+    };
 
-...
+    transient let assetStore = HttpAssets.Assets(assetStableData, ?setPermissions);
+    transient let assetCanister = AssetCanister.AssetCanister(assetStore);
 
-// Expose asset canister methods
-public shared query func get(args : Assets.GetArgs) : async Assets.EncodedAsset {
-    assetCanister.get(args);
+    // Use in middleware
+    let app = Liminal.App({
+        middleware = [
+            AssetsMiddleware.new({
+                store = assetStore;
+            }),
+        ];
+        // ... other config
+    });
+
+    // Expose asset canister methods
+    public shared query func get(args : HttpAssets.GetArgs) : async HttpAssets.EncodedAsset {
+        assetCanister.get(args);
+    }
+
+    // Additional asset canister methods...
 }
-
-// Additional asset canister methods...
 ```
 
 ## Error Handling
@@ -803,6 +901,161 @@ let app = Liminal.App({
 ```
 
 The `candidRepresentationNegotiator` handles the conversion of Candid values to different representations based on the client's Accept header. The default implementation supports converting to JSON, CBOR, Candid, and XML formats.
+
+## URL Normalization
+
+Liminal provides comprehensive URL normalization to ensure consistent request handling. The `urlNormalization` configuration controls how URLs are processed before routing:
+
+```motoko
+let app = Liminal.App({
+    middleware = [/* ... */];
+    errorSerializer = Liminal.defaultJsonErrorSerializer;
+    candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+    logger = Liminal.buildDebugLogger(#info);
+    urlNormalization = {
+        // Path comparison is case-sensitive (/Users != /users)
+        pathIsCaseSensitive = false;
+
+        // Keep trailing slashes (/users/ != /users)
+        preserveTrailingSlash = false;
+
+        // Query parameter keys are case-sensitive (sort != Sort)
+        queryKeysAreCaseSensitive = false;
+
+        // Remove empty path segments (/users//123 -> /users/123)
+        removeEmptyPathSegments = true;
+
+        // Resolve . and .. in paths (/users/../admin -> /admin)
+        resolvePathDotSegments = true;
+
+        // Username in URLs is case-sensitive (user@host != User@host)
+        usernameIsCaseSensitive = false;
+    };
+});
+```
+
+These settings help ensure your application handles URLs consistently regardless of how clients format them.
+
+## Breaking Changes (v2 → v3)
+
+Version 3 introduces significant improvements to the routing API for better type safety and consistency. Here's what changed:
+
+### Router API Changes
+
+#### Route Handler Variants (Breaking Change)
+
+**Old (v2):** Method-specific handler functions
+
+```motoko
+// v2 - Multiple specialized methods
+Router.getQuery("/users", getUsersHandler)
+Router.getUpdate("/users", getUsersHandler)
+Router.getAsyncUpdate("/users", getUsersHandler)
+Router.postQuery("/users", createUserHandler)
+Router.postUpdate("/users", createUserHandler)
+Router.postAsyncUpdate("/users", createUserHandler)
+// ... and similar for PUT, PATCH, DELETE
+```
+
+**New (v3):** Unified methods with handler type variants
+
+```motoko
+// v3 - Single method per HTTP verb with explicit handler type
+Router.get("/users", #query_(getUsersHandler))
+Router.post("/users", #update(#sync(createUserHandler)))
+Router.put("/users/{id}", #update(#async_(updateUserHandler)))
+```
+
+#### Removed Methods
+
+The following methods have been **removed** in v3:
+
+-   `Router.getQuery()` → Use `Router.get()` with `#query_()` handler
+-   `Router.getUpdate()` → Use `Router.get()` with `#update(#sync())` handler
+-   `Router.getAsyncUpdate()` → Use `Router.get()` with `#update(#async_())` handler
+-   `Router.postQuery()` → Use `Router.post()` with `#query_()` handler
+-   `Router.postUpdate()` → Use `Router.post()` with `#update(#sync())` handler
+-   `Router.postAsyncUpdate()` → Use `Router.post()` with `#update(#async_())` handler
+-   `Router.putQuery()` → Use `Router.put()` with `#query_()` handler
+-   `Router.putUpdate()` → Use `Router.put()` with `#update(#sync())` handler
+-   `Router.putAsyncUpdate()` → Use `Router.put()` with `#update(#async_())` handler
+-   `Router.patchQuery()` → Use `Router.patch()` with `#query_()` handler
+-   `Router.patchUpdate()` → Use `Router.patch()` with `#update(#sync())` handler
+-   `Router.patchAsyncUpdate()` → Use `Router.patch()` with `#update(#async_())` handler
+-   `Router.deleteQuery()` → Use `Router.delete()` with `#query_()` handler
+-   `Router.deleteUpdate()` → Use `Router.delete()` with `#update(#sync())` handler
+-   `Router.deleteAsyncUpdate()` → Use `Router.delete()` with `#update(#async_())` handler
+
+### RouteHandler Type Changes
+
+**Old (v2):**
+
+```motoko
+public type RouteHandler = {
+    #syncQuery : RouteContext -> HttpResponse;
+    #syncUpdate : <system>(RouteContext) -> HttpResponse;
+    #asyncUpdate : RouteContext -> async* HttpResponse;
+};
+```
+
+**New (v3):**
+
+```motoko
+public type UpdateHandlerKind = {
+    #sync : (RouteContext) -> HttpResponse;
+    #syncSystem : <system>(RouteContext) -> HttpResponse;
+    #async_ : (RouteContext) -> async* HttpResponse;
+};
+
+public type RouteHandler = {
+    #query_ : (RouteContext) -> HttpResponse;
+    #upgradableQuery : {
+        queryHandler : (RouteContext) -> { #response : HttpResponse; #upgrade };
+        updateHandler : UpdateHandlerKind;
+    };
+    #update : UpdateHandlerKind;
+};
+```
+
+### App Configuration
+
+The `App` constructor now **requires** a `urlNormalization` configuration:
+
+**Old (v2):**
+
+```motoko
+let app = Liminal.App({
+    middleware = [...];
+    errorSerializer = Liminal.defaultJsonErrorSerializer;
+    candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+    logger = Liminal.buildDebugLogger(#info);
+});
+```
+
+**New (v3):**
+
+```motoko
+let app = Liminal.App({
+    middleware = [...];
+    errorSerializer = Liminal.defaultJsonErrorSerializer;
+    candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
+    logger = Liminal.buildDebugLogger(#info);
+    urlNormalization = {
+        pathIsCaseSensitive = false;
+        preserveTrailingSlash = false;
+        queryKeysAreCaseSensitive = false;
+        removeEmptyPathSegments = true;
+        resolvePathDotSegments = true;
+        usernameIsCaseSensitive = false;
+    };
+});
+```
+
+### Benefits of v3 Changes
+
+-   **More Consistent API:** Single method per HTTP verb with variant for handler type
+-   **More Flexible:** New `#upgradableQuery` and `#syncSystem` variants provide more control
+-   **Clearer Intent:** Code shows whether a route is query or update at a glance
 
 ## Testing
 

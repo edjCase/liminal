@@ -21,22 +21,18 @@ shared ({ caller = initializer }) persistent actor class Actor() = self {
     urlStableData := urlStore.toStableData();
   };
 
-  system func postupgrade() {
-    urlStore := UrlStore.Store(urlStableData);
-  };
-
   transient let routerConfig : RouterMiddleware.Config = {
     prefix = null;
     identityRequirement = null;
     routes = [
       // URL management endpoints
-      Router.getQuery("/urls", urlRouter.getAllUrls),
-      Router.postUpdate("/shorten", urlRouter.createShortUrl),
-      Router.deleteUpdate("/urls/{id}", urlRouter.deleteUrl),
+      Router.get("/urls", #query_(urlRouter.getAllUrls)),
+      Router.post("/shorten", #update(#sync(urlRouter.createShortUrl))),
+      Router.delete("/urls/{id}", #update(#sync(urlRouter.deleteUrl))),
 
       // Short URL redirect and stats
-      Router.getUpdate("/s/{shortCode}", urlRouter.redirect),
-      Router.getQuery("/s/{shortCode}/stats", urlRouter.getStats),
+      Router.get("/s/{shortCode}", #update(#sync(urlRouter.redirect))),
+      Router.get("/s/{shortCode}/stats", #query_(urlRouter.getStats)),
     ];
   };
 
@@ -48,6 +44,14 @@ shared ({ caller = initializer }) persistent actor class Actor() = self {
     errorSerializer = Liminal.defaultJsonErrorSerializer;
     candidRepresentationNegotiator = Liminal.defaultCandidRepresentationNegotiator;
     logger = Liminal.buildDebugLogger(#info);
+    urlNormalization = {
+      pathIsCaseSensitive = false;
+      preserveTrailingSlash = false;
+      queryKeysAreCaseSensitive = false;
+      removeEmptyPathSegments = true;
+      resolvePathDotSegments = true;
+      usernameIsCaseSensitive = false;
+    };
   });
 
   // Http server methods

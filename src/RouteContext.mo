@@ -24,10 +24,19 @@ module {
   public type RedirectionHttpStatusCode = HttpContext.RedirectionHttpStatusCode;
   public type RedirectionHttpStatusCodeOrCustom = HttpContext.RedirectionHttpStatusCodeOrCustom;
 
+  public type UpdateHandlerKind = {
+    #sync : (RouteContext) -> HttpResponse;
+    #syncSystem : <system>(RouteContext) -> HttpResponse;
+    #async_ : (RouteContext) -> async* HttpResponse;
+  };
+
   public type RouteHandler = {
-    #syncQuery : RouteContext -> HttpResponse;
-    #syncUpdate : <system>(RouteContext) -> HttpResponse;
-    #asyncUpdate : RouteContext -> async* HttpResponse;
+    #query_ : (RouteContext) -> HttpResponse;
+    #upgradableQuery : {
+      queryHandler : (RouteContext) -> { #response : HttpResponse; #upgrade };
+      updateHandler : UpdateHandlerKind;
+    };
+    #update : UpdateHandlerKind;
   };
 
   /// Route-specific context that extends HttpContext with route parameters and utilities.
@@ -84,7 +93,7 @@ module {
     /// Use getRouteParamOrNull() for safe access that returns null instead of trapping.
     ///
     /// ```motoko
-    /// // For route "/users/:id" and URL "/users/123"
+    /// // For route "/users/{id}" and URL "/users/123"
     /// let userId = routeContext.getRouteParam("id"); // Returns "123"
     /// ```
     public func getRouteParam(key : Text) : Text {
@@ -98,7 +107,7 @@ module {
     /// Safer alternative to getRouteParam() that doesn't trap on missing parameters.
     ///
     /// ```motoko
-    /// // For route "/users/:id?" and URL "/users"
+    /// // For route "/users/{id}?" and URL "/users"
     /// let userId = routeContext.getRouteParamOrNull("id"); // Returns null
     /// ```
     public func getRouteParamOrNull(key : Text) : ?Text {
