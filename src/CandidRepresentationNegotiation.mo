@@ -117,6 +117,18 @@ module {
     toXml : (Candid) -> Blob,
     catchAll : ?CatchAllSerializer,
   ) : ?HttpContext.CandidNegotiatedContent {
+    if (contentPreference.requestedTypes.size() == 0) {
+      // No preferences specified, treat as wildcard
+      return toWildcard(
+        "*",
+        candid,
+        contentPreference.disallowedTypes,
+        toJson,
+        toCbor,
+        toCandid,
+        toXml,
+      );
+    };
     label f for ({ type_; subType; parameters } in contentPreference.requestedTypes.vals()) {
       let normalizedType = type_ |> Text.trim(_, #char(' ')) |> Text.toLower(_);
       let normalizedSubType = subType |> Text.trim(_, #char(' ')) |> Text.toLower(_);

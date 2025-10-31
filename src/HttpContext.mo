@@ -512,7 +512,7 @@ module {
           let contentPreference = getContentPreference();
           let ?{ body; contentType } = candidRepresentationNegotiator(candid, contentPreference) else {
             return buildResponse(
-              #unsupportedMediaType,
+              #notAcceptable,
               #error(#message("Unsupported content types: " # debug_show getHeader("Accept"))),
             );
           };
